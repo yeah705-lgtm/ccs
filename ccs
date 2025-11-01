@@ -65,8 +65,10 @@ if [[ ! -f "$SETTINGS_PATH" ]]; then
   exit 1
 fi
 
-# Shift profile arg, pass rest to claude
-shift
+# Shift profile arg if it was provided, pass rest to claude
+if [[ $# -gt 0 ]]; then
+  shift
+fi
 
 # Execute claude with settings
 exec claude --settings "$SETTINGS_PATH" "$@"
