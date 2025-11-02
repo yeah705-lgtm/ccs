@@ -162,17 +162,26 @@ if ($InstallMethod -eq "standalone") {
     Write-Host "|  [OK] Installed ccs.ps1"
 }
 
-# Install uninstall script
+# Install uninstall script as ccs-uninstall.ps1
 if ($ScriptDir -and (Test-Path "$ScriptDir\uninstall.ps1")) {
-    # Only copy if source and destination are different
+    # Copy uninstall.ps1 as ccs-uninstall.ps1 (similar to Linux symlink approach)
     if ($ScriptDir -ne $CcsDir) {
-        Copy-Item "$ScriptDir\uninstall.ps1" "$CcsDir\uninstall.ps1" -Force
+        Copy-Item "$ScriptDir\uninstall.ps1" "$CcsDir\ccs-uninstall.ps1" -Force
+    }
+    # Clean up old uninstall.ps1 from previous installations
+    if (Test-Path "$CcsDir\uninstall.ps1") {
+        Remove-Item "$CcsDir\uninstall.ps1" -Force -ErrorAction SilentlyContinue
     }
     Write-Host "|  [OK] Installed uninstaller"
 } elseif ($InstallMethod -eq "standalone") {
     try {
         $BaseUrl = "https://raw.githubusercontent.com/kaitranntt/ccs/main"
-        Invoke-WebRequest -Uri "$BaseUrl/uninstall.ps1" -OutFile "$CcsDir\uninstall.ps1" -UseBasicParsing
+        # Download uninstall.ps1 as ccs-uninstall.ps1
+        Invoke-WebRequest -Uri "$BaseUrl/uninstall.ps1" -OutFile "$CcsDir\ccs-uninstall.ps1" -UseBasicParsing
+        # Clean up old uninstall.ps1 from previous installations
+        if (Test-Path "$CcsDir\uninstall.ps1") {
+            Remove-Item "$CcsDir\uninstall.ps1" -Force -ErrorAction SilentlyContinue
+        }
         Write-Host "|  [OK] Installed uninstaller"
     } catch {
         Write-Host "|  [!]  Could not download uninstaller (optional)"

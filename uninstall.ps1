@@ -16,8 +16,8 @@ if (Test-Path "$CcsDir\ccs.ps1") {
     Write-Host "[i]  No ccs.ps1 found at $CcsDir"
 }
 
-# Remove uninstall script itself (will be last)
-$UninstallScript = "$CcsDir\uninstall.ps1"
+# Get this script's path for self-removal (works whether named uninstall.ps1 or ccs-uninstall.ps1)
+$UninstallScript = $PSCommandPath
 
 # Remove from PATH
 $UserPath = [Environment]::GetEnvironmentVariable("Path", [System.EnvironmentVariableTarget]::User)
@@ -40,7 +40,7 @@ if (Test-Path $CcsDir) {
         Remove-Item $CcsDir -Recurse -Force
         Write-Host "[OK] Removed: $CcsDir"
     } else {
-        # If keeping directory, remove uninstall script
+        # If keeping directory, remove this uninstall script
         if (Test-Path $UninstallScript) {
             Remove-Item $UninstallScript -Force
             Write-Host "[OK] Removed: $UninstallScript"
