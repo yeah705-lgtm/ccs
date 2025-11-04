@@ -1,32 +1,32 @@
 # CCS - Claude Code Switch
 
-<table>
-<tr>
-<td width="70%">
+<div align="center">
+
+![CCS Logo](docs/assets/ccs-logo-medium.png)
 
 **Một lệnh, không downtime, đúng model cho từng tác vụ**
 
 Chuyển đổi giữa Claude Sonnet 4.5 và GLM 4.6 ngay lập tức. Ngừng hitting rate limits. Bắt đầu tối ưu chi phí.
 
-[![Install CCS](https://img.shields.io/badge/Install-CCS-C15F3C?style=for-the-badge&logo=linux&logoColor=white)](#installation)
-[![Version](https://img.shields.io/badge/version-2.2.3-141618?style=for-the-badge)](https://github.com/kaitranntt/ccs/releases)
+
 [![License](https://img.shields.io/badge/license-MIT-C15F3C?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey?style=for-the-badge)]()
+[![PoweredBy](https://img.shields.io/badge/PoweredBy-ClaudeKit-C15F3C?style=for-the-badge)](https://claudekit.cc?ref=HMNKXOHN)
 
 **Ngôn ngữ**: [English](README.md) | [Tiếng Việt](README.vi.md)
 
-</td>
-<td width="30%" align="center">
-
-![CCS Logo](docs/assets/ccs-logo-medium.png)
-
-</td>
-</tr>
-</table>
+</div>
 
 ---
 
 ## 🚀 Bắt Đầu Nhanh
+
+### 🔑 Điều Kiện Tiên Quyết
+
+**Trước khi cài đặt CCS, hãy đảm bảo bạn đã đăng nhập vào Claude CLI với tài khoản subscription:**
+```bash
+claude /login
+```
 
 ### Phương Pháp Cài Đặt Chính
 
@@ -43,11 +43,11 @@ irm ccs.kaitran.ca/install | iex
 ### Lần Chuyển Đổi Đầu Tiên
 
 ```bash
+# Dùng Claude subscription (mặc định)
+ccs "Review thiết kế kiến trúc này"
+
 # Chuyển sang GLM cho tác vụ tối ưu chi phí
 ccs glm "Tạo REST API đơn giản"
-
-# Chuyển lại Claude cho tác vụ phức tạp
-ccs claude "Review thiết kế kiến trúc này"
 
 # Dùng GLM cho tất cả lệnh tiếp theo cho đến khi chuyển lại
 ccs glm
@@ -108,7 +108,7 @@ Một lệnh. Không downtime. Không phải sửa file. Đúng model, đúng vi
 ## 🏗️ Tổng Quan Kiến Trúc
 
 ```mermaid
-graph TB
+graph LR
     subgraph "Lệnh Người Dùng"
         CMD[ccs glm]
     end
@@ -120,7 +120,7 @@ graph TB
     end
 
     subgraph "Claude CLI"
-        EXEC[claude --settings <path>]
+        EXEC[claude --settings file_path]
     end
 
     subgraph "Phản Hồi API"
@@ -139,7 +139,7 @@ graph TB
 ## ⚡ Tính Năng
 
 ### Chuyển Profile Ngay Lập Tức
-- **Một Lệnh**: `ccs glm` hoặc `ccs claude` - không cần sửa file config
+- **Một Lệnh**: `ccs glm` để chuyển sang GLM, `ccs` để dùng Claude subscription - không cần sửa file config
 - **Phát Hiện Thông Minh**: Tự động dùng đúng model cho từng tác vụ
 - **Liên Tục**: Chuyển đổi hoạt động cho đến khi thay đổi lại
 
@@ -149,6 +149,8 @@ graph TB
 - **Tích Hợp Liền Mạch**: Hoạt động chính xác như Claude CLI native
 
 ### Delegation Tác Vụ
+
+> **🚧 Đang phát triển**: Tính năng này đang trong giai đoạn thử nghiệm và chưa được kiểm tra đầy đủ. Sử dụng với cẩn thận.
 
 CCS bao gồm delegation tác vụ thông minh qua meta-command `/ccs`:
 
@@ -190,39 +192,7 @@ ccs --uninstall  # Gỡ bỏ lệnh và kỹ năng CCS khỏi ~/.claude/
 
 ---
 
-## 🎯 Triết Lý
-
-- **YAGNI**: Không có tính năng "phòng hờ"
-- **KISS**: Bash đơn giản, không phức tạp
-- **DRY**: Một nguồn chân lý duy nhất (config)
-
----
-
-## 🔧 Cài Đặt
-
-### Yêu Cầu Hệ Thống
-
-- **Node.js**: Không yêu cầu (bash/PowerShell thuần)
-- **Python**: Không yêu cầu
-- **Dependencies**: Chỉ `jq` để parse JSON (Unix systems)
-- **Claude CLI**: Phải cài đặt riêng
-- **API Keys**: Có sẵn Claude và GLM API keys hợp lệ
-
-### Kiểm Tra
-
-```bash
-# Kiểm tra cài đặt
-ccs --version
-
-# Kết quả mong đợi:
-# CCS v2.2.3
-# Installed at: ~/.local/bin/ccs (Unix) hoặc %USERPROFILE%\.ccs\ccs.ps1 (Windows)
-# Claude CLI: Found at /usr/local/bin/claude
-```
-
----
-
-## 🗑️ Gỡ Cài Đặt
+### 🗑️ Gỡ Cài Đặt
 
 **macOS / Linux**:
 ```bash
@@ -233,6 +203,14 @@ curl -fsSL ccs.kaitran.ca/uninstall | bash
 ```powershell
 irm ccs.kaitran.ca/uninstall | iex
 ```
+
+---
+
+## 🎯 Triết Lý
+
+- **YAGNI**: Không có tính năng "phòng hờ"
+- **KISS**: Bash đơn giản, không phức tạp
+- **DRY**: Một nguồn chân lý duy nhất (config)
 
 ---
 

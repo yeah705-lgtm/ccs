@@ -1,32 +1,32 @@
 # CCS - Claude Code Switch
 
-<table>
-<tr>
-<td width="70%">
+<div align="center">
+
+![CCS Logo](docs/assets/ccs-logo-medium.png)
 
 **One command, zero downtime, right model for each task**
 
 Switch between Claude Sonnet 4.5 and GLM 4.6 instantly. Stop hitting rate limits. Start optimizing costs.
 
-[![Install CCS](https://img.shields.io/badge/Install-CCS-C15F3C?style=for-the-badge&logo=linux&logoColor=white)](#installation)
-[![Version](https://img.shields.io/badge/version-2.2.3-141618?style=for-the-badge)](https://github.com/kaitranntt/ccs/releases)
+
 [![License](https://img.shields.io/badge/license-MIT-C15F3C?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey?style=for-the-badge)]()
+[![PoweredBy](https://img.shields.io/badge/PoweredBy-ClaudeKit-C15F3C?style=for-the-badge)](https://claudekit.cc?ref=HMNKXOHN)
 
 **Languages**: [English](README.md) | [Tiếng Việt](README.vi.md)
 
-</td>
-<td width="30%" align="center">
-
-![CCS Logo](docs/assets/ccs-logo-medium.png)
-
-</td>
-</tr>
-</table>
+</div>
 
 ---
 
 ## 🚀 Quick Start
+
+### 🔑 Prerequisites
+
+**Before installing CCS, make sure you're logged into Claude CLI with your subscription account:**
+```bash
+claude /login
+```
 
 ### Primary Installation Methods
 
@@ -43,11 +43,11 @@ irm ccs.kaitran.ca/install | iex
 ### Your First Switch
 
 ```bash
+# Use Claude subscription (default)
+ccs "Review this architecture design"
+
 # Switch to GLM for cost-optimized tasks
 ccs glm "Create a simple REST API"
-
-# Switch back to Claude for complex tasks
-ccs claude "Review this architecture design"
 
 # Use GLM for all subsequent commands until switched back
 ccs glm
@@ -120,7 +120,7 @@ graph LR
     end
 
     subgraph "Claude CLI"
-        EXEC[claude --settings <path>]
+        EXEC[claude --settings file_path]
     end
 
     subgraph "API Response"
@@ -139,7 +139,7 @@ graph LR
 ## ⚡ Features
 
 ### Instant Profile Switching
-- **One Command**: `ccs glm` or `ccs claude` - no config file editing
+- **One Command**: `ccs glm` to switch to GLM, `ccs` to use Claude subscription - no config file editing
 - **Smart Detection**: Automatically uses right model for each task
 - **Persistent**: Switch stays active until changed again
 
@@ -149,6 +149,8 @@ graph LR
 - **Seamless Integration**: Works exactly like native Claude CLI
 
 ### Task Delegation
+
+> **🚧 Work in Progress**: This feature is experimental and not fully tested. Use with caution.
 
 CCS includes intelligent task delegation via the `/ccs` meta-command:
 
@@ -190,39 +192,7 @@ ccs --uninstall  # Remove CCS commands and skills from ~/.claude/
 
 ---
 
-## 🎯 Philosophy
-
-- **YAGNI**: No features "just in case"
-- **KISS**: Simple bash, no complexity
-- **DRY**: One source of truth (config)
-
----
-
-## 🔧 Installation
-
-### System Requirements
-
-- **Node.js**: Not required (pure bash/PowerShell)
-- **Python**: Not required
-- **Dependencies**: Only `jq` for JSON parsing (Unix systems)
-- **Claude CLI**: Must be installed separately
-- **API Keys**: Valid Claude and GLM API keys
-
-### Verification
-
-```bash
-# Verify installation
-ccs --version
-
-# Expected output:
-# CCS v2.2.3
-# Installed at: ~/.local/bin/ccs (Unix) or %USERPROFILE%\.ccs\ccs.ps1 (Windows)
-# Claude CLI: Found at /usr/local/bin/claude
-```
-
----
-
-## 🗑️ Uninstall
+### 🗑️ Uninstall
 
 **macOS / Linux**:
 ```bash
@@ -233,6 +203,14 @@ curl -fsSL ccs.kaitran.ca/uninstall | bash
 ```powershell
 irm ccs.kaitran.ca/uninstall | iex
 ```
+
+---
+
+## 🎯 Philosophy
+
+- **YAGNI**: No features "just in case"
+- **KISS**: Simple bash, no complexity
+- **DRY**: One source of truth (config)
 
 ---
 
