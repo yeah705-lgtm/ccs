@@ -4,6 +4,42 @@ All notable changes to CCS will be documented here.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.4.1] - 2025-11-04
+
+### Fixed
+- **CRITICAL: PowerShell Terminal Termination**: Fixed PowerShell 7 terminal closing when using `irm | iex` installation
+  - Changed `exit 1` to `return` in install.ps1 line 229 for piped script contexts
+  - Terminal now stays open on installation errors, showing error messages properly
+  - Affects: Windows PowerShell 5.1+, PowerShell 7+, all piped installations
+- **Installation Download Path**: Fixed incorrect download path in install.ps1
+  - Changed `/ccs.ps1` to `/lib/ccs.ps1` (line 223) to match repository structure
+  - Resolves standalone installation failures from GitHub
+- **Claude CLI Detection**: Simplified detection logic, removed overengineered validation
+  - Removed complex path validation that failed with npm-installed Claude CLI (.cmd wrappers)
+  - Now trusts system PATH for Claude detection (standard case for users)
+  - Falls back to CCS_CLAUDE_PATH if set for custom installations
+  - Affects: Both bash (lib/ccs) and PowerShell (lib/ccs.ps1) versions
+  - Fixes: `where.exe claude` shows Claude exists but CCS reports "not found"
+
+### Changed
+- **Error Messages**: Simplified Claude CLI not found error message
+  - Removed lengthy "searched locations" output
+  - Focused on actionable solutions (install, verify, set custom path)
+  - Cleaner UX with less information overload
+
+### Technical Details
+- **Files Modified**:
+  - `installers/install.ps1`: Line 229 (exit → return), Line 223 (download path fix)
+  - `lib/ccs.ps1`: Lines 27-72 (simplified detection, removed Test-ClaudeCli function)
+  - `lib/ccs`: Lines 32-72 (simplified detection, removed validate_claude_cli function)
+  - `bin/claude-detector.js`: Lines 1-113 (simplified detection for npm package)
+  - `bin/ccs.js`: Removed validateClaudeCli calls, simplified error handling
+- **Root Cause**: `exit` in piped PowerShell scripts terminates entire session, not just script
+- **Solution**: `return` exits script scope only, preserving terminal
+- **Cross-Platform Parity**: Applied same simplification to bash, PowerShell, and Node.js versions
+- **npm Package**: Updated with simplified detection logic (v2.4.1)
+- **Testing**: Validated bash version, npm package syntax, manual Windows testing recommended
+
 ## [2.4.0] - 2025-11-04
 
 ### ⚠️ BREAKING CHANGES

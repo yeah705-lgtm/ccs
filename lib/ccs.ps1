@@ -30,136 +30,49 @@ function Find-ClaudeCli {
     [OutputType([string])]
     param()
 
-    # Priority 1: CCS_CLAUDE_PATH environment variable
+    # Priority 1: CCS_CLAUDE_PATH environment variable (if user wants custom path)
     $CcsClaudePath = $env:CCS_CLAUDE_PATH
     if ($CcsClaudePath) {
-        if ((Test-Path $CcsClaudePath -PathType Leaf) -and
-            (Get-Command $CcsClaudePath -ErrorAction SilentlyContinue)) {
+        # Basic validation: file exists
+        if (Test-Path $CcsClaudePath -PathType Leaf) {
             return $CcsClaudePath
         }
-        # Invalid CCS_CLAUDE_PATH - continue to fallbacks
-        # Warning will be shown later in validation phase
+        # Invalid CCS_CLAUDE_PATH - show warning and fall back to PATH
+        Write-Host "[!] Warning: CCS_CLAUDE_PATH is set but file not found: $CcsClaudePath" -ForegroundColor Yellow
+        Write-Host "    Falling back to system PATH lookup..." -ForegroundColor Yellow
     }
 
-    # Priority 2: Check if claude in PATH
-    $ClaudeInPath = Get-Command claude -ErrorAction SilentlyContinue
-    if ($ClaudeInPath) {
-        return $ClaudeInPath.Source
-    }
-
-    # Priority 3: Check common installation locations
-    $CommonLocations = @(
-        "$env:LOCALAPPDATA\Claude\claude.exe",
-        "$env:PROGRAMFILES\Claude\claude.exe",
-        "C:\Program Files\Claude\claude.exe",
-        "D:\Program Files\Claude\claude.exe",
-        "$env:USERPROFILE\.local\bin\claude.exe"
-    )
-
-    foreach ($Location in $CommonLocations) {
-        $ExpandedPath = [System.Environment]::ExpandEnvironmentVariables($Location)
-        if ((Test-Path $ExpandedPath -PathType Leaf) -and
-            (Get-Command $ExpandedPath -ErrorAction SilentlyContinue)) {
-            return $ExpandedPath
-        }
-    }
-
-    # Not found
-    return ""
-}
-
-function Test-ClaudeCli {
-    [OutputType([bool])]
-    param(
-        [Parameter(Mandatory=$true)]
-        [AllowEmptyString()]
-        [string]$Path
-    )
-
-    # Check 1: Empty path
-    if ([string]::IsNullOrWhiteSpace($Path)) {
-        throw "No path provided"
-    }
-
-    # Check 2: File exists
-    if (-not (Test-Path $Path)) {
-        throw "File not found: $Path"
-    }
-
-    # Check 3: Is regular file (not directory)
-    if (Test-Path $Path -PathType Container) {
-        throw "Path is a directory: $Path"
-    }
-
-    # Check 4: Is executable (Get-Command can load it)
-    try {
-        $null = Get-Command $Path -ErrorAction Stop
-    } catch {
-        throw "File is not executable: $Path`n`nCheck file permissions and file type"
-    }
-
-    # Check 5: Path safety (prevent injection)
-    # Allow: alphanumeric, \, /, :, space, -, _, ., ~
-    if ($Path -match '[;\|&<>``\$\*\?\[\]''\"()]') {
-        throw "Path contains unsafe characters: $Path`n`nAllowed: alphanumeric, path separators, spaces, hyphens, underscores, dots"
-    }
-
-    # All checks passed
-    return $true
+    # Priority 2: Use 'claude' from PATH (trust the system)
+    # This is the standard case - if user installed Claude CLI, it's in their PATH
+    return "claude"
 }
 
 function Show-ClaudeNotFoundError {
-    $EnvVarStatus = if ($env:CCS_CLAUDE_PATH) { $env:CCS_CLAUDE_PATH } else { "(not set)" }
-
     Write-ErrorMsg @"
-Claude CLI not found
+Claude CLI not found in PATH
 
-Searched:
-  - CCS_CLAUDE_PATH: $EnvVarStatus
-  - System PATH: not found
-  - Common locations: not found
+CCS requires Claude CLI to be installed and available in your PATH.
 
 Solutions:
-  1. Add Claude CLI to PATH:
-
-     # Find where Claude is installed
-     Get-ChildItem -Path C:\,D:\ -Filter claude.exe -Recurse -ErrorAction SilentlyContinue | Select-Object FullName
-
-     # Then add to PATH (replace with actual path)
-     `$env:Path += ';D:\path\to\claude\directory'
-     [Environment]::SetEnvironmentVariable('Path', `$env:Path, 'User')
-
-     # Restart terminal for changes to take effect
-
-  2. Or set custom path:
-
-     `$env:CCS_CLAUDE_PATH = 'D:\full\path\to\claude.exe'
-     [Environment]::SetEnvironmentVariable('CCS_CLAUDE_PATH', 'D:\full\path\to\claude.exe', 'User')
-
-     Example (D drive installation):
-       `$env:CCS_CLAUDE_PATH = 'D:\Tools\Claude\claude.exe'
-       [Environment]::SetEnvironmentVariable('CCS_CLAUDE_PATH', 'D:\Tools\Claude\claude.exe', 'User')
-
-     # Restart terminal for changes to take effect
-
-  3. Or install Claude CLI:
-
+  1. Install Claude CLI:
      https://docs.claude.com/en/docs/claude-code/installation
 
-Verify installation:
-  ccs --version
+  2. Verify installation:
+     Get-Command claude
 
-Debugging:
-  # Check if claude command exists
-  Get-Command claude -ErrorAction SilentlyContinue
+  3. If installed but not in PATH, add it:
+     # Find Claude installation
+     where.exe claude
 
-  # Check CCS_CLAUDE_PATH
-  `$env:CCS_CLAUDE_PATH
+     # Or set custom path
+     `$env:CCS_CLAUDE_PATH = 'C:\path\to\claude.exe'
+
+Restart your terminal after installation.
 "@
 }
 
 # Version (updated by scripts/bump-version.sh)
-$CcsVersion = "2.4.0"
+$CcsVersion = "2.4.1"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # Installation function for commands and skills
@@ -382,20 +295,7 @@ if ($FirstArg -eq "version" -or $FirstArg -eq "--version" -or $FirstArg -eq "-v"
 
 # Special case: help command (check BEFORE profile detection)
 if ($FirstArg -eq "--help" -or $FirstArg -eq "-h" -or $FirstArg -eq "help") {
-    # Detect and validate Claude CLI for help command
     $ClaudeCli = Find-ClaudeCli
-
-    if ([string]::IsNullOrEmpty($ClaudeCli)) {
-        Show-ClaudeNotFoundError
-        exit 1
-    }
-
-    try {
-        $null = Test-ClaudeCli -Path $ClaudeCli
-    } catch {
-        Write-ErrorMsg $_.Exception.Message
-        exit 1
-    }
 
     try {
         if ($RemainingArgs) {
@@ -405,8 +305,7 @@ if ($FirstArg -eq "--help" -or $FirstArg -eq "-h" -or $FirstArg -eq "help") {
         }
         exit $LASTEXITCODE
     } catch {
-        Write-Host "Error: Failed to execute claude --help" -ForegroundColor Red
-        Write-Host $_.Exception.Message
+        Show-ClaudeNotFoundError
         exit 1
     }
 }
@@ -580,20 +479,7 @@ Solutions:
 # Detect Claude CLI executable
 $ClaudeCli = Find-ClaudeCli
 
-if ([string]::IsNullOrEmpty($ClaudeCli)) {
-    Show-ClaudeNotFoundError
-    exit 1
-}
-
-# Validate detected path
-try {
-    $null = Test-ClaudeCli -Path $ClaudeCli
-} catch {
-    Write-ErrorMsg $_.Exception.Message
-    exit 1
-}
-
-# Execute with validated path
+# Execute Claude with the profile settings
 try {
     if ($RemainingArgs) {
         & $ClaudeCli --settings $SettingsPath @RemainingArgs
@@ -602,7 +488,6 @@ try {
     }
     exit $LASTEXITCODE
 } catch {
-    Write-Host "Error: Failed to execute claude" -ForegroundColor Red
-    Write-Host $_.Exception.Message
+    Show-ClaudeNotFoundError
     exit 1
 }

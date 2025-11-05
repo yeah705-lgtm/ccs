@@ -5,7 +5,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const { showError, colors } = require('./helpers');
-const { detectClaudeCli, validateClaudeCli, showClaudeNotFoundError } = require('./claude-detector');
+const { detectClaudeCli, showClaudeNotFoundError } = require('./claude-detector');
 const { getSettingsPath } = require('./config-manager');
 
 // Version (sync with package.json)
@@ -26,20 +26,7 @@ function handleVersionCommand() {
 }
 
 function handleHelpCommand(remainingArgs) {
-  // Detect and validate Claude CLI
   const claudeCli = detectClaudeCli();
-
-  if (!claudeCli) {
-    showClaudeNotFoundError();
-    process.exit(1);
-  }
-
-  try {
-    validateClaudeCli(claudeCli);
-  } catch (e) {
-    showError(e.message);
-    process.exit(1);
-  }
 
   // Execute claude --help
   const child = spawn(claudeCli, ['--help', ...remainingArgs], { stdio: 'inherit' });
@@ -53,7 +40,7 @@ function handleHelpCommand(remainingArgs) {
   });
 
   child.on('error', (err) => {
-    console.error(`Error executing claude --help: ${err.message}`);
+    showClaudeNotFoundError();
     process.exit(1);
   });
 }
@@ -124,18 +111,6 @@ function main() {
   if (profile === 'default') {
     const claudeCli = detectClaudeCli();
 
-    if (!claudeCli) {
-      showClaudeNotFoundError();
-      process.exit(1);
-    }
-
-    try {
-      validateClaudeCli(claudeCli);
-    } catch (e) {
-      showError(e.message);
-      process.exit(1);
-    }
-
     // Execute claude with args
     const child = spawn(claudeCli, remainingArgs, { stdio: 'inherit' });
 
@@ -148,7 +123,7 @@ function main() {
     });
 
     child.on('error', (err) => {
-      console.error(`Error executing claude: ${err.message}`);
+      showClaudeNotFoundError();
       process.exit(1);
     });
 
@@ -160,19 +135,6 @@ function main() {
 
   // Detect Claude CLI
   const claudeCli = detectClaudeCli();
-
-  if (!claudeCli) {
-    showClaudeNotFoundError();
-    process.exit(1);
-  }
-
-  // Validate Claude CLI path
-  try {
-    validateClaudeCli(claudeCli);
-  } catch (e) {
-    showError(e.message);
-    process.exit(1);
-  }
 
   // Execute claude with --settings
   const claudeArgs = ['--settings', settingsPath, ...remainingArgs];
@@ -187,7 +149,7 @@ function main() {
   });
 
   child.on('error', (err) => {
-    console.error(`Error executing claude: ${err.message}`);
+    showClaudeNotFoundError();
     process.exit(1);
   });
 }

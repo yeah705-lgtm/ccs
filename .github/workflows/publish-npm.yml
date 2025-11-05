@@ -49,7 +49,7 @@ jobs:
           body: |
             ## Installation
             ```bash
-            npm install -g @kai/ccs
+            npm install -g @kaitranntt/ccs
             ```
 
             ## What's Changed

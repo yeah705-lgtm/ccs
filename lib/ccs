@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Version (updated by scripts/bump-version.sh)
-CCS_VERSION="2.4.0"
+CCS_VERSION="2.4.1"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # --- Color/Format Functions ---
@@ -32,147 +32,44 @@ setup_colors
 # --- Claude CLI Detection Logic ---
 
 detect_claude_cli() {
-  local claude_path=""
-
-  # Priority 1: CCS_CLAUDE_PATH environment variable
+  # Priority 1: CCS_CLAUDE_PATH environment variable (if user wants custom path)
   if [[ -n "${CCS_CLAUDE_PATH:-}" ]]; then
-    if [[ -f "$CCS_CLAUDE_PATH" ]] && [[ -x "$CCS_CLAUDE_PATH" ]]; then
+    # Basic validation: file exists
+    if [[ -f "$CCS_CLAUDE_PATH" ]]; then
       echo "$CCS_CLAUDE_PATH"
       return 0
     fi
-    # Invalid CCS_CLAUDE_PATH - continue to fallbacks
-    # Warning will be shown later in validation phase
+    # Invalid CCS_CLAUDE_PATH - show warning and fall back to PATH
+    echo "[!] Warning: CCS_CLAUDE_PATH is set but file not found: $CCS_CLAUDE_PATH" >&2
+    echo "    Falling back to system PATH lookup..." >&2
   fi
 
-  # Priority 2: Check if claude in PATH
-  claude_path=$(command -v claude 2>/dev/null || true)
-  if [[ -n "$claude_path" ]]; then
-    echo "$claude_path"
-    return 0
-  fi
-
-  # Priority 3: Check common installation locations
-  local common_locations=()
-
-  # Platform-specific common locations
-  if [[ "$OSTYPE" == darwin* ]]; then
-    # macOS
-    common_locations=(
-      "/usr/local/bin/claude"
-      "$HOME/.local/bin/claude"
-      "/opt/homebrew/bin/claude"
-    )
-  else
-    # Linux
-    common_locations=(
-      "/usr/local/bin/claude"
-      "$HOME/.local/bin/claude"
-      "/usr/bin/claude"
-    )
-  fi
-
-  # Check each common location
-  for location in "${common_locations[@]}"; do
-    if [[ -f "$location" ]] && [[ -x "$location" ]]; then
-      echo "$location"
-      return 0
-    fi
-  done
-
-  # Not found
-  echo ""
-  return 1
-}
-
-# Global variable for validation error message
-VALIDATION_ERROR=""
-
-validate_claude_cli() {
-  local path="$1"
-  VALIDATION_ERROR=""
-
-  # Check 1: Empty path
-  if [[ -z "$path" ]]; then
-    VALIDATION_ERROR="No path provided"
-    return 1
-  fi
-
-  # Check 2: File exists
-  if [[ ! -e "$path" ]]; then
-    VALIDATION_ERROR="File not found: $path"
-    return 1
-  fi
-
-  # Check 3: Is regular file (not directory)
-  if [[ -d "$path" ]]; then
-    VALIDATION_ERROR="Path is a directory: $path"
-    return 1
-  fi
-
-  # Check 4: Is executable
-  if [[ ! -x "$path" ]]; then
-    VALIDATION_ERROR="File is not executable: $path
-
-Try: chmod +x $path"
-    return 1
-  fi
-
-  # Check 5: Path safety (prevent injection)
-  # Allow: alphanumeric, /, \, :, space, -, _, ., ~
-  if [[ "$path" =~ [^\;a-zA-Z0-9/\\:\ \._~-] ]]; then
-    VALIDATION_ERROR="Path contains unsafe characters: $path
-
-Allowed: alphanumeric, path separators, spaces, hyphens, underscores, dots"
-    return 1
-  fi
-
-  # All checks passed
+  # Priority 2: Use 'claude' from PATH (trust the system)
+  # This is the standard case - if user installed Claude CLI, it's in their PATH
+  echo "claude"
   return 0
 }
 
 show_claude_not_found_error() {
-  local env_var_status="${CCS_CLAUDE_PATH:-(not set)}"
+  msg_error "Claude CLI not found in PATH
 
-  msg_error "Claude CLI not found
-
-Searched:
-  - CCS_CLAUDE_PATH: $env_var_status
-  - System PATH: not found
-  - Common locations: not found
+CCS requires Claude CLI to be installed and available in your PATH.
 
 Solutions:
-  1. Add Claude CLI to PATH:
-
-     # Find where Claude is installed
-     sudo find / -name claude 2>/dev/null
-
-     # Then add to PATH (replace /path/to with actual path)
-     export PATH=\"/path/to/claude/bin:\$PATH\"
-     echo 'export PATH=\"/path/to/claude/bin:\$PATH\"' >> ~/.bashrc
-     source ~/.bashrc
-
-  2. Or set custom path:
-
-     export CCS_CLAUDE_PATH=\"/full/path/to/claude\"
-     echo 'export CCS_CLAUDE_PATH=\"/full/path/to/claude\"' >> ~/.bashrc
-     source ~/.bashrc
-
-     Example (D drive on Windows/WSL):
-       export CCS_CLAUDE_PATH=\"/mnt/d/Tools/Claude/claude.exe\"
-
-  3. Or install Claude CLI:
-
+  1. Install Claude CLI:
      https://docs.claude.com/en/docs/claude-code/installation
 
-Verify installation:
-  ccs --version
+  2. Verify installation:
+     command -v claude
 
-Debugging:
-  # Check if claude command exists
-  command -v claude
+  3. If installed but not in PATH, add it:
+     # Find Claude installation
+     which claude
 
-  # Check CCS_CLAUDE_PATH
-  echo \$CCS_CLAUDE_PATH"
+     # Or set custom path
+     export CCS_CLAUDE_PATH='/path/to/claude'
+
+Restart your terminal after installation."
 }
 
 CONFIG_FILE="${CCS_CONFIG:-$HOME/.ccs/config.json}"
@@ -387,20 +284,12 @@ fi
 # Special case: help command (check BEFORE profile detection)
 if [[ $# -gt 0 ]] && [[ "${1}" == "--help" || "${1}" == "-h" || "${1}" == "help" ]]; then
   shift  # Remove the help argument
-
-  # Detect and validate Claude CLI for help command
   CLAUDE_CLI=$(detect_claude_cli)
-  if [[ -z "$CLAUDE_CLI" ]]; then
+
+  if ! exec "$CLAUDE_CLI" --help "$@"; then
     show_claude_not_found_error
     exit 1
   fi
-
-  if ! validate_claude_cli "$CLAUDE_CLI"; then
-    msg_error "$VALIDATION_ERROR"
-    exit 1
-  fi
-
-  exec "$CLAUDE_CLI" --help "$@"
 fi
 
 # Special case: install command (check BEFORE profile detection)
@@ -517,16 +406,9 @@ fi
 # Detect Claude CLI executable
 CLAUDE_CLI=$(detect_claude_cli)
 
-if [[ -z "$CLAUDE_CLI" ]]; then
+# Execute Claude with the profile settings
+# If claude is not found, exec will fail and show an error
+if ! exec "$CLAUDE_CLI" --settings "$SETTINGS_PATH" "$@"; then
   show_claude_not_found_error
   exit 1
 fi
-
-# Validate detected path
-if ! validate_claude_cli "$CLAUDE_CLI"; then
-  msg_error "$VALIDATION_ERROR"
-  exit 1
-fi
-
-# Execute with validated path
-exec "$CLAUDE_CLI" --settings "$SETTINGS_PATH" "$@"
