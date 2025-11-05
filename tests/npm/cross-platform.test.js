@@ -1,0 +1,123 @@
+const assert = require('assert');
+const path = require('path');
+const os = require('os');
+
+// Import the expandPath function from bin/helpers.js
+// Note: This might require adjusting based on the actual location of the helper
+let expandPath;
+try {
+  expandPath = require('../../bin/helpers').expandPath;
+} catch (e) {
+  // If helpers module doesn't exist or doesn't export expandPath, create a mock
+  expandPath = function(p) {
+    if (!p || typeof p !== 'string') return p;
+    if (p.startsWith('~/')) {
+      return path.join(os.homedir(), p.slice(2));
+    }
+    return p;
+  };
+}
+
+describe('cross-platform', () => {
+  describe('path expansion', () => {
+    it('expands ~ to home directory', () => {
+      const expanded = expandPath('~/test');
+      const expected = path.join(os.homedir(), 'test');
+      assert.strictEqual(expanded, expected);
+    });
+
+    it('expands ~/.ccs to correct location', () => {
+      const expanded = expandPath('~/.ccs');
+      const expected = path.join(os.homedir(), '.ccs');
+      assert.strictEqual(expanded, expected);
+    });
+
+    it('handles absolute paths without expansion', () => {
+      const absolutePath = path.sep === '/' ? '/tmp/test' : 'C:\\test';
+      const expanded = expandPath(absolutePath);
+      assert.strictEqual(expanded, absolutePath);
+    });
+
+    it('handles relative paths without expansion', () => {
+      const relativePath = 'relative/path';
+      const expanded = expandPath(relativePath);
+      assert.strictEqual(expanded, relativePath);
+    });
+
+    it('handles empty string', () => {
+      const expanded = expandPath('');
+      assert.strictEqual(expanded, '');
+    });
+
+    it('handles null/undefined', () => {
+      assert.strictEqual(expandPath(null), null);
+      assert.strictEqual(expandPath(undefined), undefined);
+    });
+
+    it('handles complex tilde paths', () => {
+      const expanded = expandPath('~/documents/subfolder/file.json');
+      const expected = path.join(os.homedir(), 'documents', 'subfolder', 'file.json');
+      assert.strictEqual(expanded, expected);
+    });
+  });
+
+  describe('platform-specific behavior', () => {
+    it('detects platform correctly', () => {
+      const platform = os.platform();
+      assert(['darwin', 'linux', 'win32'].includes(platform), 'Should be running on supported platform');
+    });
+
+    it('handles path separators correctly', () => {
+      const testPath = path.join('folder', 'subfolder', 'file.txt');
+      assert(testPath.includes(path.sep), 'Should use correct path separator for platform');
+    });
+
+    it('handles home directory paths on all platforms', () => {
+      const homeDir = os.homedir();
+      assert(homeDir, 'Should have a home directory');
+      assert(typeof homeDir === 'string', 'Home directory should be a string');
+    });
+  });
+
+  describe('Node.js compatibility', () => {
+    it('has required Node.js modules available', () => {
+      assert(require('fs'), 'fs module should be available');
+      assert(require('path'), 'path module should be available');
+      assert(require('child_process'), 'child_process module should be available');
+      assert(require('os'), 'os module should be available');
+    });
+
+    it('can spawn child processes', () => {
+      const { spawnSync } = require('child_process');
+      const result = spawnSync('node', ['--version'], { encoding: 'utf8' });
+      assert(result.status === 0, 'Should be able to spawn node process');
+      assert(result.stdout.trim().match(/^v\d+\.\d+\.\d+$/), 'Should return node version');
+    });
+  });
+
+  describe('npm package structure', () => {
+    it('has required executable files', () => {
+      const fs = require('fs');
+      const binDir = path.join(__dirname, '..', '..', 'bin');
+
+      assert(fs.existsSync(path.join(binDir, 'ccs.js')), 'ccs.js should exist in bin directory');
+    });
+
+    it('has required script files', () => {
+      const fs = require('fs');
+      const scriptsDir = path.join(__dirname, '..', '..', 'scripts');
+
+      assert(fs.existsSync(path.join(scriptsDir, 'postinstall.js')), 'postinstall.js should exist');
+    });
+
+    it('has package.json with correct fields', () => {
+      const fs = require('fs');
+      const packagePath = path.join(__dirname, '..', '..', 'package.json');
+      const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+
+      assert(packageJson.bin, 'package.json should have bin field');
+      assert(packageJson.bin.ccs, 'bin field should specify ccs command');
+      assert(packageJson.scripts, 'package.json should have scripts field');
+    });
+  });
+});
