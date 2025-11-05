@@ -72,7 +72,7 @@ Restart your terminal after installation.
 }
 
 # Version (updated by scripts/bump-version.sh)
-$CcsVersion = "2.4.3"
+$CcsVersion = "2.4.4"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # Installation function for commands and skills
