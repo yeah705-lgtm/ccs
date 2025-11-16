@@ -284,5 +284,85 @@ runner.test('Should show file counts in info box', () => {
   assertIncludes(formatted, 'Files Modified: 1', 'Should show modified count');
 });
 
+// Test 15: Handle undefined totalCost in timeout error
+runner.test('Should handle undefined totalCost in timeout error', () => {
+  const result = {
+    profile: 'glm',
+    cwd: '/test',
+    duration: 120000,
+    sessionId: 'test-session-123',
+    totalCost: undefined,
+    numTurns: 5,
+    timedOut: true
+  };
+
+  // Should not throw TypeError
+  const formatted = ResultFormatter.format(result);
+
+  assertIncludes(formatted, 'Execution timed out', 'Should show timeout message');
+  assertIncludes(formatted, 'test-ses', 'Should show abbreviated session ID');
+  // Cost line should be omitted when undefined
+  assert(!formatted.includes('Cost: $'), 'Should not show cost when undefined');
+});
+
+// Test 16: Handle null totalCost in timeout error
+runner.test('Should handle null totalCost in timeout error', () => {
+  const result = {
+    profile: 'kimi',
+    cwd: '/test',
+    duration: 60000,
+    sessionId: 'test-session-456',
+    totalCost: null,
+    numTurns: 3,
+    timedOut: true
+  };
+
+  // Should not throw TypeError
+  const formatted = ResultFormatter.format(result);
+
+  assertIncludes(formatted, 'Execution timed out', 'Should show timeout message');
+  assert(!formatted.includes('Cost: $'), 'Should not show cost when null');
+});
+
+// Test 17: Show totalCost when defined in timeout error
+runner.test('Should show totalCost when defined in timeout error', () => {
+  const result = {
+    profile: 'glm',
+    cwd: '/test',
+    duration: 90000,
+    sessionId: 'test-session-789',
+    totalCost: 0.1234,
+    numTurns: 4,
+    timedOut: true
+  };
+
+  const formatted = ResultFormatter.format(result);
+
+  assertIncludes(formatted, 'Cost: $0.1234', 'Should show formatted cost');
+});
+
+// Test 18: Handle undefined totalCost in normal result
+runner.test('Should handle undefined totalCost in normal result', () => {
+  const result = {
+    profile: 'kimi',
+    cwd: '/test',
+    exitCode: 0,
+    stdout: 'Task completed',
+    stderr: '',
+    duration: 5000,
+    success: true,
+    sessionId: 'session-abc',
+    totalCost: undefined,
+    numTurns: 2
+  };
+
+  // Should not throw TypeError
+  const formatted = ResultFormatter.format(result);
+
+  assertIncludes(formatted, '[OK]', 'Should show success');
+  // Cost line should be omitted in info box when undefined
+  assert(!formatted.includes('Cost: $'), 'Should not show cost when undefined');
+});
+
 // Run all tests
 runner.run();

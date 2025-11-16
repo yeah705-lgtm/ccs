@@ -60,7 +60,8 @@ class SessionManager {
       this._saveSessions(sessions);
 
       if (process.env.CCS_DEBUG) {
-        console.error(`[i] Updated session: ${sessionId}, total: $${sessions[key].totalCost.toFixed(4)}, turns: ${sessions[key].turns}`);
+        const cost = sessions[key].totalCost !== undefined && sessions[key].totalCost !== null ? sessions[key].totalCost.toFixed(4) : '0.0000';
+        console.error(`[i] Updated session: ${sessionId}, total: $${cost}, turns: ${sessions[key].turns}`);
       }
     }
   }

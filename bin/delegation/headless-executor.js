@@ -88,7 +88,8 @@ class HeadlessExecutor {
       if (lastSession) {
         args.push('--resume', lastSession.sessionId);
         if (process.env.CCS_DEBUG) {
-          console.error(`[i] Resuming session: ${lastSession.sessionId} (${lastSession.turns} turns, $${lastSession.totalCost.toFixed(4)})`);
+          const cost = lastSession.totalCost !== undefined && lastSession.totalCost !== null ? lastSession.totalCost.toFixed(4) : '0.0000';
+          console.error(`[i] Resuming session: ${lastSession.sessionId} (${lastSession.turns} turns, $${cost})`);
         }
       } else if (sessionId) {
         args.push('--resume', sessionId);

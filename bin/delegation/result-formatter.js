@@ -437,7 +437,9 @@ class ResultFormatter {
     // Abbreviate session ID (Git-style first 8 chars)
     const shortId = sessionId && sessionId.length > 8 ? sessionId.substring(0, 8) : sessionId;
     output += `[i] Session persisted with ID: ${shortId}\n`;
-    output += `[i] Cost: $${totalCost.toFixed(4)}\n`;
+    if (totalCost !== undefined && totalCost !== null) {
+      output += `[i] Cost: $${totalCost.toFixed(4)}\n`;
+    }
 
     return output;
   }
