@@ -12,7 +12,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # Version (updated by scripts/bump-version.sh)
-$CcsVersion = "4.1.3"
+$CcsVersion = "4.1.4"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ConfigFile = if ($env:CCS_CONFIG) { $env:CCS_CONFIG } else { "$env:USERPROFILE\.ccs\config.json" }
 $ProfilesJson = "$env:USERPROFILE\.ccs\profiles.json"
@@ -218,9 +218,9 @@ function Show-Help {
     Write-ColorLine "  ccs [flags]" "Yellow"
     Write-Host ""
     Write-ColorLine "Description:" "Cyan"
-    Write-Host "  Switch between multiple Claude accounts (work, personal, team) and"
-    Write-Host "  alternative models (GLM, Kimi) instantly. Concurrent sessions with"
-    Write-Host "  auto-recovery. Zero downtime."
+    Write-Host "  Switch between multiple Claude accounts and alternative models"
+    Write-Host "  (GLM, Kimi) instantly. Run different Claude CLI sessions concurrently"
+    Write-Host "  with auto-recovery. Zero downtime."
     Write-Host ""
     Write-ColorLine "Model Switching:" "Cyan"
     Write-ColorLine "  ccs                         Use default Claude account" "Yellow"
@@ -230,22 +230,18 @@ function Show-Help {
     Write-ColorLine "  ccs glm 'debug this code'   Use GLM and run command" "Yellow"
     Write-Host ""
     Write-ColorLine "Examples:" "Cyan"
-    Write-Host "  Quick start:"
-    Write-ColorLine "    `$ ccs" "Yellow" -NoNewline
+    Write-ColorLine "  `$ ccs" "Yellow" -NoNewline
     Write-Host "                        # Use default account"
-    Write-ColorLine "    `$ ccs glm `"implement API`"" "Yellow" -NoNewline
+    Write-ColorLine "  `$ ccs glm `"implement API`"" "Yellow" -NoNewline
     Write-Host "    # Cost-optimized model"
-    Write-Host ""
-    Write-Host "  Profile usage:"
-    Write-ColorLine "    `$ ccs work `"debug code`"" "Yellow" -NoNewline
-    Write-Host "      # Switch to work profile"
-    Write-ColorLine "    `$ ccs personal" "Yellow" -NoNewline
-    Write-Host "                # Open personal account"
     Write-Host ""
     Write-ColorLine "Account Management:" "Cyan"
     Write-ColorLine "  ccs auth --help             Manage multiple Claude accounts" "Yellow"
-    Write-ColorLine "  ccs work                    Switch to work account" "Yellow"
-    Write-ColorLine "  ccs personal                Switch to personal account" "Yellow"
+    Write-Host ""
+    Write-ColorLine "Delegation (inside Claude Code CLI):" "Cyan"
+    Write-ColorLine "  /ccs:glm `"task`"             Delegate to GLM-4.6 for simple tasks" "Yellow"
+    Write-ColorLine "  /ccs:kimi `"task`"            Delegate to Kimi for long context" "Yellow"
+    Write-Host "  Save tokens by delegating simple tasks to cost-optimized models"
     Write-Host ""
     Write-ColorLine "Diagnostics:" "Cyan"
     Write-ColorLine "  ccs doctor                  Run health check and diagnostics" "Yellow"
