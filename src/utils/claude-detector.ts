@@ -55,7 +55,7 @@ export function detectClaudeCli(): string | null {
         return claudePath;
       }
     }
-  } catch (err) {
+  } catch (_err) {
     // Command failed - claude not in PATH
     // Fall through to return null
   }

@@ -796,9 +796,10 @@ export class GlmtTransformer {
       }
 
       accumulator.addDelta(delta.reasoning_content);
-      events.push(
-        this.createThinkingDeltaEvent(accumulator.getCurrentBlock()!, delta.reasoning_content)
-      );
+      const currentThinkingBlock = accumulator.getCurrentBlock();
+      if (currentThinkingBlock) {
+        events.push(this.createThinkingDeltaEvent(currentThinkingBlock, delta.reasoning_content));
+      }
     }
 
     // Text content delta
@@ -822,7 +823,10 @@ export class GlmtTransformer {
       }
 
       accumulator.addDelta(delta.content);
-      events.push(this.createTextDeltaEvent(accumulator.getCurrentBlock()!, delta.content));
+      const currentTextBlock = accumulator.getCurrentBlock();
+      if (currentTextBlock) {
+        events.push(this.createTextDeltaEvent(currentTextBlock, delta.content));
+      }
     }
 
     // Check for planning loop

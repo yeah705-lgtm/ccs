@@ -7,6 +7,35 @@ import * as fs from 'fs';
 import { SessionManager } from './session-manager';
 import { SettingsParser } from './settings-parser';
 
+// Type definitions for delegation responses
+interface ClaudeMessage {
+  type: string;
+  content?: string;
+  thinking?: string;
+  tool_use?: {
+    id: string;
+    name: string;
+    input: Record<string, unknown>;
+  };
+  tool_result?: {
+    tool_use_id: string;
+    content: string;
+  };
+}
+
+interface PermissionDenial {
+  tool_name: string;
+  reason: string;
+}
+
+interface ExecutionError {
+  message?: string;
+  error?: string;
+  type?: string;
+  tool_name?: string;
+  [key: string]: unknown;
+}
+
 interface ExecutionOptions {
   cwd?: string;
   timeout?: number;
@@ -26,7 +55,7 @@ interface ExecutionResult {
   duration: number;
   timedOut: boolean;
   success: boolean;
-  messages: any[];
+  messages: ClaudeMessage[];
   sessionId?: string;
   totalCost?: number;
   numTurns?: number;
@@ -34,8 +63,8 @@ interface ExecutionResult {
   type?: string | null;
   subtype?: string;
   durationApi?: number;
-  permissionDenials?: any[];
-  errors?: any[];
+  permissionDenials?: PermissionDenial[];
+  errors?: ExecutionError[];
   content?: string;
 }
 
@@ -45,7 +74,7 @@ interface StreamMessage {
     content?: Array<{
       type: string;
       name?: string;
-      input?: any;
+      input?: Record<string, unknown>;
     }>;
   };
   session_id?: string;
@@ -54,8 +83,8 @@ interface StreamMessage {
   is_error?: boolean;
   result?: string;
   duration_api_ms?: number;
-  permission_denials?: any[];
-  errors?: any[];
+  permission_denials?: PermissionDenial[];
+  errors?: ExecutionError[];
   subtype?: string;
 }
 
@@ -282,10 +311,8 @@ export class HeadlessExecutor {
                   case 'Bash':
                     if (toolInput.command) {
                       // Truncate long commands
-                      const cmd =
-                        toolInput.command.length > 80
-                          ? toolInput.command.substring(0, 77) + '...'
-                          : toolInput.command;
+                      const command = toolInput.command as string;
+                      const cmd = command.length > 80 ? command.substring(0, 77) + '...' : command;
                       verboseMsg += `: ${cmd}`;
                     }
                     break;
@@ -330,10 +357,9 @@ export class HeadlessExecutor {
                     if (toolInput.description) {
                       verboseMsg += `: ${toolInput.description}`;
                     } else if (toolInput.prompt) {
+                      const promptText = toolInput.prompt as string;
                       const prompt =
-                        toolInput.prompt.length > 60
-                          ? toolInput.prompt.substring(0, 57) + '...'
-                          : toolInput.prompt;
+                        promptText.length > 60 ? promptText.substring(0, 57) + '...' : promptText;
                       verboseMsg += `: ${prompt}`;
                     }
                     break;
@@ -342,7 +368,7 @@ export class HeadlessExecutor {
                     if (toolInput.todos && Array.isArray(toolInput.todos)) {
                       // Show in_progress task instead of just count
                       const inProgressTask = toolInput.todos.find(
-                        (t: any) => t.status === 'in_progress'
+                        (t: { status: string; activeForm?: string }) => t.status === 'in_progress'
                       );
                       if (inProgressTask && inProgressTask.activeForm) {
                         verboseMsg += `: ${inProgressTask.activeForm}`;
@@ -564,7 +590,7 @@ export class HeadlessExecutor {
     try {
       const result = execSync('command -v claude', { encoding: 'utf8' });
       return result.trim();
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }
@@ -683,7 +709,7 @@ export class HeadlessExecutor {
         timeout: 10000,
       });
       return result.success;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }

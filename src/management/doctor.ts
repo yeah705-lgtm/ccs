@@ -26,7 +26,7 @@ let ora: (text: string) => Spinner;
 try {
   const oraModule = require('ora');
   ora = oraModule.default || oraModule;
-} catch (e) {
+} catch (_e) {
   // ora not available, create fallback spinner that uses console.log
   ora = function (text: string): Spinner {
     return {
@@ -211,7 +211,7 @@ class Doctor {
         status: 'OK',
         info: `v${version} (${claudeCli})`,
       });
-    } catch (err) {
+    } catch (_err) {
       spinner.fail(
         `  ${'Claude CLI'.padEnd(26)}${colored('[X]', 'red')}  Not found or not working`
       );
@@ -537,7 +537,7 @@ class Doctor {
         status: 'OK',
         info: 'Write access verified',
       });
-    } catch (e) {
+    } catch (_e) {
       spinner.fail(
         `  ${'Permissions'.padEnd(26)}${colored('[X]', 'red')}  Cannot write to ~/.ccs/`
       );
@@ -696,7 +696,7 @@ class Doctor {
           if (resolved !== sharedSettings) {
             broken++;
           }
-        } catch (err) {
+        } catch (_err) {
           broken++;
         }
       }

@@ -33,14 +33,14 @@ interface PermissionDenial {
   tool_input?: {
     command?: string;
     description?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
 interface ErrorInfo {
   message?: string;
   error?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface FileChanges {
@@ -223,7 +223,7 @@ class ResultFormatter {
                 modified.push(fullPath);
               }
             }
-          } catch (statError) {
+          } catch (_statError) {
             // If stat fails, default to created (since we're in fallback mode)
             if (!created.includes(fullPath) && !modified.includes(fullPath)) {
               created.push(fullPath);

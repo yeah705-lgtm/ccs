@@ -33,7 +33,6 @@ interface OraInstance {
 // Make ora optional (might not be available during npm install postinstall)
 let ora: ((text: string) => OraInstance) | null = null;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const oraModule = require('ora');
   ora = oraModule.default || oraModule;
 } catch {

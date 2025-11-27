@@ -41,7 +41,7 @@ describe('npm CLI', () => {
       this.timeout(5000);
 
       try {
-        runCli('-c', { stdio: 'pipe' });
+        runCli('-c', { stdio: 'pipe', timeout: 3000 });
       } catch (e) {
         const output = e.stderr?.toString() || e.stdout?.toString() || '';
         // Should NOT show "Profile '-c' not found" error
@@ -53,7 +53,7 @@ describe('npm CLI', () => {
       this.timeout(5000);
 
       try {
-        runCli('--verbose', { stdio: 'pipe' });
+        runCli('--verbose', { stdio: 'pipe', timeout: 3000 });
       } catch (e) {
         const output = e.stderr?.toString() || e.stdout?.toString() || '';
         assert(!output.includes("Profile '--verbose' not found"), 'Should not treat --verbose as profile');
@@ -75,7 +75,7 @@ describe('npm CLI', () => {
       this.timeout(5000);
 
       try {
-        runCli('-c --verbose', { stdio: 'pipe' });
+        runCli('-c --verbose', { stdio: 'pipe', timeout: 3000 });
       } catch (e) {
         const output = e.stderr?.toString() || e.stdout?.toString() || '';
         assert(!output.includes("Profile '-c' not found"), 'Should not treat flags as profiles');
@@ -112,7 +112,7 @@ describe('npm CLI', () => {
       this.timeout(5000);
 
       try {
-        runCli('glm -c', { stdio: 'pipe' });
+        runCli('glm -c', { stdio: 'pipe', timeout: 3000 });
       } catch (e) {
         const output = e.stderr?.toString() || '';
         assert(!output.includes("Profile 'glm' not found"), 'GLM profile should exist');

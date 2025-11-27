@@ -3,6 +3,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { Settings } from '../types';
 
 interface ValidationResult {
   valid: boolean;
@@ -41,7 +42,7 @@ export class DelegationValidator {
     }
 
     // Read and parse settings.json
-    let settings: any;
+    let settings: Settings;
     try {
       const settingsContent = fs.readFileSync(settingsPath, 'utf8');
       settings = JSON.parse(settingsContent);

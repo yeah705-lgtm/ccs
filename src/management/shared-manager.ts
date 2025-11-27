@@ -64,7 +64,7 @@ class SharedManager {
         console.log(`[!] Circular symlink detected: ${target} → ${resolvedTarget}`);
         return true;
       }
-    } catch (err) {
+    } catch (_err) {
       // If can't read, assume not circular
       return false;
     }
@@ -120,7 +120,7 @@ class SharedManager {
               continue; // Already correct
             }
           }
-        } catch (err) {
+        } catch (_err) {
           // Continue to recreate
         }
 
@@ -136,7 +136,7 @@ class SharedManager {
       try {
         const symlinkType = item.type === 'directory' ? 'dir' : 'file';
         fs.symlinkSync(claudePath, sharedPath, symlinkType);
-      } catch (err) {
+      } catch (_err) {
         // Windows fallback: copy
         if (process.platform === 'win32') {
           if (item.type === 'directory') {
@@ -148,7 +148,7 @@ class SharedManager {
             `[!] Symlink failed for ${item.name}, copied instead (enable Developer Mode)`
           );
         } else {
-          throw err;
+          throw _err;
         }
       }
     }
@@ -177,7 +177,7 @@ class SharedManager {
       try {
         const symlinkType = item.type === 'directory' ? 'dir' : 'file';
         fs.symlinkSync(targetPath, linkPath, symlinkType);
-      } catch (err) {
+      } catch (_err) {
         // Windows fallback
         if (process.platform === 'win32') {
           if (item.type === 'directory') {
@@ -189,7 +189,7 @@ class SharedManager {
             `[!] Symlink failed for ${item.name}, copied instead (enable Developer Mode)`
           );
         } else {
-          throw err;
+          throw _err;
         }
       }
     }
@@ -207,7 +207,7 @@ class SharedManager {
         if (fs.lstatSync(commandsPath).isSymbolicLink()) {
           return; // Already migrated
         }
-      } catch (err) {
+      } catch (_err) {
         // Continue with migration
       }
     }
@@ -268,8 +268,8 @@ class SharedManager {
             console.log(`[OK] Migrated ${item.name} to ~/.claude/${item.name}`);
           }
         }
-      } catch (err) {
-        console.log(`[!] Failed to migrate ${item.name}: ${(err as Error).message}`);
+      } catch (_err) {
+        console.log(`[!] Failed to migrate ${item.name}: ${(_err as Error).message}`);
       }
     }
 
@@ -287,11 +287,11 @@ class SharedManager {
             if (fs.statSync(instancePath).isDirectory()) {
               this.linkSharedDirectories(instancePath);
             }
-          } catch (err) {
-            console.log(`[!] Failed to update instance ${instance}: ${(err as Error).message}`);
+          } catch (_err) {
+            console.log(`[!] Failed to update instance ${instance}: ${(_err as Error).message}`);
           }
         }
-      } catch (err) {
+      } catch (_err) {
         // No instances to update
       }
     }
@@ -361,18 +361,18 @@ class SharedManager {
         try {
           fs.symlinkSync(sharedSettings, instanceSettings, 'file');
           migrated++;
-        } catch (err) {
+        } catch (_err) {
           // Windows fallback
           if (process.platform === 'win32') {
             fs.copyFileSync(sharedSettings, instanceSettings);
             console.log(`[!] Symlink failed for ${instance}, copied instead`);
             migrated++;
           } else {
-            throw err;
+            throw _err;
           }
         }
-      } catch (err) {
-        console.log(`[!] Failed to migrate ${instance}: ${(err as Error).message}`);
+      } catch (_err) {
+        console.log(`[!] Failed to migrate ${instance}: ${(_err as Error).message}`);
       }
     }
 

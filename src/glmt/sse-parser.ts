@@ -23,7 +23,7 @@ interface SSEParserOptions {
 
 interface SSEEvent {
   event: string;
-  data: any;
+  data: unknown;
   index?: number;
   id?: string;
   retry?: number;

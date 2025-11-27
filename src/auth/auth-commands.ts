@@ -352,7 +352,7 @@ class AuthCommands {
           const files = fs.readdirSync(sessionsDir);
           sessionCount = files.filter((f) => f.endsWith('.json')).length;
         }
-      } catch (e) {
+      } catch (_e) {
         // Ignore errors counting sessions
       }
 
@@ -421,7 +421,7 @@ class AuthCommands {
           const files = fs.readdirSync(sessionsDir);
           sessionCount = files.filter((f) => f.endsWith('.json')).length;
         }
-      } catch (e) {
+      } catch (_e) {
         // Ignore errors counting sessions
       }
 

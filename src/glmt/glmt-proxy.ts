@@ -106,7 +106,7 @@ export class GlmtProxy {
 
       // Bind to 127.0.0.1:0 (random port for security + avoid conflicts)
       this.server.listen(0, '127.0.0.1', () => {
-        const address = this.server!.address();
+        const address = this.server?.address();
         this.port = typeof address === 'object' && address ? address.port : 0;
         // Signal parent process
         console.log(`PROXY_READY:${this.port}`);
@@ -446,7 +446,9 @@ export class GlmtProxy {
         }
 
         const parser = new SSEParser();
-        const accumulator = new DeltaAccumulator(thinkingConfig);
+        const accumulator = new DeltaAccumulator(
+          thinkingConfig as unknown as Record<string, unknown>
+        );
 
         upstreamRes.on('data', (chunk: Buffer) => {
           try {
@@ -454,7 +456,8 @@ export class GlmtProxy {
 
             events.forEach((event) => {
               // Transform OpenAI delta → Anthropic events
-              const anthropicEvents = this.transformer.transformDelta(event, accumulator);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const anthropicEvents = this.transformer.transformDelta(event as any, accumulator);
 
               // Forward to Claude CLI with immediate flush
               anthropicEvents.forEach((evt) => {

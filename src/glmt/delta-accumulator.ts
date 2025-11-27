@@ -15,7 +15,7 @@
  */
 
 interface ThinkingConfig {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface DeltaAccumulatorOptions {

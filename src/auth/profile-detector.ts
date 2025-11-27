@@ -9,7 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { findSimilarStrings } from '../utils/helpers';
-import { Config } from '../types';
+import { Config, Settings, ProfileMetadata } from '../types';
 
 export type ProfileType = 'settings' | 'account' | 'default';
 
@@ -17,7 +17,7 @@ export interface ProfileDetectionResult {
   type: ProfileType;
   name: string;
   settingsPath?: string;
-  profile?: any;
+  profile?: Settings | ProfileMetadata;
   message?: string;
 }
 
@@ -65,7 +65,7 @@ class ProfileDetector {
   /**
    * Read account-based profiles (profiles.json)
    */
-  private readProfiles(): { profiles: Record<string, any>; default?: string } {
+  private readProfiles(): { profiles: Record<string, ProfileMetadata>; default?: string } {
     if (!fs.existsSync(this.profilesPath)) {
       return { profiles: {}, default: undefined };
     }

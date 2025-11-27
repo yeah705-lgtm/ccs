@@ -46,7 +46,7 @@ class RecoveryManager {
         const content = fs.readFileSync(configPath, 'utf8');
         JSON.parse(content); // Validate JSON
         return false; // No recovery needed
-      } catch (e) {
+      } catch (_e) {
         // Corrupted - backup and recreate
         const backupPath = `${configPath}.backup.${Date.now()}`;
         fs.renameSync(configPath, backupPath);
