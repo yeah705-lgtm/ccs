@@ -5,7 +5,7 @@ const fs = require('fs');
 const os = require('os');
 
 describe('npm CLI', () => {
-  const ccsPath = path.join(__dirname, '..', '..', 'bin', 'ccs.js');
+  const ccsPath = path.join(__dirname, '..', '..', 'dist', 'ccs.js');
   const ccsDir = path.join(os.homedir(), '.ccs');
   const configPath = path.join(ccsDir, 'config.json');
 

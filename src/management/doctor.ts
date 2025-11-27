@@ -512,7 +512,7 @@ class Doctor {
     const spinner = ora('Checking CCS symlinks').start();
 
     try {
-      const ClaudeSymlinkManager = require('../utils/claude-symlink-manager');
+      const { ClaudeSymlinkManager } = require('../utils/claude-symlink-manager');
       const manager = new ClaudeSymlinkManager();
       const health = manager.checkHealth();
 

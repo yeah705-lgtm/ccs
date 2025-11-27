@@ -93,7 +93,7 @@ function createConfigFiles() {
     // Migrate from v3.1.1 to v3.2.0 (symlink architecture)
     console.log('');
     try {
-      const SharedManager = require('../bin/management/shared-manager');
+      const SharedManager = require('../dist/management/shared-manager').default;
       const sharedManager = new SharedManager();
       sharedManager.migrateFromV311();
       sharedManager.ensureSharedDirectories();
@@ -108,7 +108,7 @@ function createConfigFiles() {
 
     // Copy .claude/ directory from package to ~/.ccs/.claude/ (v4.1.1)
     try {
-      const ClaudeDirInstaller = require('../bin/utils/claude-dir-installer');
+      const ClaudeDirInstaller = require('../dist/utils/claude-dir-installer').default;
       const installer = new ClaudeDirInstaller();
       const packageDir = path.join(__dirname, '..');
       installer.install(packageDir);
@@ -122,7 +122,7 @@ function createConfigFiles() {
 
     // Install CCS items to ~/.claude/ (v4.1.0)
     try {
-      const ClaudeSymlinkManager = require('../bin/utils/claude-symlink-manager');
+      const { ClaudeSymlinkManager } = require('../dist/utils/claude-symlink-manager');
       const claudeSymlinkManager = new ClaudeSymlinkManager();
       claudeSymlinkManager.install();
     } catch (err) {
