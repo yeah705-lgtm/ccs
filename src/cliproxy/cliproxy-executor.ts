@@ -23,7 +23,7 @@ import {
   getProviderConfig,
   CLIPROXY_DEFAULT_PORT,
 } from './config-generator';
-import { ensureAuth, isAuthenticated } from './auth-handler';
+import { isAuthenticated } from './auth-handler';
 import { CLIProxyProvider, ExecutorConfig } from './types';
 
 /** Default executor configuration */
@@ -115,30 +115,51 @@ export async function execClaudeWithCLIProxy(
     throw error;
   }
 
-  // 2. Ensure OAuth completed (if provider requires it)
+  // 2. Handle authentication flags
+  const forceAuth = args.includes('--auth');
+  const forceHeadless = args.includes('--headless');
+  const forceLogout = args.includes('--logout');
+
+  // Handle --logout: clear auth and exit
+  if (forceLogout) {
+    const { clearAuth } = await import('./auth-handler');
+    if (clearAuth(provider)) {
+      console.log(`[OK] Logged out from ${providerConfig.displayName}`);
+    } else {
+      console.log(`[i] No authentication found for ${providerConfig.displayName}`);
+    }
+    process.exit(0);
+  }
+
+  // 3. Ensure OAuth completed (if provider requires it)
   if (providerConfig.requiresOAuth) {
     log(`Checking authentication for ${provider}`);
 
-    // Check for --auth flag to force re-auth
-    const forceAuth = args.includes('--auth');
-    const headless = args.includes('--headless');
-
     if (forceAuth || !isAuthenticated(provider)) {
-      const authSuccess = await ensureAuth(provider, { verbose, headless });
+      // Pass headless only if explicitly set; otherwise let auth-handler auto-detect
+      const { triggerOAuth } = await import('./auth-handler');
+      const authSuccess = await triggerOAuth(provider, {
+        verbose,
+        ...(forceHeadless ? { headless: true } : {}),
+      });
       if (!authSuccess) {
         throw new Error(`Authentication required for ${providerConfig.displayName}`);
+      }
+      // If --auth was explicitly passed, exit after auth (don't start Claude)
+      if (forceAuth) {
+        process.exit(0);
       }
     } else {
       log(`${provider} already authenticated`);
     }
   }
 
-  // 3. Generate config file
+  // 4. Generate config file
   log(`Generating config for ${provider}`);
   const configPath = generateConfig(provider, cfg.port);
   log(`Config written: ${configPath}`);
 
-  // 4. Spawn CLIProxyAPI binary
+  // 5. Spawn CLIProxyAPI binary
   const proxyArgs = ['--config', configPath];
 
   log(`Spawning: ${binaryPath} ${proxyArgs.join(' ')}`);
@@ -199,12 +220,16 @@ export async function execClaudeWithCLIProxy(
   log(`Claude env: ANTHROPIC_BASE_URL=${envVars.ANTHROPIC_BASE_URL}`);
   log(`Claude env: ANTHROPIC_MODEL=${envVars.ANTHROPIC_MODEL}`);
 
+  // Filter out CCS-specific flags before passing to Claude CLI
+  const ccsFlags = ['--auth', '--headless', '--logout'];
+  const claudeArgs = args.filter((arg) => !ccsFlags.includes(arg));
+
   const isWindows = process.platform === 'win32';
   const needsShell = isWindows && /\.(cmd|bat|ps1)$/i.test(claudeCli);
 
   let claude: ChildProcess;
   if (needsShell) {
-    const cmdString = [claudeCli, ...args].map(escapeShellArg).join(' ');
+    const cmdString = [claudeCli, ...claudeArgs].map(escapeShellArg).join(' ');
     claude = spawn(cmdString, {
       stdio: 'inherit',
       windowsHide: true,
@@ -212,7 +237,7 @@ export async function execClaudeWithCLIProxy(
       env,
     });
   } else {
-    claude = spawn(claudeCli, args, {
+    claude = spawn(claudeCli, claudeArgs, {
       stdio: 'inherit',
       windowsHide: true,
       env,

@@ -108,7 +108,7 @@ export interface DownloadResult {
 /**
  * Supported CLIProxy providers
  */
-export type CLIProxyProvider = 'gemini' | 'chatgpt' | 'qwen';
+export type CLIProxyProvider = 'gemini' | 'codex' | 'qwen';
 
 /**
  * CLIProxy config.yaml structure (minimal)

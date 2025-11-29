@@ -14,6 +14,7 @@ import {
   getCLIProxyPath,
   isPortAvailable,
   getAllAuthStatus,
+  getConfigPath,
   CLIPROXY_VERSION,
   CLIPROXY_DEFAULT_PORT,
 } from '../cliproxy';
@@ -783,15 +784,15 @@ class Doctor {
 
     // 2. Config file exists?
     const configSpinner = ora('Checking CLIProxy config').start();
-    const configPath = path.join(this.ccsDir, 'cliproxy.config.yaml');
+    const configPath = getConfigPath();
 
     if (fs.existsSync(configPath)) {
       configSpinner.succeed(
-        `  ${'CLIProxy Config'.padEnd(26)}${colored('[OK]', 'green')}  cliproxy.config.yaml`
+        `  ${'CLIProxy Config'.padEnd(26)}${colored('[OK]', 'green')}  cliproxy/config.yaml`
       );
       this.results.addCheck('CLIProxy Config', 'success', undefined, undefined, {
         status: 'OK',
-        info: 'cliproxy.config.yaml',
+        info: 'cliproxy/config.yaml',
       });
     } else {
       configSpinner.info(

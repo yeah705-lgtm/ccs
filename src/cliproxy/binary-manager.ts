@@ -16,8 +16,8 @@ import * as https from 'https';
 import * as http from 'http';
 import * as crypto from 'crypto';
 import * as zlib from 'zlib';
-import { getCcsDir } from '../utils/config-manager';
 import { ProgressIndicator } from '../utils/progress-indicator';
+import { getBinDir } from './config-generator';
 import {
   BinaryInfo,
   BinaryManagerConfig,
@@ -30,6 +30,7 @@ import {
   getDownloadUrl,
   getChecksumsUrl,
   getExecutableName,
+  getArchiveBinaryName,
   CLIPROXY_VERSION,
 } from './platform-detector';
 
@@ -37,7 +38,7 @@ import {
 const DEFAULT_CONFIG: BinaryManagerConfig = {
   version: CLIPROXY_VERSION,
   releaseUrl: 'https://github.com/router-for-me/CLIProxyAPI/releases/download',
-  binPath: path.join(getCcsDir(), 'bin'),
+  binPath: getBinDir(),
   maxRetries: 3,
   verbose: false,
 };
@@ -400,6 +401,7 @@ export class BinaryManager {
     return new Promise((resolve, reject) => {
       const destDir = this.config.binPath;
       const execName = getExecutableName();
+      const archiveBinaryName = getArchiveBinaryName();
 
       // Read and decompress
       const gunzip = zlib.createGunzip();
@@ -440,7 +442,11 @@ export class BinaryManager {
             if (name && size > 0) {
               // Extract just the filename (handle directories)
               const baseName = path.basename(name);
-              if (baseName === execName || baseName === 'CLIProxyAPI') {
+              if (
+                baseName === execName ||
+                baseName === archiveBinaryName ||
+                baseName === 'cli-proxy-api'
+              ) {
                 currentFile = { name: baseName, size };
                 fileBuffer = Buffer.alloc(0);
                 bytesRead = 0;
@@ -504,6 +510,7 @@ export class BinaryManager {
     return new Promise((resolve, reject) => {
       const destDir = this.config.binPath;
       const execName = getExecutableName();
+      const archiveBinaryName = getArchiveBinaryName();
       const buffer = fs.readFileSync(archivePath);
 
       // Find End of Central Directory record (EOCD)
@@ -540,7 +547,11 @@ export class BinaryManager {
         const baseName = path.basename(fileName);
 
         // Check if this is the executable we want
-        if (baseName === execName || baseName === 'CLIProxyAPI.exe') {
+        if (
+          baseName === execName ||
+          baseName === archiveBinaryName ||
+          baseName === 'cli-proxy-api.exe'
+        ) {
           // Read from local file header
           const localOffset = localHeaderOffset;
           const localSig = buffer.readUInt32LE(localOffset);

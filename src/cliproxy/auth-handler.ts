@@ -1,22 +1,46 @@
 /**
  * Auth Handler for CLIProxyAPI
  *
- * Manages OAuth authentication for CLIProxy providers (Gemini, ChatGPT, Qwen).
+ * Manages OAuth authentication for CLIProxy providers (Gemini, Codex, Qwen).
  * CLIProxyAPI handles OAuth internally - we just need to:
- * 1. Check if auth exists (token files in auth-dir)
+ * 1. Check if auth exists (token files in CCS auth directory)
  * 2. Trigger OAuth flow by spawning binary with auth flag
- * 3. Provide headless fallback (display URL for manual auth)
+ * 3. Auto-detect headless environments (SSH, no DISPLAY)
+ * 4. Use -no-browser flag for headless, display OAuth URL for manual auth
  *
- * Token storage: ~/.ccs/cliproxy-auth/<provider>/
+ * Token storage: ~/.ccs/cliproxy/auth/<provider>/
+ * Each provider has its own directory to avoid conflicts.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawn } from 'child_process';
 import { ProgressIndicator } from '../utils/progress-indicator';
-import { getAuthDir } from './config-generator';
+import { getProviderAuthDir, generateConfig } from './config-generator';
 import { ensureCLIProxyBinary } from './binary-manager';
 import { CLIProxyProvider } from './types';
+
+/**
+ * Detect if running in a headless environment (no browser available)
+ */
+function isHeadlessEnvironment(): boolean {
+  // SSH session
+  if (process.env.SSH_TTY || process.env.SSH_CLIENT || process.env.SSH_CONNECTION) {
+    return true;
+  }
+
+  // No display (Linux/X11)
+  if (process.platform === 'linux' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) {
+    return true;
+  }
+
+  // Non-interactive (piped stdin)
+  if (!process.stdin.isTTY) {
+    return true;
+  }
+
+  return false;
+}
 
 /**
  * Auth status for a provider
@@ -60,21 +84,21 @@ const OAUTH_CONFIGS: Record<CLIProxyProvider, ProviderOAuthConfig> = {
     displayName: 'Google Gemini',
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
     scopes: ['https://www.googleapis.com/auth/generative-language'],
-    authFlag: '--auth-gemini',
+    authFlag: '-login',
   },
-  chatgpt: {
-    provider: 'chatgpt',
-    displayName: 'ChatGPT/OpenAI',
+  codex: {
+    provider: 'codex',
+    displayName: 'Codex',
     authUrl: 'https://auth.openai.com/authorize',
     scopes: ['openid', 'profile'],
-    authFlag: '--auth-codex',
+    authFlag: '-codex-login',
   },
   qwen: {
     provider: 'qwen',
     displayName: 'Alibaba Qwen',
     authUrl: 'https://auth.aliyun.com/oauth2/authorize',
     scopes: ['dashscope'],
-    authFlag: '--auth-qwen',
+    authFlag: '-qwen-login',
   },
 };
 
@@ -93,11 +117,13 @@ export function getOAuthConfig(provider: CLIProxyProvider): ProviderOAuthConfig 
  * Get token directory for provider
  */
 export function getProviderTokenDir(provider: CLIProxyProvider): string {
-  return path.join(getAuthDir(), provider);
+  return getProviderAuthDir(provider);
 }
 
 /**
  * Check if provider has valid authentication
+ * CLIProxyAPI stores OAuth tokens as JSON files in the auth directory.
+ * We check for any .json files that could contain tokens.
  */
 export function isAuthenticated(provider: CLIProxyProvider): boolean {
   const tokenDir = getProviderTokenDir(provider);
@@ -106,13 +132,16 @@ export function isAuthenticated(provider: CLIProxyProvider): boolean {
     return false;
   }
 
-  // Check for any token files (CLIProxyAPI stores tokens with various names)
-  const files = fs.readdirSync(tokenDir);
-  const tokenFiles = files.filter(
-    (f) => f.endsWith('.json') || f.endsWith('.token') || f === 'credentials'
-  );
-
-  return tokenFiles.length > 0;
+  // Check for any token files created by CLIProxyAPI
+  try {
+    const files = fs.readdirSync(tokenDir);
+    const tokenFiles = files.filter(
+      (f) => f.endsWith('.json') || f.endsWith('.token') || f === 'credentials'
+    );
+    return tokenFiles.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -152,7 +181,7 @@ export function getAuthStatus(provider: CLIProxyProvider): AuthStatus {
  * Get auth status for all providers
  */
 export function getAllAuthStatus(): AuthStatus[] {
-  const providers: CLIProxyProvider[] = ['gemini', 'chatgpt', 'qwen'];
+  const providers: CLIProxyProvider[] = ['gemini', 'codex', 'qwen'];
   return providers.map(getAuthStatus);
 }
 
@@ -180,14 +209,17 @@ export function clearAuth(provider: CLIProxyProvider): boolean {
 
 /**
  * Trigger OAuth flow for provider
- * Opens browser for user authentication
+ * Auto-detects headless environment and uses -no-browser flag accordingly
  */
 export async function triggerOAuth(
   provider: CLIProxyProvider,
   options: { verbose?: boolean; headless?: boolean } = {}
 ): Promise<boolean> {
   const oauthConfig = getOAuthConfig(provider);
-  const { verbose = false, headless = false } = options;
+  const { verbose = false } = options;
+
+  // Auto-detect headless if not explicitly set
+  const headless = options.headless ?? isHeadlessEnvironment();
 
   const log = (msg: string) => {
     if (verbose) {
@@ -208,91 +240,124 @@ export async function triggerOAuth(
   const tokenDir = getProviderTokenDir(provider);
   fs.mkdirSync(tokenDir, { recursive: true, mode: 0o700 });
 
-  // Headless mode: display manual instructions
+  // Generate config file (CLIProxyAPI requires it even for auth)
+  const configPath = generateConfig(provider);
+  log(`Config generated: ${configPath}`);
+
+  // Build args: config + auth flag + optional -no-browser for headless
+  const args = ['-config', configPath, oauthConfig.authFlag];
   if (headless) {
-    console.log('');
-    console.log(`[i] Headless mode: Manual authentication required for ${oauthConfig.displayName}`);
-    console.log('');
-    console.log('Instructions:');
-    console.log(`  1. Run CLIProxyAPI binary with auth flag on a machine with browser:`);
-    console.log(`     ${binaryPath} ${oauthConfig.authFlag}`);
-    console.log('');
-    console.log(`  2. Complete OAuth in browser`);
-    console.log('');
-    console.log(`  3. Copy token files from CLIProxyAPI auth directory to:`);
-    console.log(`     ${tokenDir}`);
-    console.log('');
-    return false;
+    args.push('-no-browser');
   }
 
-  // Standard mode: spawn binary with auth flag
-  const spinner = new ProgressIndicator(`Authenticating with ${oauthConfig.displayName}`);
-  spinner.start();
+  // Show appropriate message
+  console.log('');
+  if (headless) {
+    console.log(`[i] Headless mode detected - manual authentication required`);
+    console.log(`[i] ${oauthConfig.displayName} will display an OAuth URL below`);
+    console.log('');
+  } else {
+    console.log(`[i] Opening browser for ${oauthConfig.displayName} authentication...`);
+    console.log('[i] Complete the login in your browser.');
+    console.log('');
+  }
 
-  console.log('');
-  console.log(`[i] Opening browser for ${oauthConfig.displayName} authentication...`);
-  console.log('[i] Complete the login in your browser.');
-  console.log('');
+  const spinner = new ProgressIndicator(`Authenticating with ${oauthConfig.displayName}`);
+  if (!headless) {
+    spinner.start();
+  }
 
   return new Promise<boolean>((resolve) => {
-    // Spawn CLIProxyAPI with auth flag
-    // Note: CLIProxyAPI handles the OAuth flow internally
-    const authProcess = spawn(binaryPath, [oauthConfig.authFlag], {
-      stdio: verbose ? 'inherit' : ['ignore', 'pipe', 'pipe'],
+    // Spawn CLIProxyAPI with auth flag (and -no-browser if headless)
+    const authProcess = spawn(binaryPath, args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
       env: {
         ...process.env,
-        // Set auth directory for CLIProxyAPI
         CLI_PROXY_AUTH_DIR: tokenDir,
       },
     });
 
     let stderrData = '';
+    let urlDisplayed = false;
 
-    if (!verbose) {
-      authProcess.stdout?.on('data', (data: Buffer) => {
-        log(`stdout: ${data.toString().trim()}`);
-      });
+    authProcess.stdout?.on('data', (data: Buffer) => {
+      const output = data.toString();
+      log(`stdout: ${output.trim()}`);
 
-      authProcess.stderr?.on('data', (data: Buffer) => {
-        stderrData += data.toString();
-        log(`stderr: ${data.toString().trim()}`);
-      });
-    }
+      // In headless mode, display OAuth URLs prominently
+      if (headless) {
+        const lines = output.split('\n');
+        for (const line of lines) {
+          // Look for URLs in the output
+          const urlMatch = line.match(/https?:\/\/[^\s]+/);
+          if (urlMatch && !urlDisplayed) {
+            console.log(`    ${urlMatch[0]}`);
+            console.log('');
+            console.log('[i] Waiting for authentication... (press Ctrl+C to cancel)');
+            urlDisplayed = true;
+          }
+        }
+      }
+    });
 
-    // Timeout after 2 minutes
+    authProcess.stderr?.on('data', (data: Buffer) => {
+      const output = data.toString();
+      stderrData += output;
+      log(`stderr: ${output.trim()}`);
+
+      // Also check stderr for URLs (some tools output there)
+      if (headless && !urlDisplayed) {
+        const urlMatch = output.match(/https?:\/\/[^\s]+/);
+        if (urlMatch) {
+          console.log(`    ${urlMatch[0]}`);
+          console.log('');
+          console.log('[i] Waiting for authentication... (press Ctrl+C to cancel)');
+          urlDisplayed = true;
+        }
+      }
+    });
+
+    // Timeout after 5 minutes for headless (user needs time to copy URL)
+    const timeoutMs = headless ? 300000 : 120000;
     const timeout = setTimeout(() => {
-      spinner.fail('Authentication timeout');
+      if (!headless) spinner.fail('Authentication timeout');
       authProcess.kill();
-      console.error('[X] OAuth timed out after 2 minutes');
+      console.error(`[X] OAuth timed out after ${headless ? 5 : 2} minutes`);
       console.error('');
-      console.error('Troubleshooting:');
-      console.error('  - Make sure a browser is available');
-      console.error('  - Try running with --verbose for details');
-      console.error(`  - For headless systems, use: ccs ${provider} --auth --headless`);
+      if (!headless) {
+        console.error('Troubleshooting:');
+        console.error('  - Make sure a browser is available');
+        console.error('  - Try running with --verbose for details');
+      }
       resolve(false);
-    }, 120000);
+    }, timeoutMs);
 
     authProcess.on('exit', (code) => {
       clearTimeout(timeout);
 
       if (code === 0) {
-        spinner.succeed(`Authenticated with ${oauthConfig.displayName}`);
+        if (!headless) spinner.succeed(`Authenticated with ${oauthConfig.displayName}`);
 
         // Verify token was created
         if (isAuthenticated(provider)) {
           console.log('[OK] Authentication successful');
           resolve(true);
         } else {
-          spinner.fail('Authentication incomplete');
+          if (!headless) spinner.fail('Authentication incomplete');
           console.error('[X] Token not found after authentication');
           console.error('    The OAuth flow may have been cancelled');
           resolve(false);
         }
       } else {
-        spinner.fail('Authentication failed');
+        if (!headless) spinner.fail('Authentication failed');
         console.error(`[X] CLIProxyAPI auth exited with code ${code}`);
-        if (stderrData) {
-          console.error(`    ${stderrData.trim()}`);
+        if (stderrData && !urlDisplayed) {
+          console.error(`    ${stderrData.trim().split('\n')[0]}`);
+        }
+        // Show headless hint if we detected headless environment
+        if (headless && !urlDisplayed) {
+          console.error('');
+          console.error('[i] No OAuth URL was displayed. Try with --verbose for details.');
         }
         resolve(false);
       }
@@ -300,7 +365,7 @@ export async function triggerOAuth(
 
     authProcess.on('error', (error) => {
       clearTimeout(timeout);
-      spinner.fail('Authentication error');
+      if (!headless) spinner.fail('Authentication error');
       console.error(`[X] Failed to start auth process: ${error.message}`);
       resolve(false);
     });

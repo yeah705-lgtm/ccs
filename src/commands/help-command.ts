@@ -28,7 +28,7 @@ export function handleHelpCommand(): void {
   console.log(colored('Model Switching:', 'cyan'));
   console.log(`  ${colored('ccs', 'yellow')}                         Use default Claude account`);
   console.log(
-    `  ${colored('ccs chatgpt', 'yellow')}                  ChatGPT via OAuth (zero config)`
+    `  ${colored('ccs codex', 'yellow')}                    Codex via OAuth (zero config)`
   );
   console.log(
     `  ${colored('ccs gemini', 'yellow')}                   Gemini via OAuth (zero config)`

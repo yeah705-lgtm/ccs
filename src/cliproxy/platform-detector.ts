@@ -62,10 +62,20 @@ export function detectPlatform(): PlatformInfo {
 /**
  * Get executable name based on platform
  * @returns Binary executable name (with .exe on Windows)
+ * Note: The actual binary inside the archive is named 'cli-proxy-api'
  */
 export function getExecutableName(): string {
   const platform = detectPlatform();
-  return platform.os === 'windows' ? 'CLIProxyAPI.exe' : 'CLIProxyAPI';
+  return platform.os === 'windows' ? 'cli-proxy-api.exe' : 'cli-proxy-api';
+}
+
+/**
+ * Get the name of the binary inside the archive
+ * @returns Binary name as it appears in the tar.gz/zip
+ */
+export function getArchiveBinaryName(): string {
+  const platform = detectPlatform();
+  return platform.os === 'windows' ? 'cli-proxy-api.exe' : 'cli-proxy-api';
 }
 
 /**
