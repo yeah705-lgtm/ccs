@@ -1,3 +1,10 @@
+# [5.2.0-beta.1](https://github.com/kaitranntt/ccs/compare/v5.1.1-beta.3...v5.2.0-beta.1) (2025-12-01)
+
+
+### Features
+
+* **cliproxy:** add qwen code oauth provider support ([#31](https://github.com/kaitranntt/ccs/issues/31)) ([a3f1e52](https://github.com/kaitranntt/ccs/commit/a3f1e52ac68600ba0806d67aacceb6477ffa3543)), closes [#29](https://github.com/kaitranntt/ccs/issues/29)
+
 ## [5.1.1-beta.3](https://github.com/kaitranntt/ccs/compare/v5.1.1-beta.2...v5.1.1-beta.3) (2025-12-01)
 
 
