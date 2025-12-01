@@ -1,3 +1,16 @@
+# [5.3.0-beta.3](https://github.com/kaitranntt/ccs/compare/v5.3.0-beta.2...v5.3.0-beta.3) (2025-12-01)
+
+
+### Bug Fixes
+
+* **prompt:** improve password input handling with raw mode and buffer support ([bc56d2e](https://github.com/kaitranntt/ccs/commit/bc56d2e135532b2ae443144dd42217b26bcba951))
+
+
+### Features
+
+* **profile:** add profile command with configuration display ([53d7a15](https://github.com/kaitranntt/ccs/commit/53d7a15c047e760723e051dc0f7be3c0dd42d087))
+* **shell-completion:** add --force flag and fix zsh profile coloring ([7faed1d](https://github.com/kaitranntt/ccs/commit/7faed1d84ba29ba02bf687bae5b3458617512e67))
+
 # [5.3.0-beta.2](https://github.com/kaitranntt/ccs/compare/v5.3.0-beta.1...v5.3.0-beta.2) (2025-12-01)
 
 
