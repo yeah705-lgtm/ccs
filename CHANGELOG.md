@@ -1,3 +1,10 @@
+## [5.1.1-beta.1](https://github.com/kaitranntt/ccs/compare/v5.1.0...v5.1.1-beta.1) (2025-12-01)
+
+
+### Bug Fixes
+
+* **cliproxy:** use double-dash flags for cliproxyapi auth ([#24](https://github.com/kaitranntt/ccs/issues/24)) ([4c81f28](https://github.com/kaitranntt/ccs/commit/4c81f28f0b67ef92cf74d0f5c13a5943ff0a7f00))
+
 # [5.1.0](https://github.com/kaitranntt/ccs/compare/v5.0.2...v5.1.0) (2025-12-01)
 
 
