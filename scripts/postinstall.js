@@ -125,12 +125,14 @@ function createConfigFiles() {
     // runs `ccs gemini` or `ccs codex` for first time (requires OAuth auth first)
     const configPath = path.join(ccsDir, 'config.json');
     if (!fs.existsSync(configPath)) {
+      // NOTE: No 'default' entry - when no profile specified, CCS passes through
+      // to Claude's native auth without --settings flag. This prevents env var
+      // pollution from affecting the default profile.
       const config = {
         profiles: {
           glm: '~/.ccs/glm.settings.json',
           glmt: '~/.ccs/glmt.settings.json',
-          kimi: '~/.ccs/kimi.settings.json',
-          default: '~/.claude/settings.json'
+          kimi: '~/.ccs/kimi.settings.json'
         }
       };
 
@@ -141,23 +143,38 @@ function createConfigFiles() {
 
       console.log('[OK] Created config: ~/.ccs/config.json');
     } else {
-      // Update existing config with glmt if missing (migration for v3.x users)
+      // Update existing config (migration for older versions)
       const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       // Ensure profiles object exists
       if (!config.profiles) {
         config.profiles = {};
       }
       let configUpdated = false;
+
+      // Migration: Add glmt if missing (v3.x)
       if (!config.profiles.glmt) {
         config.profiles.glmt = '~/.ccs/glmt.settings.json';
         configUpdated = true;
       }
+
+      // Migration: Remove 'default' entry pointing to ~/.claude/settings.json (v5.4.0)
+      // This entry caused the default profile to pass --settings flag, which could
+      // pick up stale env vars (ANTHROPIC_BASE_URL) from previous profile sessions.
+      // Fix: Let CCS pass through to Claude's native auth without --settings flag.
+      if (config.profiles.default === '~/.claude/settings.json') {
+        delete config.profiles.default;
+        configUpdated = true;
+        console.log('[OK] Removed legacy default profile (now uses native Claude auth)');
+      }
+
       // NOTE: gemini/codex profiles added on-demand, not during migration
       if (configUpdated) {
         const tmpPath = `${configPath}.tmp`;
         fs.writeFileSync(tmpPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
         fs.renameSync(tmpPath, configPath);
-        console.log('[OK] Updated config with glmt profile');
+        if (!config.profiles.glmt) {
+          console.log('[OK] Updated config with glmt profile');
+        }
       } else {
         console.log('[OK] Config exists: ~/.ccs/config.json (preserved)');
       }

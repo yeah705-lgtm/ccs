@@ -178,10 +178,21 @@ class ProfileDetector {
     const config = this.readConfig();
 
     if (config.profiles && config.profiles['default']) {
+      const settingsPath = config.profiles['default'];
+      // Safety net: If default points to ~/.claude/settings.json, treat as pass-through
+      // to avoid loading stale env vars from previous profile sessions (issue #37).
+      // The ~/.claude/settings.json is Claude's native config - let Claude handle it.
+      if (settingsPath.includes('.claude') && settingsPath.endsWith('settings.json')) {
+        return {
+          type: 'default',
+          name: 'default',
+          message: 'Using native Claude auth (no custom env vars)',
+        };
+      }
       return {
         type: 'settings',
         name: 'default',
-        settingsPath: config.profiles['default'],
+        settingsPath,
       };
     }
 
