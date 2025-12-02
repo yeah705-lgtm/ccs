@@ -1,14 +1,9 @@
-# [5.3.0-beta.5](https://github.com/kaitranntt/ccs/compare/v5.3.0-beta.4...v5.3.0-beta.5) (2025-12-02)
+# [5.3.0](https://github.com/kaitranntt/ccs/compare/v5.2.1...v5.3.0) (2025-12-01)
 
 
 ### Features
 
-* **ui:** add central ui abstraction layer for cli styling ([6e49e0e](https://github.com/kaitranntt/ccs/commit/6e49e0e7e157abd4a38c98553dbe3c16473b57d9))
-* **ui:** enhance auth commands with new ui layer ([6f42a65](https://github.com/kaitranntt/ccs/commit/6f42a6527b1bf02cbf29ec23525c9f27af6f0c98))
-* **ui:** enhance delegation with listr2 task lists and styled output ([716193a](https://github.com/kaitranntt/ccs/commit/716193a682a1504767c7f32409a0de51278242eb))
-* **ui:** enhance doctor and error manager with new ui layer ([57016f3](https://github.com/kaitranntt/ccs/commit/57016f3f765f207915161514e1827b18c0b03d5c))
-* **ui:** enhance help and profile commands with new ui layer ([f3ed359](https://github.com/kaitranntt/ccs/commit/f3ed359050ce66d96c0109cf60c242bfd092114d))
-* **ui:** enhance section headers with gradient and rename profile to api ([073a5e1](https://github.com/kaitranntt/ccs/commit/073a5e15ee8f895d7485864526d8946b774bb728))
+* **profile,shell-completion,prompt:** add profile commands and improve input handling ([#34](https://github.com/kaitranntt/ccs/issues/34)) ([7ec8cc8](https://github.com/kaitranntt/ccs/commit/7ec8cc83690a595bba9bb5f62fb3b9fa6b6a2f8f)), closes [#24](https://github.com/kaitranntt/ccs/issues/24) [#30](https://github.com/kaitranntt/ccs/issues/30) [#26](https://github.com/kaitranntt/ccs/issues/26) [#31](https://github.com/kaitranntt/ccs/issues/31) [#29](https://github.com/kaitranntt/ccs/issues/29) [#29](https://github.com/kaitranntt/ccs/issues/29)
 
 # [5.3.0-beta.4](https://github.com/kaitranntt/ccs/compare/v5.3.0-beta.3...v5.3.0-beta.4) (2025-12-01)
 
