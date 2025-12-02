@@ -1,3 +1,10 @@
+# [5.4.0-beta.3](https://github.com/kaitranntt/ccs/compare/v5.4.0-beta.2...v5.4.0-beta.3) (2025-12-02)
+
+
+### Bug Fixes
+
+* **cliproxy:** convert windows backslashes to forward slashes in config.yaml auth-dir ([a6663cb](https://github.com/kaitranntt/ccs/commit/a6663cbd0471d1a08e8bbcdea897760b434ae937)), closes [#36](https://github.com/kaitranntt/ccs/issues/36)
+
 # [5.4.0-beta.2](https://github.com/kaitranntt/ccs/compare/v5.4.0-beta.1...v5.4.0-beta.2) (2025-12-02)
 
 
