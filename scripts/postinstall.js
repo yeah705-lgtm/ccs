@@ -25,6 +25,35 @@ function getCcsHome() {
 }
 
 /**
+ * Check if path is a broken symlink and remove it if so
+ * Fixes: ENOENT error when mkdir tries to create over a dangling symlink
+ * @param {string} targetPath - Path to check
+ * @returns {boolean} true if broken symlink was removed
+ */
+function removeIfBrokenSymlink(targetPath) {
+  try {
+    // lstatSync doesn't follow symlinks - it checks the link itself
+    const stats = fs.lstatSync(targetPath);
+    if (stats.isSymbolicLink()) {
+      // Check if symlink target exists
+      try {
+        fs.statSync(targetPath); // This follows symlinks
+        return false; // Symlink is valid
+      } catch {
+        // Target doesn't exist - broken symlink
+        fs.unlinkSync(targetPath);
+        console.log(`[!] Removed broken symlink: ${targetPath}`);
+        return true;
+      }
+    }
+    return false;
+  } catch {
+    // Path doesn't exist at all
+    return false;
+  }
+}
+
+/**
  * Validate created configuration files
  * @returns {object} { success: boolean, errors: string[], warnings: string[] }
  */
@@ -85,6 +114,8 @@ function createConfigFiles() {
 
     // Create ~/.ccs/shared/ directory structure (Phase 1)
     const sharedDir = path.join(ccsDir, 'shared');
+    // Handle broken symlinks (common when upgrading from older versions)
+    removeIfBrokenSymlink(sharedDir);
     if (!fs.existsSync(sharedDir)) {
       fs.mkdirSync(sharedDir, { recursive: true, mode: 0o755 });
       console.log('[OK] Created directory: ~/.ccs/shared/');
@@ -94,6 +125,8 @@ function createConfigFiles() {
     const sharedSubdirs = ['commands', 'skills', 'agents', 'plugins'];
     for (const subdir of sharedSubdirs) {
       const subdirPath = path.join(sharedDir, subdir);
+      // Handle broken symlinks before creating directory
+      removeIfBrokenSymlink(subdirPath);
       if (!fs.existsSync(subdirPath)) {
         fs.mkdirSync(subdirPath, { recursive: true, mode: 0o755 });
         console.log(`[OK] Created directory: ~/.ccs/shared/${subdir}/`);
