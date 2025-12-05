@@ -50,22 +50,16 @@ export const MODEL_CATALOG: Partial<Record<CLIProxyProvider, ProviderCatalog>> =
         id: 'gemini-claude-opus-4-5-thinking',
         name: 'Claude Opus 4.5 Thinking',
         description: 'Most capable, extended thinking',
-        broken: true,
-        issueUrl: 'https://github.com/router-for-me/CLIProxyAPI/issues/415',
       },
       {
         id: 'gemini-claude-sonnet-4-5-thinking',
         name: 'Claude Sonnet 4.5 Thinking',
         description: 'Balanced with extended thinking',
-        broken: true,
-        issueUrl: 'https://github.com/router-for-me/CLIProxyAPI/issues/415',
       },
       {
         id: 'gemini-claude-sonnet-4-5',
         name: 'Claude Sonnet 4.5',
         description: 'Fast and capable',
-        broken: true,
-        issueUrl: 'https://github.com/router-for-me/CLIProxyAPI/issues/415',
       },
       {
         id: 'gemini-3-pro-preview',

@@ -13,6 +13,20 @@ import { getProviderSettingsPath, getClaudeEnvVars } from './config-generator';
 import { CLIProxyProvider } from './types';
 import { initUI, color, bold, dim, ok, info, header } from '../utils/ui';
 
+/**
+ * Check if model is a Claude model routed via Antigravity
+ * Claude models require MAX_THINKING_TOKENS < 8192 for thinking to work
+ */
+function isClaudeModel(modelId: string): boolean {
+  return modelId.includes('claude');
+}
+
+/**
+ * Max thinking tokens for Claude models via Antigravity
+ * Must be < 8192 due to Google protocol conversion limitations
+ */
+const CLAUDE_MAX_THINKING_TOKENS = '8191';
+
 /** CCS directory */
 const CCS_DIR = path.join(process.env.HOME || process.env.USERPROFILE || '', '.ccs');
 
@@ -117,18 +131,56 @@ export async function configureProviderModel(
     defaultIndex: safeDefaultIdx,
   });
 
-  // Get base env vars to preserve haiku model and base URL
+  // Get base env vars for defaults
   const baseEnv = getClaudeEnvVars(provider);
 
-  // Build settings with selected model
-  const settings = {
-    env: {
-      ...baseEnv,
-      ANTHROPIC_MODEL: selectedModel,
-      ANTHROPIC_DEFAULT_OPUS_MODEL: selectedModel,
-      ANTHROPIC_DEFAULT_SONNET_MODEL: selectedModel,
-      // Keep haiku as-is from base config (usually flash model)
-    },
+  // Read existing settings to preserve user customizations
+  let existingSettings: Record<string, unknown> = {};
+  let existingEnv: Record<string, string> = {};
+  if (fs.existsSync(settingsPath)) {
+    try {
+      existingSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+      existingEnv = (existingSettings.env as Record<string, string>) || {};
+    } catch {
+      // Invalid JSON - start fresh
+    }
+  }
+
+  // Build settings with selective merge:
+  // - Preserve ALL user settings (top-level and env vars)
+  // - Only update CCS-controlled fields (model selection + thinking toggle for Claude)
+  const isClaude = isClaudeModel(selectedModel);
+
+  // CCS-controlled env vars (always override with our values)
+  const ccsControlledEnv: Record<string, string> = {
+    ANTHROPIC_BASE_URL: baseEnv.ANTHROPIC_BASE_URL || '',
+    ANTHROPIC_AUTH_TOKEN: baseEnv.ANTHROPIC_AUTH_TOKEN || '',
+    ANTHROPIC_MODEL: selectedModel,
+    ANTHROPIC_DEFAULT_OPUS_MODEL: selectedModel,
+    ANTHROPIC_DEFAULT_SONNET_MODEL: selectedModel,
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: baseEnv.ANTHROPIC_DEFAULT_HAIKU_MODEL || '',
+  };
+
+  // Claude models require MAX_THINKING_TOKENS < 8192 for thinking to work
+  if (isClaude) {
+    ccsControlledEnv.MAX_THINKING_TOKENS = CLAUDE_MAX_THINKING_TOKENS;
+  }
+
+  // Merge: user env vars (preserved) + CCS controlled (override)
+  const mergedEnv = {
+    ...existingEnv,
+    ...ccsControlledEnv,
+  };
+
+  // Remove MAX_THINKING_TOKENS when switching away from Claude model
+  if (!isClaude && mergedEnv.MAX_THINKING_TOKENS) {
+    delete mergedEnv.MAX_THINKING_TOKENS;
+  }
+
+  // Build final settings: preserve user top-level settings + update env
+  const settings: Record<string, unknown> = {
+    ...existingSettings,
+    env: mergedEnv,
   };
 
   // Ensure CCS directory exists
@@ -146,6 +198,15 @@ export async function configureProviderModel(
   console.error('');
   console.error(ok(`Model set to: ${bold(displayName)}`));
   console.error(dim(`     Config saved: ${settingsPath}`));
+
+  // Show info for Claude models about thinking token limit
+  if (isClaude) {
+    console.error('');
+    console.error(
+      info(`MAX_THINKING_TOKENS set to ${CLAUDE_MAX_THINKING_TOKENS} (required < 8192)`)
+    );
+    console.error(dim('     Google protocol conversion requires this limit for thinking to work.'));
+  }
   console.error('');
 
   return true;

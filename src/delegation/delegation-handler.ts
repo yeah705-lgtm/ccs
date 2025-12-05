@@ -16,6 +16,7 @@ interface ParsedArgs {
     timeout?: number;
     resumeSession?: boolean;
     sessionId?: string;
+    extraArgs?: string[]; // Passthrough args for Claude CLI
   };
 }
 
@@ -183,6 +184,39 @@ export class DelegationHandler {
     const timeoutIndex = args.indexOf('--timeout');
     if (timeoutIndex !== -1 && timeoutIndex < args.length - 1) {
       options.timeout = parseInt(args[timeoutIndex + 1], 10);
+    }
+
+    // Collect extra args to pass through to Claude CLI
+    // CCS-handled flags with values (skip these and their values):
+    const ccsFlagsWithValue = new Set(['-p', '--prompt', '--timeout', '--permission-mode']);
+    const extraArgs: string[] = [];
+    const profile = this._extractProfile(args);
+
+    for (let i = 0; i < args.length; i++) {
+      const arg = args[i];
+
+      // Skip profile name (non-flag first arg)
+      if (arg === profile && !arg.startsWith('-')) continue;
+
+      // Skip CCS-handled flags and their values
+      if (ccsFlagsWithValue.has(arg)) {
+        i++; // Skip next arg (the value)
+        continue;
+      }
+
+      // Collect flags and their values as passthrough
+      if (arg.startsWith('-')) {
+        extraArgs.push(arg);
+        // If next arg exists and doesn't start with '-', it's likely a value
+        if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
+          extraArgs.push(args[i + 1]);
+          i++; // Skip the value we just added
+        }
+      }
+    }
+
+    if (extraArgs.length > 0) {
+      options.extraArgs = extraArgs;
     }
 
     return options;

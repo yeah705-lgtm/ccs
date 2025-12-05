@@ -342,6 +342,8 @@ export function getAllAuthStatus(): AuthStatus[] {
 
 /**
  * Clear authentication for provider
+ * Only removes files belonging to the specified provider (by prefix or content)
+ * Does NOT remove the shared auth directory or other providers' files
  */
 export function clearAuth(provider: CLIProxyProvider): boolean {
   const tokenDir = getProviderTokenDir(provider);
@@ -350,16 +352,33 @@ export function clearAuth(provider: CLIProxyProvider): boolean {
     return false;
   }
 
-  // Remove all files in token directory
+  const validPrefixes = PROVIDER_AUTH_PREFIXES[provider] || [];
   const files = fs.readdirSync(tokenDir);
+  let removedCount = 0;
+
+  // Only remove files that belong to this provider
   for (const file of files) {
-    fs.unlinkSync(path.join(tokenDir, file));
+    const filePath = path.join(tokenDir, file);
+    const lowerFile = file.toLowerCase();
+
+    // Check by prefix first (fast path)
+    const matchesByPrefix = validPrefixes.some((prefix) => lowerFile.startsWith(prefix));
+
+    // If no prefix match, check by content (for Gemini tokens without prefix)
+    const matchesByContent = !matchesByPrefix && isTokenFileForProvider(filePath, provider);
+
+    if (matchesByPrefix || matchesByContent) {
+      try {
+        fs.unlinkSync(filePath);
+        removedCount++;
+      } catch {
+        // Failed to remove - skip
+      }
+    }
   }
 
-  // Remove directory
-  fs.rmdirSync(tokenDir);
-
-  return true;
+  // DO NOT remove the shared auth directory - other providers may still have tokens
+  return removedCount > 0;
 }
 
 /**

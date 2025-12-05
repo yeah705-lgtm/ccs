@@ -383,6 +383,7 @@ export class BinaryManager {
     // Download archive
     const archivePath = path.join(this.config.binPath, `cliproxy-archive.${platform.extension}`);
 
+    // Use single spinner and update text as we progress (avoids UI jumping)
     const spinner = new ProgressIndicator(`Downloading CLIProxyAPI v${this.config.version}`);
     spinner.start();
 
@@ -394,11 +395,8 @@ export class BinaryManager {
         throw new Error(result.error || 'Download failed after retries');
       }
 
-      spinner.succeed('Download complete');
-
-      // Verify checksum
-      const verifySpinner = new ProgressIndicator('Verifying checksum');
-      verifySpinner.start();
+      // Verify checksum (update spinner text instead of creating new one)
+      spinner.update('Verifying checksum');
 
       const checksumResult = await this.verifyChecksum(
         archivePath,
@@ -407,7 +405,7 @@ export class BinaryManager {
       );
 
       if (!checksumResult.valid) {
-        verifySpinner.fail('Checksum mismatch');
+        spinner.fail('Checksum mismatch');
         fs.unlinkSync(archivePath);
         throw new Error(
           `Checksum mismatch for ${platform.binaryName}\n` +
@@ -417,15 +415,12 @@ export class BinaryManager {
         );
       }
 
-      verifySpinner.succeed('Checksum verified');
-
-      // Extract archive
-      const extractSpinner = new ProgressIndicator('Extracting binary');
-      extractSpinner.start();
+      // Extract archive (update spinner text)
+      spinner.update('Extracting binary');
 
       await this.extractArchive(archivePath, platform.extension);
 
-      extractSpinner.succeed('Extraction complete');
+      spinner.succeed('CLIProxyAPI ready');
 
       // Cleanup archive
       fs.unlinkSync(archivePath);

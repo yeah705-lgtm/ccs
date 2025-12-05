@@ -45,6 +45,7 @@ interface ExecutionOptions {
   resumeSession?: boolean;
   sessionId?: string;
   maxRetries?: number;
+  extraArgs?: string[]; // Passthrough args for Claude CLI
 }
 
 interface ExecutionResult {
@@ -112,6 +113,7 @@ export class HeadlessExecutor {
       permissionMode = 'acceptEdits',
       resumeSession = false,
       sessionId = null,
+      extraArgs = [],
     } = options;
 
     // Validate permission mode
@@ -209,6 +211,11 @@ export class HeadlessExecutor {
     }
 
     // Note: No max-turns limit - using time-based limits instead (default 10min timeout)
+
+    // Passthrough extra args (from Claude CLI flags like --agent, --system-prompt-file, etc.)
+    if (extraArgs.length > 0) {
+      args.push(...extraArgs);
+    }
 
     // Debug log args
     if (process.env.CCS_DEBUG) {
