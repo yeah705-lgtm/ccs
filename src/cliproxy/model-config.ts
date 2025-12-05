@@ -11,15 +11,21 @@ import { InteractivePrompt } from '../utils/prompt';
 import { getProviderCatalog, supportsModelConfig, ModelEntry } from './model-catalog';
 import { getProviderSettingsPath, getClaudeEnvVars } from './config-generator';
 import { CLIProxyProvider } from './types';
-import { initUI, color, bold, dim, ok, info, warn, header } from '../utils/ui';
+import { initUI, color, bold, dim, ok, info, header } from '../utils/ui';
 
 /**
  * Check if model is a Claude model routed via Antigravity
- * These models don't support thinking toggle due to protocol limitations
+ * Claude models require MAX_THINKING_TOKENS < 8192 for thinking to work
  */
 function isClaudeModel(modelId: string): boolean {
   return modelId.includes('claude');
 }
+
+/**
+ * Max thinking tokens for Claude models via Antigravity
+ * Must be < 8192 due to Google protocol conversion limitations
+ */
+const CLAUDE_MAX_THINKING_TOKENS = '8191';
 
 /** CCS directory */
 const CCS_DIR = path.join(process.env.HOME || process.env.USERPROFILE || '', '.ccs');
@@ -146,14 +152,19 @@ export async function configureProviderModel(
   const isClaude = isClaudeModel(selectedModel);
 
   // CCS-controlled env vars (always override with our values)
-  const ccsControlledEnv = {
-    ANTHROPIC_BASE_URL: baseEnv.ANTHROPIC_BASE_URL,
-    ANTHROPIC_AUTH_TOKEN: baseEnv.ANTHROPIC_AUTH_TOKEN,
+  const ccsControlledEnv: Record<string, string> = {
+    ANTHROPIC_BASE_URL: baseEnv.ANTHROPIC_BASE_URL || '',
+    ANTHROPIC_AUTH_TOKEN: baseEnv.ANTHROPIC_AUTH_TOKEN || '',
     ANTHROPIC_MODEL: selectedModel,
     ANTHROPIC_DEFAULT_OPUS_MODEL: selectedModel,
     ANTHROPIC_DEFAULT_SONNET_MODEL: selectedModel,
-    ANTHROPIC_DEFAULT_HAIKU_MODEL: baseEnv.ANTHROPIC_DEFAULT_HAIKU_MODEL,
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: baseEnv.ANTHROPIC_DEFAULT_HAIKU_MODEL || '',
   };
+
+  // Claude models require MAX_THINKING_TOKENS < 8192 for thinking to work
+  if (isClaude) {
+    ccsControlledEnv.MAX_THINKING_TOKENS = CLAUDE_MAX_THINKING_TOKENS;
+  }
 
   // Merge: user env vars (preserved) + CCS controlled (override)
   const mergedEnv = {
@@ -166,12 +177,6 @@ export async function configureProviderModel(
     ...existingSettings,
     env: mergedEnv,
   };
-
-  // Claude models via Antigravity don't support thinking toggle
-  // Always set to false for Claude models (CCS-controlled)
-  if (isClaude) {
-    settings.alwaysThinkingEnabled = false;
-  }
 
   // Ensure CCS directory exists
   if (!fs.existsSync(CCS_DIR)) {
@@ -189,12 +194,13 @@ export async function configureProviderModel(
   console.error(ok(`Model set to: ${bold(displayName)}`));
   console.error(dim(`     Config saved: ${settingsPath}`));
 
-  // Show warning for Claude models about thinking limitation
+  // Show info for Claude models about thinking token limit
   if (isClaude) {
     console.error('');
-    console.error(warn('Claude models via Antigravity have limited thinking support.'));
-    console.error(dim('     Thinking toggle (Tab) disabled - Google protocol limitation.'));
-    console.error(dim('     See: https://github.com/router-for-me/CLIProxyAPI/issues/415'));
+    console.error(
+      info(`MAX_THINKING_TOKENS set to ${CLAUDE_MAX_THINKING_TOKENS} (required < 8192)`)
+    );
+    console.error(dim('     Google protocol conversion requires this limit for thinking to work.'));
   }
   console.error('');
 
