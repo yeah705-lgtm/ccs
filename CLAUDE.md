@@ -40,6 +40,12 @@ bun run format       # Auto-fix formatting
 - `lib/` - Native shell scripts (bash, PowerShell)
 - `ui/` - React dashboard (Vite + React 19 + shadcn/ui)
 
+**Development server (ALWAYS use for testing UI changes):**
+```bash
+bun run dev          # Start dev server with hot reload (http://localhost:3000)
+```
+**IMPORTANT:** Use `bun run dev` at CCS root level for always up-to-date code. Do NOT use `ccs config` during development as it uses the globally installed (outdated) version.
+
 ## UI Quality Gates (React Dashboard)
 
 **The ui/ directory has IDENTICAL quality gates to the main project.**

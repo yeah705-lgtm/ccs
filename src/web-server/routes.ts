@@ -644,8 +644,8 @@ apiRoutes.post('/accounts/default', (req: Request, res: Response): void => {
 /**
  * GET /api/health - Run health checks
  */
-apiRoutes.get('/health', (_req: Request, res: Response) => {
-  const report = runHealthChecks();
+apiRoutes.get('/health', async (_req: Request, res: Response) => {
+  const report = await runHealthChecks();
   res.json(report);
 });
 

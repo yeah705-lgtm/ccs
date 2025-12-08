@@ -4,22 +4,35 @@ import { toast } from 'sonner';
 interface HealthCheck {
   id: string;
   name: string;
-  status: 'ok' | 'warning' | 'error';
+  status: 'ok' | 'warning' | 'error' | 'info';
   message: string;
   details?: string;
+  fix?: string;
   fixable?: boolean;
+}
+
+interface HealthGroup {
+  id: string;
+  name: string;
+  icon: string;
+  checks: HealthCheck[];
 }
 
 interface HealthReport {
   timestamp: number;
+  version: string;
+  groups: HealthGroup[];
   checks: HealthCheck[];
   summary: {
     total: number;
     passed: number;
     warnings: number;
     errors: number;
+    info: number;
   };
 }
+
+export type { HealthCheck, HealthGroup, HealthReport };
 
 export function useHealth() {
   return useQuery<HealthReport>({

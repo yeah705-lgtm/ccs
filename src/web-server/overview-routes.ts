@@ -17,7 +17,7 @@ export const overviewRoutes = Router();
 /**
  * GET /api/overview
  */
-overviewRoutes.get('/', (_req: Request, res: Response) => {
+overviewRoutes.get('/', async (_req: Request, res: Response) => {
   try {
     const config = loadConfig();
 
@@ -33,7 +33,7 @@ overviewRoutes.get('/', (_req: Request, res: Response) => {
     const totalCliproxyCount = cliproxyVariantCount + authenticatedProviderCount;
 
     // Get quick health summary
-    const health = runHealthChecks();
+    const health = await runHealthChecks();
 
     res.json({
       version: getVersion(),
