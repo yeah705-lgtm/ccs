@@ -75,8 +75,14 @@ async function execClaudeWithProxy(
   const proxyPath = path.join(__dirname, 'glmt', 'glmt-proxy.js');
   const proxyArgs = verbose ? ['--verbose'] : [];
   // Use process.execPath for Windows compatibility (CVE-2024-27980)
+  // Pass environment variables to proxy subprocess (required for auth)
   const proxy = spawn(process.execPath, [proxyPath, ...proxyArgs], {
     stdio: ['ignore', 'pipe', verbose ? 'pipe' : 'inherit'],
+    env: {
+      ...process.env,
+      ANTHROPIC_AUTH_TOKEN: apiKey,
+      ANTHROPIC_BASE_URL: settings.env.ANTHROPIC_BASE_URL,
+    },
   });
 
   // 3. Wait for proxy ready signal (with timeout)
