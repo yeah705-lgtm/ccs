@@ -104,13 +104,24 @@ export function AccountsTable({ data, defaultAccount }: AccountsTableProps) {
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <TableHead key={header.id}>
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(header.column.columnDef.header, header.getContext())}
-                </TableHead>
-              ))}
+              {headerGroup.headers.map((header) => {
+                const widthClass =
+                  {
+                    name: 'w-[200px]',
+                    type: 'w-[100px]',
+                    created: 'w-[150px]',
+                    last_used: 'w-[150px]',
+                    actions: 'w-[120px]',
+                  }[header.id] || 'w-auto';
+
+                return (
+                  <TableHead key={header.id} className={widthClass}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                );
+              })}
             </TableRow>
           ))}
         </TableHeader>

@@ -8,12 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { ProfilesTable } from '@/components/profiles-table';
 import { ProfileDialog } from '@/components/profile-dialog';
+import { SettingsDialog } from '@/components/settings-dialog';
 import { useProfiles } from '@/hooks/use-profiles';
 import type { Profile } from '@/lib/api-client';
 
 export function ApiPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [settingsProfileName, setSettingsProfileName] = useState<string | null>(null);
   const { data, isLoading } = useProfiles();
 
   const handleEdit = (profile: Profile) => {
@@ -21,9 +24,19 @@ export function ApiPage() {
     setDialogOpen(true);
   };
 
+  const handleEditSettings = (profile: Profile) => {
+    setSettingsProfileName(profile.name);
+    setSettingsDialogOpen(true);
+  };
+
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setEditingProfile(null);
+  };
+
+  const handleCloseSettingsDialog = () => {
+    setSettingsDialogOpen(false);
+    setSettingsProfileName(null);
   };
 
   return (
@@ -44,10 +57,19 @@ export function ApiPage() {
       {isLoading ? (
         <div className="text-muted-foreground">Loading profiles...</div>
       ) : (
-        <ProfilesTable data={data?.profiles || []} onEdit={handleEdit} />
+        <ProfilesTable
+          data={data?.profiles || []}
+          onEdit={handleEdit}
+          onEditSettings={handleEditSettings}
+        />
       )}
 
       <ProfileDialog open={dialogOpen} onClose={handleCloseDialog} profile={editingProfile} />
+      <SettingsDialog
+        open={settingsDialogOpen}
+        onClose={handleCloseSettingsDialog}
+        profileName={settingsProfileName}
+      />
     </div>
   );
 }

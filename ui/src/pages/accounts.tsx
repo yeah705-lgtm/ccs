@@ -30,7 +30,7 @@ export function AccountsPage() {
         <p>
           Accounts are isolated Claude instances with separate sessions.
           <br />
-          Use <code className="bg-muted px-1 rounded">ccs login &lt;name&gt;</code> to add new
+          Use <code className="bg-muted px-1 rounded">ccs auth create &lt;name&gt;</code> to add new
           accounts via CLI.
         </p>
       </div>
