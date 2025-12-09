@@ -16,8 +16,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Plus, Check, X, User, ChevronDown, Star, Trash2, Sparkles } from 'lucide-react';
 import { CliproxyTable } from '@/components/cliproxy-table';
-import { CliproxyDialog } from '@/components/cliproxy-dialog';
 import { QuickSetupWizard } from '@/components/quick-setup-wizard';
+import { AddAccountDialog } from '@/components/add-account-dialog';
 import {
   useCliproxy,
   useCliproxyAuth,
@@ -85,10 +85,12 @@ function ProviderRow({
   status,
   setDefaultMutation,
   removeMutation,
+  onAddAccount,
 }: {
   status: AuthStatus;
   setDefaultMutation: ReturnType<typeof useSetDefaultAccount>;
   removeMutation: ReturnType<typeof useRemoveAccount>;
+  onAddAccount: () => void;
 }) {
   const accounts = status.accounts || [];
 
@@ -148,35 +150,22 @@ function ProviderRow({
       </div>
 
       <div className="flex items-center gap-2">
-        {!status.authenticated && (
-          <div className="text-xs font-mono bg-muted px-2 py-1 rounded text-muted-foreground select-all">
-            ccs {status.provider} --auth
-          </div>
-        )}
-        {status.authenticated && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 text-xs gap-1"
-            onClick={() => {
-              // This is a placeholder since we can't actually run the auth command from UI easily without a terminal
-              // But we can show the command to run
-              navigator.clipboard.writeText(`ccs ${status.provider} --auth`);
-            }}
-            title="Copy auth command"
-          >
-            <Plus className="w-3 h-3" />
-            Add Account
-          </Button>
-        )}
+        {/* Show Add Account button for all - opens dialog with instructions */}
+        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={onAddAccount}>
+          <Plus className="w-3 h-3" />
+          Add Account
+        </Button>
       </div>
     </div>
   );
 }
 
 export function CliproxyPage() {
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [addAccountProvider, setAddAccountProvider] = useState<{
+    provider: string;
+    displayName: string;
+  } | null>(null);
   const { data, isLoading } = useCliproxy();
   const { data: authData, isLoading: authLoading } = useCliproxyAuth();
   const setDefaultMutation = useSetDefaultAccount();
@@ -191,16 +180,10 @@ export function CliproxyPage() {
             Manage OAuth-based provider variants and multi-account configurations
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setWizardOpen(true)}>
-            <Sparkles className="w-4 h-4 mr-2" />
-            Quick Setup
-          </Button>
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Variant
-          </Button>
-        </div>
+        <Button onClick={() => setWizardOpen(true)}>
+          <Sparkles className="w-4 h-4 mr-2" />
+          Quick Setup
+        </Button>
       </div>
 
       {/* Built-in Profiles with Account Management */}
@@ -226,6 +209,12 @@ export function CliproxyPage() {
                     status={status}
                     setDefaultMutation={setDefaultMutation}
                     removeMutation={removeMutation}
+                    onAddAccount={() =>
+                      setAddAccountProvider({
+                        provider: status.provider,
+                        displayName: status.displayName,
+                      })
+                    }
                   />
                 ))}
               </div>
@@ -252,8 +241,13 @@ export function CliproxyPage() {
         )}
       </div>
 
-      <CliproxyDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
       <QuickSetupWizard open={wizardOpen} onClose={() => setWizardOpen(false)} />
+      <AddAccountDialog
+        open={addAccountProvider !== null}
+        onClose={() => setAddAccountProvider(null)}
+        provider={addAccountProvider?.provider || ''}
+        displayName={addAccountProvider?.displayName || ''}
+      />
     </div>
   );
 }
