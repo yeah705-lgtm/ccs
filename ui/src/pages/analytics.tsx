@@ -26,6 +26,7 @@ import {
   useRefreshUsage,
   useUsageStatus,
 } from '@/hooks/use-usage';
+import { getModelColor } from '@/lib/utils';
 
 type ViewMode = 'daily' | 'monthly' | 'sessions';
 
@@ -214,10 +215,7 @@ export function AnalyticsPage() {
                                   className="w-2.5 h-2.5 rounded-full shrink-0"
                                   style={{ backgroundColor: getModelColor(model.model) }}
                                 />
-                                <span
-                                  className="font-medium truncate max-w-[150px]"
-                                  title={model.model}
-                                >
+                                <span className="font-medium" title={model.model}>
                                   {model.model}
                                 </span>
                               </div>
@@ -274,29 +272,6 @@ export function AnalyticsPage() {
       </div>
     </div>
   );
-}
-
-// Helper function to generate consistent colors for models
-function getModelColor(model: string): string {
-  const colors = [
-    '#0080FF',
-    '#00C49F',
-    '#FFBB28',
-    '#FF8042',
-    '#8884D8',
-    '#82CA9D',
-    '#FFC658',
-    '#8DD1E1',
-    '#D084D0',
-    '#87D068',
-  ];
-
-  let hash = 0;
-  for (let i = 0; i < model.length; i++) {
-    hash = model.charCodeAt(i) + ((hash << 5) - hash);
-  }
-
-  return colors[Math.abs(hash) % colors.length];
 }
 
 export function AnalyticsSkeleton() {

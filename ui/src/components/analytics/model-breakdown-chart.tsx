@@ -9,7 +9,7 @@ import { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ModelUsage } from '@/hooks/use-usage';
-import { cn } from '@/lib/utils';
+import { cn, getModelColor } from '@/lib/utils';
 
 interface ModelBreakdownChartProps {
   data: ModelUsage[];
@@ -17,30 +17,17 @@ interface ModelBreakdownChartProps {
   className?: string;
 }
 
-const COLORS = [
-  '#0080FF',
-  '#00C49F',
-  '#FFBB28',
-  '#FF8042',
-  '#8884D8',
-  '#82CA9D',
-  '#FFC658',
-  '#8DD1E1',
-  '#D084D0',
-  '#87D068',
-];
-
 export function ModelBreakdownChart({ data, isLoading, className }: ModelBreakdownChartProps) {
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
 
-    return data.map((item, index) => ({
+    return data.map((item) => ({
       name: item.model,
       value: item.tokens,
       cost: item.cost,
       requests: item.requests,
       percentage: item.percentage,
-      fill: COLORS[index % COLORS.length],
+      fill: getModelColor(item.model),
     }));
   }, [data]);
 
