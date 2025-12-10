@@ -305,6 +305,38 @@ export function removeAccount(provider: CLIProxyProvider, accountId: string): bo
 }
 
 /**
+ * Rename an account's nickname
+ */
+export function renameAccount(
+  provider: CLIProxyProvider,
+  accountId: string,
+  newNickname: string
+): boolean {
+  const validationError = validateNickname(newNickname);
+  if (validationError) {
+    throw new Error(validationError);
+  }
+
+  const registry = loadAccountsRegistry();
+  const providerAccounts = registry.providers[provider];
+
+  if (!providerAccounts?.accounts[accountId]) {
+    return false;
+  }
+
+  // Check if nickname is already used by another account
+  for (const [id, account] of Object.entries(providerAccounts.accounts)) {
+    if (id !== accountId && account.nickname?.toLowerCase() === newNickname.toLowerCase()) {
+      throw new Error(`Nickname "${newNickname}" is already used by another account`);
+    }
+  }
+
+  providerAccounts.accounts[accountId].nickname = newNickname;
+  saveAccountsRegistry(registry);
+  return true;
+}
+
+/**
  * Update last used timestamp for an account
  */
 export function touchAccount(provider: CLIProxyProvider, accountId: string): void {

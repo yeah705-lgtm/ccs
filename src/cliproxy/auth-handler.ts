@@ -435,10 +435,16 @@ export function clearAuth(provider: CLIProxyProvider): boolean {
  */
 export async function triggerOAuth(
   provider: CLIProxyProvider,
-  options: { verbose?: boolean; headless?: boolean; account?: string; add?: boolean } = {}
+  options: {
+    verbose?: boolean;
+    headless?: boolean;
+    account?: string;
+    add?: boolean;
+    nickname?: string;
+  } = {}
 ): Promise<AccountInfo | null> {
   const oauthConfig = getOAuthConfig(provider);
-  const { verbose = false, add = false } = options;
+  const { verbose = false, add = false, nickname } = options;
 
   // Auto-detect headless if not explicitly set
   const headless = options.headless ?? isHeadlessEnvironment();
@@ -615,7 +621,7 @@ export async function triggerOAuth(
           console.log('[OK] Authentication successful');
 
           // Register the account in accounts registry
-          const account = registerAccountFromToken(provider, tokenDir);
+          const account = registerAccountFromToken(provider, tokenDir, nickname);
           resolve(account);
         } else {
           if (!headless) spinner.fail('Authentication incomplete');
@@ -658,10 +664,14 @@ export async function triggerOAuth(
 /**
  * Register account from newly created token file
  * Scans auth directory for new token and extracts email
+ * @param provider - The CLIProxy provider
+ * @param tokenDir - Directory containing token files
+ * @param nickname - Optional nickname (uses auto-generated from email if not provided)
  */
 function registerAccountFromToken(
   provider: CLIProxyProvider,
-  tokenDir: string
+  tokenDir: string,
+  nickname?: string
 ): AccountInfo | null {
   try {
     const files = fs.readdirSync(tokenDir);
@@ -692,8 +702,8 @@ function registerAccountFromToken(
     const data = JSON.parse(content);
     const email = data.email || undefined;
 
-    // Register the account with auto-generated nickname
-    return registerAccount(provider, newestFile, email, generateNickname(email));
+    // Register the account (use provided nickname or auto-generate from email)
+    return registerAccount(provider, newestFile, email, nickname || generateNickname(email));
   } catch {
     return null;
   }

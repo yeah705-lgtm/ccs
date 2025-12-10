@@ -33,6 +33,8 @@ import {
   getProviderAccounts,
   setDefaultAccount,
   touchAccount,
+  renameAccount,
+  getDefaultAccount,
 } from './account-manager';
 
 /** Default executor configuration */
@@ -139,6 +141,13 @@ export async function execClaudeWithCLIProxy(
     useAccount = args[useIdx + 1];
   }
 
+  // Parse --nickname <name> flag
+  let setNickname: string | undefined;
+  const nicknameIdx = args.indexOf('--nickname');
+  if (nicknameIdx !== -1 && args[nicknameIdx + 1] && !args[nicknameIdx + 1].startsWith('-')) {
+    setNickname = args[nicknameIdx + 1];
+  }
+
   // Handle --accounts: list accounts and exit
   if (showAccounts) {
     const accounts = getProviderAccounts(provider);
@@ -177,6 +186,29 @@ export async function execClaudeWithCLIProxy(
     console.log(`[OK] Switched to account: ${account.nickname || account.email || account.id}`);
   }
 
+  // Handle --nickname: rename account and exit (unless used with --auth --add)
+  if (setNickname && !addAccount) {
+    const defaultAccount = getDefaultAccount(provider);
+    if (!defaultAccount) {
+      console.error(`[X] No account found for ${providerConfig.displayName}`);
+      console.error(`    Run "ccs ${provider} --auth" to add an account first`);
+      process.exit(1);
+    }
+    try {
+      const success = renameAccount(provider, defaultAccount.id, setNickname);
+      if (success) {
+        console.log(`[OK] Renamed account to: ${setNickname}`);
+      } else {
+        console.error(`[X] Failed to rename account`);
+        process.exit(1);
+      }
+    } catch (err) {
+      console.error(`[X] ${err instanceof Error ? err.message : 'Failed to rename account'}`);
+      process.exit(1);
+    }
+    process.exit(0);
+  }
+
   // Handle --config: configure model selection and exit
   // Pass customSettingsPath for CLIProxy variants to save to correct file
   if (forceConfig && supportsModelConfig(provider)) {
@@ -206,6 +238,7 @@ export async function execClaudeWithCLIProxy(
         verbose,
         add: addAccount,
         ...(forceHeadless ? { headless: true } : {}),
+        ...(setNickname ? { nickname: setNickname } : {}),
       });
       if (!authSuccess) {
         throw new Error(`Authentication required for ${providerConfig.displayName}`);
@@ -314,12 +347,21 @@ export async function execClaudeWithCLIProxy(
   log(`Claude env: ANTHROPIC_MODEL=${envVars.ANTHROPIC_MODEL}`);
 
   // Filter out CCS-specific flags before passing to Claude CLI
-  const ccsFlags = ['--auth', '--headless', '--logout', '--config', '--add', '--accounts', '--use'];
+  const ccsFlags = [
+    '--auth',
+    '--headless',
+    '--logout',
+    '--config',
+    '--add',
+    '--accounts',
+    '--use',
+    '--nickname',
+  ];
   const claudeArgs = args.filter((arg, idx) => {
     // Filter out CCS flags
     if (ccsFlags.includes(arg)) return false;
-    // Filter out value after --use
-    if (args[idx - 1] === '--use') return false;
+    // Filter out value after --use or --nickname
+    if (args[idx - 1] === '--use' || args[idx - 1] === '--nickname') return false;
     return true;
   });
 
