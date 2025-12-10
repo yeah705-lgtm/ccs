@@ -1,3 +1,12 @@
+# [5.14.0](https://github.com/kaitranntt/ccs/compare/v5.13.0...v5.14.0) (2025-12-10)
+
+
+### Features
+
+* **ui:** replace anomaly alert badge with usage insights card ([824c3ba](https://github.com/kaitranntt/ccs/commit/824c3baecfb7795f848909240b95bfeb9e6c1b87))
+* **usage-analytics:** implement token cost breakdown and anomaly detection ([d81a5e6](https://github.com/kaitranntt/ccs/commit/d81a5e6266731f203c3de1100362fb0822156a39))
+* **usage:** add internal data aggregation and cost tracking ([49b4065](https://github.com/kaitranntt/ccs/commit/49b4065186bc223af1b589395808e962b3cf6bb3))
+
 # [5.13.0](https://github.com/kaitranntt/ccs/compare/v5.12.1...v5.13.0) (2025-12-09)
 
 
