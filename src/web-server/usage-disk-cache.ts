@@ -11,7 +11,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import type { DailyUsage, MonthlyUsage, SessionUsage } from 'better-ccusage/data-loader';
+import type { DailyUsage, MonthlyUsage, SessionUsage } from './usage-types';
 
 // Cache configuration
 const CCS_DIR = path.join(os.homedir(), '.ccs');
@@ -29,7 +29,8 @@ export interface UsageDiskCache {
 }
 
 // Current cache version - increment to invalidate old caches
-const CACHE_VERSION = 1;
+// v2: Updated model pricing (Opus 4.5: $5/$25, Gemini 3, GLM, Kimi, etc.)
+const CACHE_VERSION = 2;
 
 /**
  * Ensure ~/.ccs directory exists

@@ -1,7 +1,7 @@
 /**
  * Usage Analytics API Routes
  *
- * Provides REST endpoints for Claude Code usage analytics using better-ccusage library.
+ * Provides REST endpoints for Claude Code usage analytics.
  * Supports daily, monthly, and session-based usage data aggregation.
  *
  * Performance optimizations:
@@ -19,10 +19,9 @@ import {
   loadDailyUsageData,
   loadMonthlyUsageData,
   loadSessionData,
-  type DailyUsage,
-  type MonthlyUsage,
-  type SessionUsage,
-} from 'better-ccusage/data-loader';
+  loadAllUsageData,
+} from './data-aggregator';
+import type { DailyUsage, MonthlyUsage, SessionUsage } from './usage-types';
 import {
   readDiskCache,
   writeDiskCache,
@@ -65,39 +64,23 @@ function getInstancePaths(): string[] {
 }
 
 /**
- * Load usage data from a specific instance by temporarily setting CLAUDE_CONFIG_DIR
- * Returns empty arrays if instance has no usage data
+ * Load usage data from a specific instance
+ * Uses custom JSONL parser with instance's projects directory
  */
 async function loadInstanceData(instancePath: string): Promise<{
   daily: DailyUsage[];
   monthly: MonthlyUsage[];
   session: SessionUsage[];
 }> {
-  const originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
-
   try {
-    // Set CLAUDE_CONFIG_DIR to instance path for better-ccusage to read from
-    process.env.CLAUDE_CONFIG_DIR = instancePath;
-
-    const [daily, monthly, session] = await Promise.all([
-      loadDailyUsageData() as Promise<DailyUsage[]>,
-      loadMonthlyUsageData() as Promise<MonthlyUsage[]>,
-      loadSessionData() as Promise<SessionUsage[]>,
-    ]);
-
-    return { daily, monthly, session };
+    const projectsDir = path.join(instancePath, 'projects');
+    const result = await loadAllUsageData({ projectsDir });
+    return result;
   } catch (_err) {
     // Instance may have no usage data - that's OK
     const instanceName = path.basename(instancePath);
     console.log(`[i] No usage data in instance: ${instanceName}`);
     return { daily: [], monthly: [], session: [] };
-  } finally {
-    // Restore original env var
-    if (originalConfigDir === undefined) {
-      delete process.env.CLAUDE_CONFIG_DIR;
-    } else {
-      process.env.CLAUDE_CONFIG_DIR = originalConfigDir;
-    }
   }
 }
 
@@ -328,21 +311,21 @@ async function getCachedData<T>(key: string, ttl: number, loader: () => Promise<
 /** Cached loader for daily usage data */
 async function getCachedDailyData(): Promise<DailyUsage[]> {
   return getCachedData('daily', CACHE_TTL.daily, async () => {
-    return (await loadDailyUsageData()) as DailyUsage[];
+    return await loadDailyUsageData();
   });
 }
 
 /** Cached loader for monthly usage data */
 async function getCachedMonthlyData(): Promise<MonthlyUsage[]> {
   return getCachedData('monthly', CACHE_TTL.monthly, async () => {
-    return (await loadMonthlyUsageData()) as MonthlyUsage[];
+    return await loadMonthlyUsageData();
   });
 }
 
 /** Cached loader for session data */
 async function getCachedSessionData(): Promise<SessionUsage[]> {
   return getCachedData('session', CACHE_TTL.session, async () => {
-    return (await loadSessionData()) as SessionUsage[];
+    return await loadSessionData();
   });
 }
 
@@ -360,7 +343,7 @@ export function clearUsageCache(): void {
 let isRefreshing = false;
 
 /**
- * Load fresh data from better-ccusage and update both memory and disk caches
+ * Load fresh data and update both memory and disk caches
  * Aggregates data from default ~/.claude/ AND all CCS instances
  */
 async function refreshFromSource(): Promise<{
@@ -368,12 +351,8 @@ async function refreshFromSource(): Promise<{
   monthly: MonthlyUsage[];
   session: SessionUsage[];
 }> {
-  // Load default data (from ~/.claude/ or current CLAUDE_CONFIG_DIR)
-  const defaultData = await Promise.all([
-    loadDailyUsageData() as Promise<DailyUsage[]>,
-    loadMonthlyUsageData() as Promise<MonthlyUsage[]>,
-    loadSessionData() as Promise<SessionUsage[]>,
-  ]).then(([daily, monthly, session]) => ({ daily, monthly, session }));
+  // Load default data (from ~/.claude/projects/ or CLAUDE_CONFIG_DIR)
+  const defaultData = await loadAllUsageData();
 
   // Load data from all CCS instances sequentially (to avoid env var race condition)
   const instancePaths = getInstancePaths();
