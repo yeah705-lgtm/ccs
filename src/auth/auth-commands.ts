@@ -6,6 +6,10 @@
  *
  * Login-per-profile model: Each profile is an isolated Claude instance.
  * Users login directly in each instance (no credential copying).
+ *
+ * Supports dual-mode configuration:
+ * - Unified YAML format (config.yaml) when CCS_UNIFIED_CONFIG=1 or config.yaml exists
+ * - Legacy JSON format (profiles.json) as fallback
  */
 
 import { spawn, ChildProcess } from 'child_process';
@@ -29,6 +33,8 @@ import {
 import { detectClaudeCli } from '../utils/claude-detector';
 import { InteractivePrompt } from '../utils/prompt';
 import packageJson from '../../package.json';
+import { hasUnifiedConfig } from '../config/unified-config-loader';
+import { isUnifiedConfigEnabled } from '../config/feature-flags';
 
 interface AuthCommandArgs {
   profileName?: string;
@@ -64,6 +70,13 @@ class AuthCommands {
   constructor() {
     this.registry = new ProfileRegistry();
     this.instanceMgr = new InstanceManager();
+  }
+
+  /**
+   * Check if unified config mode is active
+   */
+  private isUnifiedMode(): boolean {
+    return hasUnifiedConfig() || isUnifiedConfigEnabled();
   }
 
   /**
@@ -152,8 +165,10 @@ class AuthCommands {
       process.exit(1);
     }
 
-    // Check if profile already exists
-    if (!force && this.registry.hasProfile(profileName)) {
+    // Check if profile already exists (check both legacy and unified)
+    const existsLegacy = this.registry.hasProfile(profileName);
+    const existsUnified = this.registry.hasAccountUnified(profileName);
+    if (!force && (existsLegacy || existsUnified)) {
       console.log(fail(`Profile already exists: ${profileName}`));
       console.log(`    Use ${color('--force', 'command')} to overwrite`);
       process.exit(1);
@@ -164,15 +179,25 @@ class AuthCommands {
       console.log(info(`Creating profile: ${profileName}`));
       const instancePath = this.instanceMgr.ensureInstance(profileName);
 
-      // Create/update profile entry
-      if (this.registry.hasProfile(profileName)) {
-        this.registry.updateProfile(profileName, {
-          type: 'account',
-        });
+      // Create/update profile entry based on config mode
+      if (this.isUnifiedMode()) {
+        // Use unified config (config.yaml)
+        if (existsUnified) {
+          this.registry.touchAccountUnified(profileName);
+        } else {
+          this.registry.createAccountUnified(profileName);
+        }
       } else {
-        this.registry.createProfile(profileName, {
-          type: 'account',
-        });
+        // Use legacy profiles.json
+        if (existsLegacy) {
+          this.registry.updateProfile(profileName, {
+            type: 'account',
+          });
+        } else {
+          this.registry.createProfile(profileName, {
+            type: 'account',
+          });
+        }
       }
 
       console.log(info(`Instance directory: ${instancePath}`));
@@ -458,7 +483,11 @@ class AuthCommands {
       process.exit(1);
     }
 
-    if (!this.registry.hasProfile(profileName)) {
+    // Check existence in both legacy and unified
+    const existsLegacy = this.registry.hasProfile(profileName);
+    const existsUnified = this.registry.hasAccountUnified(profileName);
+
+    if (!existsLegacy && !existsUnified) {
       console.log(fail(`Profile not found: ${profileName}`));
       process.exit(1);
     }
@@ -501,8 +530,13 @@ class AuthCommands {
       // Delete instance
       this.instanceMgr.deleteInstance(profileName);
 
-      // Delete profile
-      this.registry.deleteProfile(profileName);
+      // Delete profile from appropriate config
+      if (this.isUnifiedMode() && existsUnified) {
+        this.registry.removeAccountUnified(profileName);
+      }
+      if (existsLegacy) {
+        this.registry.deleteProfile(profileName);
+      }
 
       console.log(ok(`Profile removed: ${profileName}`));
       console.log('');
@@ -527,7 +561,12 @@ class AuthCommands {
     }
 
     try {
-      this.registry.setDefaultProfile(profileName);
+      // Use unified or legacy based on config mode
+      if (this.isUnifiedMode()) {
+        this.registry.setDefaultUnified(profileName);
+      } else {
+        this.registry.setDefaultProfile(profileName);
+      }
 
       console.log(ok(`Default profile set: ${profileName}`));
       console.log('');

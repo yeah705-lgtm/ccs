@@ -2,6 +2,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { ProfileMetadata } from '../types';
+import {
+  hasUnifiedConfig,
+  loadOrCreateUnifiedConfig,
+  saveUnifiedConfig,
+} from '../config/unified-config-loader';
+import { isUnifiedConfigEnabled } from '../config/feature-flags';
 
 /**
  * Profile Registry (Simplified)
@@ -39,6 +45,13 @@ export class ProfileRegistry {
 
   constructor() {
     this.profilesPath = path.join(os.homedir(), '.ccs', 'profiles.json');
+  }
+
+  /**
+   * Check if unified config mode is active
+   */
+  private isUnifiedMode(): boolean {
+    return hasUnifiedConfig() || isUnifiedConfigEnabled();
   }
 
   /**
@@ -219,6 +232,95 @@ export class ProfileRegistry {
     this.updateProfile(name, {
       last_used: new Date().toISOString(),
     });
+  }
+
+  // ==========================================
+  // Unified Config Methods
+  // ==========================================
+
+  /**
+   * Create account in unified config (config.yaml)
+   */
+  createAccountUnified(name: string): void {
+    const config = loadOrCreateUnifiedConfig();
+    if (config.accounts[name]) {
+      throw new Error(`Account already exists: ${name}`);
+    }
+    config.accounts[name] = {
+      created: new Date().toISOString(),
+      last_used: null,
+    };
+    saveUnifiedConfig(config);
+  }
+
+  /**
+   * Remove account from unified config
+   */
+  removeAccountUnified(name: string): void {
+    const config = loadOrCreateUnifiedConfig();
+    if (!config.accounts[name]) {
+      throw new Error(`Account not found: ${name}`);
+    }
+    delete config.accounts[name];
+    // Clear default if it was the deleted account
+    if (config.default === name) {
+      config.default = undefined;
+    }
+    saveUnifiedConfig(config);
+  }
+
+  /**
+   * Set default profile in unified config
+   */
+  setDefaultUnified(name: string): void {
+    const config = loadOrCreateUnifiedConfig();
+    // Check if exists in accounts, profiles, or cliproxy variants
+    const exists =
+      config.accounts[name] || config.profiles[name] || config.cliproxy?.variants?.[name];
+    if (!exists) {
+      throw new Error(`Profile not found: ${name}`);
+    }
+    config.default = name;
+    saveUnifiedConfig(config);
+  }
+
+  /**
+   * Check if account exists in unified config
+   */
+  hasAccountUnified(name: string): boolean {
+    if (!this.isUnifiedMode()) return false;
+    const config = loadOrCreateUnifiedConfig();
+    return !!config.accounts[name];
+  }
+
+  /**
+   * Get all accounts from unified config
+   */
+  getAllAccountsUnified(): Record<string, { created: string; last_used: string | null }> {
+    if (!this.isUnifiedMode()) return {};
+    const config = loadOrCreateUnifiedConfig();
+    return config.accounts;
+  }
+
+  /**
+   * Get default from unified config
+   */
+  getDefaultUnified(): string | undefined {
+    if (!this.isUnifiedMode()) return undefined;
+    const config = loadOrCreateUnifiedConfig();
+    return config.default;
+  }
+
+  /**
+   * Update account last_used in unified config
+   */
+  touchAccountUnified(name: string): void {
+    const config = loadOrCreateUnifiedConfig();
+    if (!config.accounts[name]) {
+      throw new Error(`Account not found: ${name}`);
+    }
+    config.accounts[name].last_used = new Date().toISOString();
+    saveUnifiedConfig(config);
   }
 }
 

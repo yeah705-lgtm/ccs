@@ -90,6 +90,26 @@ export interface Account {
   last_used?: string | null;
 }
 
+// Unified config types
+export interface ConfigFormat {
+  format: 'yaml' | 'json' | 'none';
+  migrationNeeded: boolean;
+  backups: string[];
+}
+
+export interface MigrationResult {
+  success: boolean;
+  backupPath?: string;
+  error?: string;
+  migratedFiles: string[];
+  warnings: string[];
+}
+
+export interface SecretsExists {
+  exists: boolean;
+  keys: string[];
+}
+
 // API
 export const api = {
   profiles: {
@@ -141,5 +161,30 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ name }),
       }),
+  },
+  // Unified config API
+  config: {
+    format: () => request<ConfigFormat>('/config/format'),
+    get: () => request<Record<string, unknown>>('/config'),
+    update: (config: Record<string, unknown>) =>
+      request<{ success: boolean }>('/config', {
+        method: 'PUT',
+        body: JSON.stringify(config),
+      }),
+    migrate: (dryRun = false) =>
+      request<MigrationResult>(`/config/migrate?dryRun=${dryRun}`, { method: 'POST' }),
+    rollback: (backupPath: string) =>
+      request<{ success: boolean }>('/config/rollback', {
+        method: 'POST',
+        body: JSON.stringify({ backupPath }),
+      }),
+  },
+  secrets: {
+    update: (profile: string, secrets: Record<string, string>) =>
+      request<{ success: boolean }>(`/secrets/${profile}`, {
+        method: 'PUT',
+        body: JSON.stringify(secrets),
+      }),
+    exists: (profile: string) => request<SecretsExists>(`/secrets/${profile}/exists`),
   },
 };

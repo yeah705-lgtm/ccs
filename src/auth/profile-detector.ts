@@ -3,6 +3,10 @@
  *
  * Determines profile type (settings-based vs account-based) for routing.
  * Priority: settings-based profiles (glm/kimi) checked FIRST for backward compatibility.
+ *
+ * Supports dual-mode configuration:
+ * - Unified YAML format (config.yaml) when CCS_UNIFIED_CONFIG=1 or config.yaml exists
+ * - Legacy JSON format (config.json, profiles.json) as fallback
  */
 
 import * as fs from 'fs';
@@ -10,6 +14,10 @@ import * as path from 'path';
 import * as os from 'os';
 import { findSimilarStrings } from '../utils/helpers';
 import { Config, Settings, ProfileMetadata } from '../types';
+import { UnifiedConfig } from '../config/unified-config-types';
+import { hasUnifiedConfig, loadUnifiedConfig } from '../config/unified-config-loader';
+import { getProfileSecrets } from '../config/secrets-manager';
+import { isUnifiedConfigEnabled } from '../config/feature-flags';
 
 export type ProfileType = 'settings' | 'account' | 'cliproxy' | 'default';
 
@@ -25,6 +33,8 @@ export interface ProfileDetectionResult {
   message?: string;
   /** For cliproxy variants: the underlying provider (gemini, codex, agy, qwen) */
   provider?: CLIProxyProfileName;
+  /** For unified config profiles: merged env vars (config + secrets) */
+  env?: Record<string, string>;
 }
 
 export interface AllProfiles {
@@ -49,6 +59,70 @@ class ProfileDetector {
   constructor() {
     this.configPath = path.join(os.homedir(), '.ccs', 'config.json');
     this.profilesPath = path.join(os.homedir(), '.ccs', 'profiles.json');
+  }
+
+  /**
+   * Check if unified config mode is active.
+   * Returns true if config.yaml exists or CCS_UNIFIED_CONFIG=1.
+   */
+  private isUnifiedMode(): boolean {
+    return hasUnifiedConfig() || isUnifiedConfigEnabled();
+  }
+
+  /**
+   * Load unified config if available.
+   * Returns null if not in unified mode or load fails.
+   */
+  private readUnifiedConfig(): UnifiedConfig | null {
+    if (!this.isUnifiedMode()) return null;
+    return loadUnifiedConfig();
+  }
+
+  /**
+   * Resolve profile from unified config format.
+   * Returns null if profile not found in unified config.
+   */
+  private resolveFromUnifiedConfig(
+    profileName: string,
+    config: UnifiedConfig
+  ): ProfileDetectionResult | null {
+    // Check CLIProxy variants first
+    if (config.cliproxy?.variants?.[profileName]) {
+      const variant = config.cliproxy.variants[profileName];
+      return {
+        type: 'cliproxy',
+        name: profileName,
+        provider: variant.provider as CLIProxyProfileName,
+      };
+    }
+
+    // Check API profiles
+    if (config.profiles?.[profileName]) {
+      const profile = config.profiles[profileName];
+      // Merge with secrets
+      const secrets = getProfileSecrets(profileName);
+      return {
+        type: 'settings',
+        name: profileName,
+        env: { ...profile.env, ...secrets },
+      };
+    }
+
+    // Check accounts
+    if (config.accounts?.[profileName]) {
+      const account = config.accounts[profileName];
+      return {
+        type: 'account',
+        name: profileName,
+        profile: {
+          type: 'account',
+          created: account.created,
+          last_used: account.last_used,
+        },
+      };
+    }
+
+    return null;
   }
 
   /**
@@ -90,9 +164,10 @@ class ProfileDetector {
    *
    * Priority order:
    * 0. Hardcoded CLIProxy profiles (gemini, codex, agy, qwen)
-   * 1. User-defined CLIProxy variants (config.cliproxy section)
-   * 2. Settings-based profiles (config.profiles section)
-   * 3. Account-based profiles (profiles.json)
+   * 1. Unified config profiles (if config.yaml exists or CCS_UNIFIED_CONFIG=1)
+   * 2. User-defined CLIProxy variants (config.cliproxy section) [legacy]
+   * 3. Settings-based profiles (config.profiles section) [legacy]
+   * 4. Account-based profiles (profiles.json) [legacy]
    */
   detectProfileType(profileName: string | null | undefined): ProfileDetectionResult {
     // Special case: 'default' means use default profile
@@ -109,7 +184,15 @@ class ProfileDetector {
       };
     }
 
-    // Priority 1: Check user-defined CLIProxy variants (config.cliproxy section)
+    // Priority 1: Try unified config if available
+    const unifiedConfig = this.readUnifiedConfig();
+    if (unifiedConfig) {
+      const result = this.resolveFromUnifiedConfig(profileName, unifiedConfig);
+      if (result) return result;
+      // Fall through to legacy if not found in unified config
+    }
+
+    // Priority 2: Check user-defined CLIProxy variants (config.cliproxy section)
     const config = this.readConfig();
 
     if (config.cliproxy && config.cliproxy[profileName]) {
@@ -122,7 +205,7 @@ class ProfileDetector {
       };
     }
 
-    // Priority 2: Check settings-based profiles (glm, kimi) - BACKWARD COMPATIBILITY
+    // Priority 3: Check settings-based profiles (glm, kimi) - LEGACY FALLBACK
     if (config.profiles && config.profiles[profileName]) {
       return {
         type: 'settings',
@@ -131,7 +214,7 @@ class ProfileDetector {
       };
     }
 
-    // Priority 3: Check account-based profiles (work, personal)
+    // Priority 4: Check account-based profiles (work, personal) - LEGACY FALLBACK
     const profiles = this.readProfiles();
 
     if (profiles.profiles && profiles.profiles[profileName]) {
@@ -163,7 +246,14 @@ class ProfileDetector {
    * Resolve default profile
    */
   private resolveDefaultProfile(): ProfileDetectionResult {
-    // Check if account-based default exists
+    // Check unified config first
+    const unifiedConfig = this.readUnifiedConfig();
+    if (unifiedConfig?.default) {
+      const result = this.resolveFromUnifiedConfig(unifiedConfig.default, unifiedConfig);
+      if (result) return result;
+    }
+
+    // Check if account-based default exists (legacy)
     const profiles = this.readProfiles();
 
     if (profiles.default && profiles.profiles[profiles.default]) {
@@ -216,6 +306,43 @@ class ProfileDetector {
       lines.push(`  - ${name}`);
     });
 
+    // Check unified config first
+    const unifiedConfig = this.readUnifiedConfig();
+    if (unifiedConfig) {
+      // CLIProxy variants from unified config
+      const variants = Object.keys(unifiedConfig.cliproxy?.variants || {});
+      if (variants.length > 0) {
+        lines.push('CLIProxy variants (unified config):');
+        variants.forEach((name) => {
+          const variant = unifiedConfig.cliproxy?.variants[name];
+          lines.push(`  - ${name} (${variant?.provider || 'unknown'})`);
+        });
+      }
+
+      // API profiles from unified config
+      const apiProfiles = Object.keys(unifiedConfig.profiles || {});
+      if (apiProfiles.length > 0) {
+        lines.push('API profiles (unified config):');
+        apiProfiles.forEach((name) => {
+          const isDefault = name === unifiedConfig.default;
+          lines.push(`  - ${name}${isDefault ? ' [DEFAULT]' : ''}`);
+        });
+      }
+
+      // Account profiles from unified config
+      const accounts = Object.keys(unifiedConfig.accounts || {});
+      if (accounts.length > 0) {
+        lines.push('Account profiles (unified config):');
+        accounts.forEach((name) => {
+          const isDefault = name === unifiedConfig.default;
+          lines.push(`  - ${name}${isDefault ? ' [DEFAULT]' : ''}`);
+        });
+      }
+
+      return lines.join('\n');
+    }
+
+    // Fall back to legacy config display
     // CLIProxy variants (user-defined)
     const config = this.readConfig();
     const cliproxyVariants = Object.keys(config.cliproxy || {});
@@ -270,6 +397,19 @@ class ProfileDetector {
    * Get all available profile names
    */
   getAllProfiles(): AllProfiles & { cliproxy: string[]; cliproxyVariants: string[] } {
+    // Check unified config first
+    const unifiedConfig = this.readUnifiedConfig();
+    if (unifiedConfig) {
+      return {
+        settings: Object.keys(unifiedConfig.profiles || {}),
+        accounts: Object.keys(unifiedConfig.accounts || {}),
+        cliproxy: [...CLIPROXY_PROFILES],
+        cliproxyVariants: Object.keys(unifiedConfig.cliproxy?.variants || {}),
+        default: unifiedConfig.default,
+      };
+    }
+
+    // Fall back to legacy config
     const config = this.readConfig();
     const profiles = this.readProfiles();
 

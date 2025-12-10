@@ -3,6 +3,10 @@
  *
  * Manages CCS API profiles for custom API providers.
  * Commands: create, list, remove
+ *
+ * Supports dual-mode configuration:
+ * - Unified YAML format (config.yaml) when CCS_UNIFIED_CONFIG=1 or config.yaml exists
+ * - Legacy JSON format (config.json, *.settings.json) as fallback
  */
 
 import * as fs from 'fs';
@@ -22,6 +26,14 @@ import {
 } from '../utils/ui';
 import { InteractivePrompt } from '../utils/prompt';
 import { getCcsDir, getConfigPath, loadConfig } from '../utils/config-manager';
+import { isReservedName } from '../config/reserved-names';
+import {
+  hasUnifiedConfig,
+  loadOrCreateUnifiedConfig,
+  saveUnifiedConfig,
+} from '../config/unified-config-loader';
+import { setProfileSecrets, deleteAllProfileSecrets } from '../config/secrets-manager';
+import { isUnifiedConfigEnabled } from '../config/feature-flags';
 
 interface ApiCommandArgs {
   name?: string;
@@ -72,9 +84,8 @@ function validateApiName(name: string): string | null {
   if (name.length > 32) {
     return 'API name must be 32 characters or less';
   }
-  // Reserved names
-  const reserved = ['default', 'auth', 'api', 'doctor', 'sync', 'update', 'help', 'version'];
-  if (reserved.includes(name.toLowerCase())) {
+  // Use centralized reserved names list
+  if (isReservedName(name)) {
     return `'${name}' is a reserved name`;
   }
   return null;
@@ -96,10 +107,21 @@ function validateUrl(url: string): string | null {
 }
 
 /**
- * Check if API profile already exists in config.json
+ * Check if unified config mode is active
+ */
+function isUnifiedMode(): boolean {
+  return hasUnifiedConfig() || isUnifiedConfigEnabled();
+}
+
+/**
+ * Check if API profile already exists in config
  */
 function apiExists(name: string): boolean {
   try {
+    if (isUnifiedMode()) {
+      const config = loadOrCreateUnifiedConfig();
+      return name in config.profiles;
+    }
     const config = loadConfig();
     return name in config.profiles;
   } catch {
@@ -158,6 +180,60 @@ function updateConfig(name: string, _settingsPath: string): void {
   const tempPath = configPath + '.tmp';
   fs.writeFileSync(tempPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
   fs.renameSync(tempPath, configPath);
+}
+
+/**
+ * Create API profile in unified config (config.yaml + secrets.yaml)
+ */
+function createApiProfileUnified(
+  name: string,
+  baseUrl: string,
+  apiKey: string,
+  model: string
+): void {
+  const config = loadOrCreateUnifiedConfig();
+
+  // Add profile to config.yaml (non-sensitive data only)
+  config.profiles[name] = {
+    type: 'api',
+    env: {
+      ANTHROPIC_BASE_URL: baseUrl,
+      ANTHROPIC_MODEL: model,
+      ANTHROPIC_DEFAULT_OPUS_MODEL: model,
+      ANTHROPIC_DEFAULT_SONNET_MODEL: model,
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: model,
+    },
+  };
+
+  saveUnifiedConfig(config);
+
+  // Store API key in secrets.yaml (sensitive data)
+  setProfileSecrets(name, {
+    ANTHROPIC_AUTH_TOKEN: apiKey,
+  });
+}
+
+/**
+ * Remove API profile from unified config
+ */
+function removeApiProfileUnified(name: string): void {
+  const config = loadOrCreateUnifiedConfig();
+
+  if (!config.profiles[name]) {
+    throw new Error(`API profile not found: ${name}`);
+  }
+
+  delete config.profiles[name];
+
+  // Clear default if it was the deleted profile
+  if (config.default === name) {
+    config.default = undefined;
+  }
+
+  saveUnifiedConfig(config);
+
+  // Remove secrets
+  deleteAllProfileSecrets(name);
 }
 
 /**
@@ -230,19 +306,35 @@ async function handleCreate(args: string[]): Promise<void> {
   console.log(info('Creating API profile...'));
 
   try {
-    const settingsPath = createSettingsFile(name, baseUrl, apiKey, model);
-    updateConfig(name, settingsPath);
-
-    console.log('');
-    console.log(
-      infoBox(
-        `API:      ${name}\n` +
-          `Settings: ~/.ccs/${name}.settings.json\n` +
-          `Base URL: ${baseUrl}\n` +
-          `Model:    ${model}`,
-        'API Profile Created'
-      )
-    );
+    if (isUnifiedMode()) {
+      // Use unified config format
+      createApiProfileUnified(name, baseUrl, apiKey, model);
+      console.log('');
+      console.log(
+        infoBox(
+          `API:      ${name}\n` +
+            `Config:   ~/.ccs/config.yaml\n` +
+            `Secrets:  ~/.ccs/secrets.yaml\n` +
+            `Base URL: ${baseUrl}\n` +
+            `Model:    ${model}`,
+          'API Profile Created (Unified Config)'
+        )
+      );
+    } else {
+      // Use legacy JSON format
+      const settingsPath = createSettingsFile(name, baseUrl, apiKey, model);
+      updateConfig(name, settingsPath);
+      console.log('');
+      console.log(
+        infoBox(
+          `API:      ${name}\n` +
+            `Settings: ~/.ccs/${name}.settings.json\n` +
+            `Base URL: ${baseUrl}\n` +
+            `Model:    ${model}`,
+          'API Profile Created'
+        )
+      );
+    }
     console.log('');
     console.log(header('Usage'));
     console.log(`  ${color(`ccs ${name} "your prompt"`, 'command')}`);
@@ -258,6 +350,14 @@ async function handleCreate(args: string[]): Promise<void> {
  */
 function isApiConfigured(apiName: string): boolean {
   try {
+    if (isUnifiedMode()) {
+      // Check secrets.yaml for unified config
+      const { getProfileSecrets } = require('../config/secrets-manager');
+      const secrets = getProfileSecrets(apiName);
+      const token = secrets?.ANTHROPIC_AUTH_TOKEN || '';
+      return token.length > 0 && !token.includes('YOUR_') && !token.includes('your-');
+    }
+    // Legacy: check settings.json file
     const ccsDir = getCcsDir();
     const settingsPath = path.join(ccsDir, `${apiName}.settings.json`);
     if (!fs.existsSync(settingsPath)) return false;
@@ -281,6 +381,59 @@ async function handleList(): Promise<void> {
   console.log('');
 
   try {
+    if (isUnifiedMode()) {
+      // List from unified config
+      const unifiedConfig = loadOrCreateUnifiedConfig();
+      const apis = Object.keys(unifiedConfig.profiles);
+
+      if (apis.length === 0) {
+        console.log(warn('No API profiles configured'));
+        console.log('');
+        console.log('To create an API profile:');
+        console.log(`  ${color('ccs api create', 'command')}`);
+        console.log('');
+        return;
+      }
+
+      // Build table data with status indicators
+      const rows: string[][] = apis.map((name) => {
+        const status = isApiConfigured(name) ? color('[OK]', 'success') : color('[!]', 'warning');
+        return [name, 'config.yaml', status];
+      });
+
+      // Print table
+      console.log(
+        table(rows, {
+          head: ['API', 'Config', 'Status'],
+          colWidths: [15, 20, 10],
+        })
+      );
+      console.log('');
+
+      // Show CLIProxy variants if any
+      const variants = Object.keys(unifiedConfig.cliproxy?.variants || {});
+      if (variants.length > 0) {
+        console.log(subheader('CLIProxy Variants'));
+        const cliproxyRows = variants.map((name) => {
+          const variant = unifiedConfig.cliproxy?.variants[name];
+          return [name, variant?.provider || 'unknown', variant?.model || '-'];
+        });
+
+        console.log(
+          table(cliproxyRows, {
+            head: ['Variant', 'Provider', 'Model'],
+            colWidths: [15, 15, 20],
+          })
+        );
+        console.log('');
+      }
+
+      console.log(dim(`Total: ${apis.length} API profile(s)`));
+      console.log('');
+      return;
+    }
+
+    // Legacy: list from config.json
     const config = loadConfig();
     const apis = Object.keys(config.profiles);
 
@@ -342,16 +495,16 @@ async function handleRemove(args: string[]): Promise<void> {
   await initUI();
   const parsedArgs = parseArgs(args);
 
-  // Load config first to get available APIs
-  let config: { profiles: Record<string, string>; cliproxy?: Record<string, unknown> };
-  try {
-    config = loadConfig();
-  } catch {
-    console.log(fail('Failed to load config'));
-    process.exit(1);
+  // Get available APIs based on config mode
+  let apis: string[];
+  if (isUnifiedMode()) {
+    const unifiedConfig = loadOrCreateUnifiedConfig();
+    apis = Object.keys(unifiedConfig.profiles);
+  } else {
+    const config = loadConfig();
+    apis = Object.keys(config.profiles);
   }
 
-  const apis = Object.keys(config.profiles);
   if (apis.length === 0) {
     console.log(warn('No API profiles to remove'));
     process.exit(0);
@@ -375,7 +528,7 @@ async function handleRemove(args: string[]): Promise<void> {
     });
   }
 
-  if (!(name in config.profiles)) {
+  if (!apis.includes(name)) {
     console.log(fail(`API '${name}' not found`));
     console.log('');
     console.log('Available APIs:');
@@ -383,13 +536,15 @@ async function handleRemove(args: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const settingsPath = config.profiles[name];
-  const expandedPath = path.join(getCcsDir(), `${name}.settings.json`);
-
   // Confirm deletion
   console.log('');
   console.log(`API '${color(name, 'command')}' will be removed.`);
-  console.log(`  Settings: ${settingsPath}`);
+  if (isUnifiedMode()) {
+    console.log('  Config: ~/.ccs/config.yaml');
+    console.log('  Secrets: ~/.ccs/secrets.yaml');
+  } else {
+    console.log(`  Settings: ~/.ccs/${name}.settings.json`);
+  }
   console.log('');
 
   const confirmed =
@@ -401,20 +556,32 @@ async function handleRemove(args: string[]): Promise<void> {
     process.exit(0);
   }
 
-  // Remove from config.json
-  delete config.profiles[name];
-  const configPath = getConfigPath();
-  const tempPath = configPath + '.tmp';
-  fs.writeFileSync(tempPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
-  fs.renameSync(tempPath, configPath);
+  try {
+    if (isUnifiedMode()) {
+      // Remove from unified config
+      removeApiProfileUnified(name);
+    } else {
+      // Remove from legacy config.json
+      const config = loadConfig();
+      delete config.profiles[name];
+      const configPath = getConfigPath();
+      const tempPath = configPath + '.tmp';
+      fs.writeFileSync(tempPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
+      fs.renameSync(tempPath, configPath);
 
-  // Remove settings file if it exists
-  if (fs.existsSync(expandedPath)) {
-    fs.unlinkSync(expandedPath);
+      // Remove settings file if it exists
+      const expandedPath = path.join(getCcsDir(), `${name}.settings.json`);
+      if (fs.existsSync(expandedPath)) {
+        fs.unlinkSync(expandedPath);
+      }
+    }
+
+    console.log(ok(`API profile removed: ${name}`));
+    console.log('');
+  } catch (error) {
+    console.log(fail(`Failed to remove API profile: ${(error as Error).message}`));
+    process.exit(1);
   }
-
-  console.log(ok(`API profile removed: ${name}`));
-  console.log('');
 }
 
 /**

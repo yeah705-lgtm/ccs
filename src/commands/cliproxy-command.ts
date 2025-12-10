@@ -12,6 +12,10 @@
  *   ccs cliproxy create <name>    Create CLIProxy variant profile
  *   ccs cliproxy list             List all CLIProxy variant profiles
  *   ccs cliproxy remove <name>    Remove CLIProxy variant profile
+ *
+ * Supports dual-mode configuration:
+ * - Unified YAML format (config.yaml) when CCS_UNIFIED_CONFIG=1 or config.yaml exists
+ * - Legacy JSON format (config.json) as fallback
  */
 
 import * as fs from 'fs';
@@ -45,6 +49,13 @@ import {
   infoBox,
 } from '../utils/ui';
 import { InteractivePrompt } from '../utils/prompt';
+import { isReservedName } from '../config/reserved-names';
+import {
+  hasUnifiedConfig,
+  loadOrCreateUnifiedConfig,
+  saveUnifiedConfig,
+} from '../config/unified-config-loader';
+import { isUnifiedConfigEnabled } from '../config/feature-flags';
 
 // ============================================================================
 // PROFILE MANAGEMENT
@@ -99,26 +110,18 @@ function validateProfileName(name: string): string | null {
   if (name.length > 32) {
     return 'Name must be 32 characters or less';
   }
-  // Reserved names - includes built-in cliproxy profiles
-  const reserved = [
-    'default',
-    'auth',
-    'api',
-    'doctor',
-    'sync',
-    'update',
-    'help',
-    'version',
-    'cliproxy',
-    'create',
-    'list',
-    'remove',
-    ...CLIPROXY_PROFILES,
-  ];
-  if (reserved.includes(name.toLowerCase())) {
+  // Use centralized reserved names list (includes built-in cliproxy profiles)
+  if (isReservedName(name)) {
     return `'${name}' is a reserved name`;
   }
   return null;
+}
+
+/**
+ * Check if unified config mode is active
+ */
+function isUnifiedMode(): boolean {
+  return hasUnifiedConfig() || isUnifiedConfigEnabled();
 }
 
 /**
@@ -126,6 +129,10 @@ function validateProfileName(name: string): string | null {
  */
 function cliproxyVariantExists(name: string): boolean {
   try {
+    if (isUnifiedMode()) {
+      const config = loadOrCreateUnifiedConfig();
+      return !!(config.cliproxy?.variants && name in config.cliproxy.variants);
+    }
     const config = loadConfig();
     return !!(config.cliproxy && name in config.cliproxy);
   } catch {
@@ -243,6 +250,57 @@ function removeCliproxyVariant(name: string): { provider: string; settings: stri
   fs.renameSync(tempPath, configPath);
 
   return variant;
+}
+
+/**
+ * Add CLIProxy variant to unified config (config.yaml)
+ */
+function addCliproxyVariantUnified(
+  name: string,
+  provider: CLIProxyProfileName,
+  model: string,
+  account?: string
+): void {
+  const config = loadOrCreateUnifiedConfig();
+
+  // Ensure cliproxy.variants section exists (preserving other fields)
+  if (!config.cliproxy) {
+    config.cliproxy = {
+      oauth_accounts: {},
+      providers: ['gemini', 'codex', 'agy', 'qwen', 'iflow'],
+      variants: {},
+    };
+  }
+  if (!config.cliproxy.variants) {
+    config.cliproxy.variants = {};
+  }
+
+  // Add variant
+  config.cliproxy.variants[name] = {
+    provider: provider as CLIProxyProvider,
+    model,
+    account,
+  };
+
+  saveUnifiedConfig(config);
+}
+
+/**
+ * Remove CLIProxy variant from unified config
+ */
+function removeCliproxyVariantUnified(name: string): { provider: string; model?: string } | null {
+  const config = loadOrCreateUnifiedConfig();
+
+  if (!config.cliproxy?.variants || !(name in config.cliproxy.variants)) {
+    return null;
+  }
+
+  const variant = config.cliproxy.variants[name];
+  delete config.cliproxy.variants[name];
+
+  saveUnifiedConfig(config);
+
+  return { provider: variant.provider, model: variant.model };
 }
 
 /**
@@ -432,20 +490,38 @@ async function handleCreate(args: string[]): Promise<void> {
   console.log(info('Creating CLIProxy variant...'));
 
   try {
-    const settingsPath = createCliproxySettingsFile(name, provider, model, account);
-    addCliproxyVariant(name, provider, settingsPath, account);
+    if (isUnifiedMode()) {
+      // Use unified config format (no settings file needed - env vars derived at runtime)
+      addCliproxyVariantUnified(name, provider, model, account);
 
-    console.log('');
-    console.log(
-      infoBox(
-        `Variant:  ${name}\n` +
-          `Provider: ${provider}\n` +
-          `Model:    ${model}\n` +
-          (account ? `Account:  ${account}\n` : '') +
-          `Settings: ~/.ccs/${path.basename(settingsPath)}`,
-        'CLIProxy Variant Created'
-      )
-    );
+      console.log('');
+      console.log(
+        infoBox(
+          `Variant:  ${name}\n` +
+            `Provider: ${provider}\n` +
+            `Model:    ${model}\n` +
+            (account ? `Account:  ${account}\n` : '') +
+            `Config:   ~/.ccs/config.yaml`,
+          'CLIProxy Variant Created (Unified Config)'
+        )
+      );
+    } else {
+      // Legacy: create settings.json file
+      const settingsPath = createCliproxySettingsFile(name, provider, model, account);
+      addCliproxyVariant(name, provider, settingsPath, account);
+
+      console.log('');
+      console.log(
+        infoBox(
+          `Variant:  ${name}\n` +
+            `Provider: ${provider}\n` +
+            `Model:    ${model}\n` +
+            (account ? `Account:  ${account}\n` : '') +
+            `Settings: ~/.ccs/${path.basename(settingsPath)}`,
+          'CLIProxy Variant Created'
+        )
+      );
+    }
     console.log('');
     console.log(header('Usage'));
     console.log(`  ${color(`ccs ${name} "your prompt"`, 'command')}`);
@@ -490,24 +566,47 @@ async function handleList(): Promise<void> {
     console.log(dim('  To logout:       ccs <provider> --logout'));
     console.log('');
 
-    // Show custom variants if any
-    const config = loadConfig();
-    const variants = config.cliproxy || {};
-    const variantNames = Object.keys(variants);
+    // Show custom variants if any (from unified or legacy config)
+    let variantNames: string[];
+    let variantData: Record<string, { provider: string; model?: string; settings?: string }>;
+
+    if (isUnifiedMode()) {
+      const unifiedConfig = loadOrCreateUnifiedConfig();
+      const variants = unifiedConfig.cliproxy?.variants || {};
+      variantNames = Object.keys(variants);
+      variantData = {};
+      for (const name of variantNames) {
+        const v = variants[name];
+        variantData[name] = { provider: v.provider, model: v.model };
+      }
+    } else {
+      const config = loadConfig();
+      const variants = config.cliproxy || {};
+      variantNames = Object.keys(variants);
+      variantData = {};
+      for (const name of variantNames) {
+        const v = variants[name] as { provider: string; settings: string };
+        variantData[name] = { provider: v.provider, settings: v.settings };
+      }
+    }
 
     if (variantNames.length > 0) {
       console.log(subheader('Custom Variants'));
 
       // Build table data
       const rows: string[][] = variantNames.map((name) => {
-        const variant = variants[name] as { provider: string; settings: string };
-        return [name, variant.provider, variant.settings];
+        const variant = variantData[name];
+        const thirdCol = variant.model || variant.settings || '-';
+        return [name, variant.provider, thirdCol];
       });
 
       // Print table
+      const headLabels = isUnifiedMode()
+        ? ['Variant', 'Provider', 'Model']
+        : ['Variant', 'Provider', 'Settings'];
       console.log(
         table(rows, {
-          head: ['Variant', 'Provider', 'Settings'],
+          head: headLabels,
           colWidths: [15, 12, 35],
         })
       );
@@ -532,17 +631,29 @@ async function handleRemove(args: string[]): Promise<void> {
   await initUI();
   const parsedArgs = parseProfileArgs(args);
 
-  // Load config to get available variants
-  let config: { profiles: Record<string, string>; cliproxy?: Record<string, unknown> };
-  try {
-    config = loadConfig();
-  } catch {
-    console.log(fail('Failed to load config'));
-    process.exit(1);
-  }
+  // Get available variants based on config mode
+  let variantNames: string[];
+  let variantData: Record<string, { provider: string; settings?: string; model?: string }>;
 
-  const variants = config.cliproxy || {};
-  const variantNames = Object.keys(variants);
+  if (isUnifiedMode()) {
+    const unifiedConfig = loadOrCreateUnifiedConfig();
+    const variants = unifiedConfig.cliproxy?.variants || {};
+    variantNames = Object.keys(variants);
+    variantData = {};
+    for (const name of variantNames) {
+      const v = variants[name];
+      variantData[name] = { provider: v.provider, model: v.model };
+    }
+  } else {
+    const config = loadConfig();
+    const variants = config.cliproxy || {};
+    variantNames = Object.keys(variants);
+    variantData = {};
+    for (const name of variantNames) {
+      const v = variants[name] as { provider: string; settings: string };
+      variantData[name] = { provider: v.provider, settings: v.settings };
+    }
+  }
 
   if (variantNames.length === 0) {
     console.log(warn('No CLIProxy variants to remove'));
@@ -556,7 +667,7 @@ async function handleRemove(args: string[]): Promise<void> {
     console.log('');
     console.log('Available variants:');
     variantNames.forEach((n, i) => {
-      const v = variants[n] as { provider: string };
+      const v = variantData[n];
       console.log(`  ${i + 1}. ${n} (${v.provider})`);
     });
     console.log('');
@@ -570,7 +681,7 @@ async function handleRemove(args: string[]): Promise<void> {
     });
   }
 
-  if (!(name in variants)) {
+  if (!variantNames.includes(name)) {
     console.log(fail(`Variant '${name}' not found`));
     console.log('');
     console.log('Available variants:');
@@ -578,13 +689,18 @@ async function handleRemove(args: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const variant = variants[name] as { provider: string; settings: string };
+  const variant = variantData[name];
 
   // Confirm deletion
   console.log('');
   console.log(`Variant '${color(name, 'command')}' will be removed.`);
   console.log(`  Provider: ${variant.provider}`);
-  console.log(`  Settings: ${variant.settings}`);
+  if (isUnifiedMode()) {
+    console.log(`  Model: ${variant.model || '-'}`);
+    console.log('  Config: ~/.ccs/config.yaml');
+  } else {
+    console.log(`  Settings: ${variant.settings}`);
+  }
   console.log('');
 
   const confirmed =
@@ -595,21 +711,31 @@ async function handleRemove(args: string[]): Promise<void> {
     process.exit(0);
   }
 
-  // Remove from config
-  const removed = removeCliproxyVariant(name);
-  if (!removed) {
-    console.log(fail('Failed to remove variant from config'));
+  try {
+    if (isUnifiedMode()) {
+      // Remove from unified config
+      removeCliproxyVariantUnified(name);
+    } else {
+      // Remove from legacy config
+      const removed = removeCliproxyVariant(name);
+      if (!removed) {
+        console.log(fail('Failed to remove variant from config'));
+        process.exit(1);
+      }
+
+      // Remove settings file if it exists
+      const settingsFile = removed.settings.replace(/^~/, process.env.HOME || '');
+      if (fs.existsSync(settingsFile)) {
+        fs.unlinkSync(settingsFile);
+      }
+    }
+
+    console.log(ok(`Variant removed: ${name}`));
+    console.log('');
+  } catch (error) {
+    console.log(fail(`Failed to remove variant: ${(error as Error).message}`));
     process.exit(1);
   }
-
-  // Remove settings file if it exists
-  const settingsFile = removed.settings.replace(/^~/, process.env.HOME || '');
-  if (fs.existsSync(settingsFile)) {
-    fs.unlinkSync(settingsFile);
-  }
-
-  console.log(ok(`Variant removed: ${name}`));
-  console.log('');
 }
 
 // ============================================================================

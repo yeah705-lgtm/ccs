@@ -19,6 +19,22 @@ import {
   removeAccount as removeAccountFn,
 } from '../cliproxy/account-manager';
 import type { CLIProxyProvider } from '../cliproxy/types';
+// Unified config imports
+import {
+  hasUnifiedConfig,
+  loadUnifiedConfig,
+  saveUnifiedConfig,
+  getConfigFormat,
+} from '../config/unified-config-loader';
+import {
+  needsMigration,
+  migrate,
+  rollback,
+  getBackupDirectories,
+} from '../config/migration-manager';
+import { getProfileSecrets, setProfileSecrets } from '../config/secrets-manager';
+import { isUnifiedConfig } from '../config/unified-config-types';
+import { isSensitiveKey, maskSensitiveValue } from '../utils/sensitive-keys';
 
 export const apiRoutes = Router();
 
@@ -478,22 +494,10 @@ function maskApiKeys(settings: Settings): Settings {
   if (!settings.env) return settings;
 
   const masked = { ...settings, env: { ...settings.env } };
-  // Pattern-based matching for sensitive keys
-  const sensitivePatterns = [
-    /^ANTHROPIC_AUTH_TOKEN$/, // Exact match for Anthropic auth token
-    /_API_KEY$/, // Keys ending with _API_KEY
-    /_AUTH_TOKEN$/, // Keys ending with _AUTH_TOKEN
-    /^API_KEY$/, // Exact match for API_KEY
-    /^AUTH_TOKEN$/, // Exact match for AUTH_TOKEN
-  ];
 
   for (const key of Object.keys(masked.env)) {
-    if (sensitivePatterns.some((pattern) => pattern.test(key))) {
-      const value = masked.env[key];
-      if (value && value.length > 8) {
-        masked.env[key] =
-          value.slice(0, 4) + '*'.repeat(Math.max(0, value.length - 8)) + value.slice(-4);
-      }
+    if (isSensitiveKey(key)) {
+      masked.env[key] = maskSensitiveValue(masked.env[key]);
     }
   }
 
@@ -668,4 +672,110 @@ apiRoutes.post('/health/fix/:checkId', (req: Request, res: Response): void => {
   } else {
     res.status(400).json({ success: false, message: result.message });
   }
+});
+
+// ==================== Unified Config (Phase 5) ====================
+
+/**
+ * GET /api/config/format - Return current config format and migration status
+ */
+apiRoutes.get('/config/format', (_req: Request, res: Response) => {
+  res.json({
+    format: getConfigFormat(),
+    migrationNeeded: needsMigration(),
+    backups: getBackupDirectories(),
+  });
+});
+
+/**
+ * GET /api/config - Return unified config (excludes secrets)
+ */
+apiRoutes.get('/config', (_req: Request, res: Response): void => {
+  if (!hasUnifiedConfig()) {
+    res.status(400).json({ error: 'Unified config not enabled' });
+    return;
+  }
+
+  const config = loadUnifiedConfig();
+  if (!config) {
+    res.status(500).json({ error: 'Failed to load config' });
+    return;
+  }
+
+  res.json(config);
+});
+
+/**
+ * PUT /api/config - Update unified config
+ */
+apiRoutes.put('/config', (req: Request, res: Response): void => {
+  const config = req.body;
+
+  if (!isUnifiedConfig(config)) {
+    res.status(400).json({ error: 'Invalid config format' });
+    return;
+  }
+
+  try {
+    saveUnifiedConfig(config);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+/**
+ * POST /api/config/migrate - Trigger migration from JSON to YAML
+ */
+apiRoutes.post('/config/migrate', async (req: Request, res: Response) => {
+  const dryRun = req.query.dryRun === 'true';
+  const result = await migrate(dryRun);
+  res.json(result);
+});
+
+/**
+ * POST /api/config/rollback - Rollback migration to JSON format
+ */
+apiRoutes.post('/config/rollback', async (req: Request, res: Response): Promise<void> => {
+  const { backupPath } = req.body;
+
+  if (!backupPath || typeof backupPath !== 'string') {
+    res.status(400).json({ error: 'Missing required field: backupPath' });
+    return;
+  }
+
+  const success = await rollback(backupPath);
+  res.json({ success });
+});
+
+/**
+ * PUT /api/secrets/:profile - Update profile secrets (write-only)
+ */
+apiRoutes.put('/secrets/:profile', (req: Request, res: Response): void => {
+  const { profile } = req.params;
+  const secrets = req.body;
+
+  if (!secrets || typeof secrets !== 'object') {
+    res.status(400).json({ error: 'Invalid secrets format' });
+    return;
+  }
+
+  try {
+    setProfileSecrets(profile, secrets as Record<string, string>);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+/**
+ * GET /api/secrets/:profile/exists - Check if secrets exist (no values returned)
+ */
+apiRoutes.get('/secrets/:profile/exists', (req: Request, res: Response) => {
+  const { profile } = req.params;
+  const secrets = getProfileSecrets(profile);
+  res.json({
+    exists: Object.keys(secrets).length > 0,
+    keys: Object.keys(secrets), // Only key names, not values
+  });
 });

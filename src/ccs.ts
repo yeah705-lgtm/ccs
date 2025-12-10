@@ -202,6 +202,10 @@ interface ProfileError extends Error {
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
 
+  // Auto-migrate to unified config format (silent if already migrated)
+  const { autoMigrate } = await import('./config/migration-manager');
+  await autoMigrate();
+
   // Special case: version command (check BEFORE profile detection)
   const firstArg = args[0];
   if (firstArg === 'version' || firstArg === '--version' || firstArg === '-v') {
@@ -242,6 +246,20 @@ async function main(): Promise<void> {
   // Special case: sync command
   if (firstArg === 'sync' || firstArg === '--sync') {
     await handleSyncCommand();
+    return;
+  }
+
+  // Special case: migrate command
+  if (firstArg === 'migrate' || firstArg === '--migrate') {
+    const { handleMigrateCommand, printMigrateHelp } = await import('./commands/migrate-command');
+    const migrateArgs = args.slice(1);
+
+    if (migrateArgs.includes('--help') || migrateArgs.includes('-h')) {
+      printMigrateHelp();
+      return;
+    }
+
+    await handleMigrateCommand(migrateArgs);
     return;
   }
 
