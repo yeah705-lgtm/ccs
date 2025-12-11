@@ -93,7 +93,7 @@ function validateApiName(name: string): string | null {
 }
 
 /**
- * Validate URL format
+ * Validate URL format and warn about common mistakes
  */
 function validateUrl(url: string): string | null {
   if (!url) {
@@ -105,6 +105,25 @@ function validateUrl(url: string): string | null {
   } catch {
     return 'Invalid URL format (must include protocol, e.g., https://)';
   }
+}
+
+/**
+ * Check if URL looks like it includes endpoint path (common mistake)
+ * Returns warning message if problematic, null if OK
+ */
+function getUrlWarning(url: string): string | null {
+  const problematicPaths = ['/chat/completions', '/v1/messages', '/messages', '/completions'];
+  const lowerUrl = url.toLowerCase();
+
+  for (const path of problematicPaths) {
+    if (lowerUrl.endsWith(path)) {
+      return (
+        `URL ends with "${path}" - Claude appends this automatically.\n` +
+        `    You likely want: ${url.replace(new RegExp(path + '$', 'i'), '')}`
+      );
+    }
+  }
+  return null;
 }
 
 /**
@@ -130,11 +149,24 @@ function apiExists(name: string): boolean {
   }
 }
 
+/** Model mapping for API profiles */
+interface ModelMapping {
+  default: string;
+  opus: string;
+  sonnet: string;
+  haiku: string;
+}
+
 /**
  * Create settings.json file for API profile
  * Includes all 4 model fields for proper Claude CLI integration
  */
-function createSettingsFile(name: string, baseUrl: string, apiKey: string, model: string): string {
+function createSettingsFile(
+  name: string,
+  baseUrl: string,
+  apiKey: string,
+  models: ModelMapping
+): string {
   const ccsDir = getCcsDir();
   const settingsPath = path.join(ccsDir, `${name}.settings.json`);
 
@@ -142,10 +174,10 @@ function createSettingsFile(name: string, baseUrl: string, apiKey: string, model
     env: {
       ANTHROPIC_BASE_URL: baseUrl,
       ANTHROPIC_AUTH_TOKEN: apiKey,
-      ANTHROPIC_MODEL: model,
-      ANTHROPIC_DEFAULT_OPUS_MODEL: model,
-      ANTHROPIC_DEFAULT_SONNET_MODEL: model,
-      ANTHROPIC_DEFAULT_HAIKU_MODEL: model,
+      ANTHROPIC_MODEL: models.default,
+      ANTHROPIC_DEFAULT_OPUS_MODEL: models.opus,
+      ANTHROPIC_DEFAULT_SONNET_MODEL: models.sonnet,
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: models.haiku,
     },
   };
 
@@ -192,7 +224,7 @@ function createApiProfileUnified(
   name: string,
   baseUrl: string,
   apiKey: string,
-  model: string
+  models: ModelMapping
 ): void {
   const ccsDir = path.join(os.homedir(), '.ccs');
   const settingsFile = `${name}.settings.json`;
@@ -203,10 +235,10 @@ function createApiProfileUnified(
     env: {
       ANTHROPIC_BASE_URL: baseUrl,
       ANTHROPIC_AUTH_TOKEN: apiKey,
-      ANTHROPIC_MODEL: model,
-      ANTHROPIC_DEFAULT_OPUS_MODEL: model,
-      ANTHROPIC_DEFAULT_SONNET_MODEL: model,
-      ANTHROPIC_DEFAULT_HAIKU_MODEL: model,
+      ANTHROPIC_MODEL: models.default,
+      ANTHROPIC_DEFAULT_OPUS_MODEL: models.opus,
+      ANTHROPIC_DEFAULT_SONNET_MODEL: models.sonnet,
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: models.haiku,
     },
   };
 
@@ -293,14 +325,34 @@ async function handleCreate(args: string[]): Promise<void> {
   // Step 2: Base URL
   let baseUrl = parsedArgs.baseUrl;
   if (!baseUrl) {
-    baseUrl = await InteractivePrompt.input('API Base URL (e.g., https://api.example.com)', {
-      validate: validateUrl,
-    });
+    baseUrl = await InteractivePrompt.input(
+      'API Base URL (e.g., https://api.example.com/v1 - without /chat/completions)',
+      {
+        validate: validateUrl,
+      }
+    );
   } else {
     const error = validateUrl(baseUrl);
     if (error) {
       console.log(fail(error));
       process.exit(1);
+    }
+  }
+
+  // Check for common URL mistakes and warn
+  const urlWarning = getUrlWarning(baseUrl);
+  if (urlWarning) {
+    console.log('');
+    console.log(warn(urlWarning));
+    const continueAnyway = await InteractivePrompt.confirm('Continue with this URL anyway?', {
+      default: false,
+    });
+    if (!continueAnyway) {
+      // Let user re-enter URL
+      baseUrl = await InteractivePrompt.input('API Base URL', {
+        validate: validateUrl,
+        default: baseUrl.replace(/\/(chat\/completions|v1\/messages|messages|completions)$/i, ''),
+      });
     }
   }
 
@@ -324,43 +376,99 @@ async function handleCreate(args: string[]): Promise<void> {
   }
   model = model || defaultModel;
 
+  // Step 5: Optional model mapping for Opus/Sonnet/Haiku
+  // Ask user if they want different models for each type
+  let opusModel = model;
+  let sonnetModel = model;
+  let haikuModel = model;
+
+  if (!parsedArgs.yes) {
+    console.log('');
+    console.log(dim('Some API proxies route different model types to different backends.'));
+    const wantCustomMapping = await InteractivePrompt.confirm(
+      'Configure different models for Opus/Sonnet/Haiku?',
+      { default: false }
+    );
+
+    if (wantCustomMapping) {
+      console.log('');
+      console.log(dim('Leave blank to use the default model for each.'));
+      opusModel = (await InteractivePrompt.input('Opus model', { default: model })) || model;
+      sonnetModel = (await InteractivePrompt.input('Sonnet model', { default: model })) || model;
+      haikuModel = (await InteractivePrompt.input('Haiku model', { default: model })) || model;
+    }
+  }
+
+  // Build model mapping
+  const models: ModelMapping = {
+    default: model,
+    opus: opusModel,
+    sonnet: sonnetModel,
+    haiku: haikuModel,
+  };
+
+  // Check if custom model mapping is configured
+  const hasCustomMapping = opusModel !== model || sonnetModel !== model || haikuModel !== model;
+
   // Create files
   console.log('');
   console.log(info('Creating API profile...'));
 
   try {
+    const settingsFile = `~/.ccs/${name}.settings.json`;
+
     if (isUnifiedMode()) {
       // Use unified config format
-      createApiProfileUnified(name, baseUrl, apiKey, model);
+      createApiProfileUnified(name, baseUrl, apiKey, models);
       console.log('');
-      console.log(
-        infoBox(
-          `API:      ${name}\n` +
-            `Config:   ~/.ccs/config.yaml\n` +
-            `Secrets:  ~/.ccs/secrets.yaml\n` +
-            `Base URL: ${baseUrl}\n` +
-            `Model:    ${model}`,
-          'API Profile Created (Unified Config)'
-        )
-      );
+
+      // Build info message
+      let infoMsg =
+        `API:      ${name}\n` +
+        `Config:   ~/.ccs/config.yaml\n` +
+        `Settings: ${settingsFile}\n` +
+        `Base URL: ${baseUrl}\n` +
+        `Model:    ${model}`;
+
+      if (hasCustomMapping) {
+        infoMsg +=
+          `\n\nModel Mapping:\n` +
+          `  Opus:   ${opusModel}\n` +
+          `  Sonnet: ${sonnetModel}\n` +
+          `  Haiku:  ${haikuModel}`;
+      }
+
+      console.log(infoBox(infoMsg, 'API Profile Created'));
     } else {
       // Use legacy JSON format
-      const settingsPath = createSettingsFile(name, baseUrl, apiKey, model);
+      const settingsPath = createSettingsFile(name, baseUrl, apiKey, models);
       updateConfig(name, settingsPath);
       console.log('');
-      console.log(
-        infoBox(
-          `API:      ${name}\n` +
-            `Settings: ~/.ccs/${name}.settings.json\n` +
-            `Base URL: ${baseUrl}\n` +
-            `Model:    ${model}`,
-          'API Profile Created'
-        )
-      );
+
+      let infoMsg =
+        `API:      ${name}\n` +
+        `Settings: ${settingsFile}\n` +
+        `Base URL: ${baseUrl}\n` +
+        `Model:    ${model}`;
+
+      if (hasCustomMapping) {
+        infoMsg +=
+          `\n\nModel Mapping:\n` +
+          `  Opus:   ${opusModel}\n` +
+          `  Sonnet: ${sonnetModel}\n` +
+          `  Haiku:  ${haikuModel}`;
+      }
+
+      console.log(infoBox(infoMsg, 'API Profile Created'));
     }
+
     console.log('');
     console.log(header('Usage'));
     console.log(`  ${color(`ccs ${name} "your prompt"`, 'command')}`);
+    console.log('');
+    console.log(header('Edit Settings'));
+    console.log(`  ${dim('To modify env vars later:')}`);
+    console.log(`  ${color(`nano ${settingsFile.replace('~', '$HOME')}`, 'command')}`);
     console.log('');
   } catch (error) {
     console.log(fail(`Failed to create API profile: ${(error as Error).message}`));
