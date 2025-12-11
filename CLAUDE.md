@@ -13,92 +13,105 @@ CLI wrapper for instant switching between multiple Claude accounts and alternati
 - **DRY**: One source of truth (config.json)
 - **CLI-First**: All features must have CLI interface
 
-## TypeScript Quality Gates
+## Quality Gates (MANDATORY)
 
-**The npm package is 100% TypeScript. Quality gates MUST pass before publish.**
+Quality gates MUST pass before committing. Run from project root.
 
-**Package Manager: bun** - 10-25x faster than npm
+### Main Project (src/)
+
 ```bash
-bun install          # Install dependencies (creates bun.lockb)
-bun run build        # Compile src/ → dist/
-bun run validate     # Full validation: typecheck + lint:fix + format:check + test
+# Full validation (REQUIRED before commit/PR)
+bun run validate     # typecheck + lint:fix + format:check + test:all
+
+# Individual commands
+bun run typecheck    # tsc --noEmit
+bun run lint:fix     # eslint src/ --fix
+bun run format:check # prettier --check src/
+bun run test:all     # bun test
+
+# Fix issues
+bun run lint:fix     # Auto-fix lint issues
+bun run format       # Auto-fix formatting (prettier --write)
 ```
 
-**Fix issues before committing:**
+**ESLint rules (eslint.config.mjs) - ALL errors:**
+| Rule | Level | Notes |
+|------|-------|-------|
+| `@typescript-eslint/no-unused-vars` | error | Ignore `_` prefix |
+| `@typescript-eslint/no-explicit-any` | error | Use proper types or `unknown` |
+| `@typescript-eslint/no-non-null-assertion` | error | No `!` assertions |
+| `prefer-const`, `no-var`, `eqeqeq` | error | Code quality |
+
+**TypeScript (tsconfig.json) - strict mode:**
+| Option | Value | Notes |
+|--------|-------|-------|
+| `strict` | true | All strict flags enabled |
+| `noUnusedLocals` | true | No unused variables |
+| `noUnusedParameters` | true | No unused params |
+| `noImplicitReturns` | true | All paths must return |
+| `noFallthroughCasesInSwitch` | true | Explicit case handling |
+
+### UI Project (ui/)
+
 ```bash
+cd ui
+
+# Full validation (REQUIRED before commit/PR)
+bun run validate     # typecheck + lint:fix + format:check (no tests)
+
+# Individual commands
+bun run typecheck    # tsc -b --noEmit
+bun run lint:fix     # eslint . --fix
+bun run format:check # prettier --check src/
+
+# Fix issues
 bun run lint:fix     # Auto-fix lint issues
 bun run format       # Auto-fix formatting
 ```
 
-**Automatic enforcement:**
-- `prepublishOnly` / `prepack` runs `validate` + `sync-version.js`
+**ESLint rules (ui/eslint.config.js) - ALL errors:**
+| Rule | Level | Notes |
+|------|-------|-------|
+| `@typescript-eslint/no-unused-vars` | error | Ignore `_` prefix |
+| `@typescript-eslint/no-explicit-any` | error | Use proper types or `unknown` |
+| `@typescript-eslint/no-non-null-assertion` | error | No `!` assertions |
+| `prefer-const`, `no-var`, `eqeqeq` | error | Code quality |
+| `react-hooks/*` | recommended | Hooks rules from plugin |
+| `react-refresh/*` | vite | Fast refresh compatibility |
+
+**TypeScript (ui/tsconfig.app.json) - strict mode:**
+| Option | Value | Notes |
+|--------|-------|-------|
+| `strict` | true | All strict flags enabled |
+| `noUnusedLocals` | true | No unused variables |
+| `noUnusedParameters` | true | No unused params |
+| `noFallthroughCasesInSwitch` | true | Explicit case handling |
+| `erasableSyntaxOnly` | true | No runtime type constructs |
+| `noUncheckedSideEffectImports` | true | Validate side-effect imports |
+
+### Automatic Enforcement
+
+- `prepublishOnly` / `prepack` runs `build:all` + `validate` + `sync-version.js`
 - CI/CD runs `bun run validate` on every PR
+- husky pre-commit hooks enforce conventional commits
 
-**File structure:**
-- `src/` - TypeScript source (55 modules)
-- `dist/` - Compiled JavaScript (npm package)
-- `lib/` - Native shell scripts (bash, PowerShell)
-- `ui/` - React dashboard (Vite + React 19 + shadcn/ui)
+### File Structure
 
-**Development server (ALWAYS use for testing UI changes):**
-```bash
-bun run dev          # Start dev server with hot reload (http://localhost:3000)
 ```
-**IMPORTANT:** Use `bun run dev` at CCS root level for always up-to-date code. Do NOT use `ccs config` during development as it uses the globally installed (outdated) version.
-
-## UI Quality Gates (React Dashboard)
-
-**The ui/ directory has IDENTICAL quality gates to the main project.**
-
-**Package Manager: bun** (same as root)
-```bash
-cd ui
-bun install          # Install dependencies
-bun run build        # TypeScript + Vite build
-bun run validate     # Full validation: typecheck + lint:fix + format:check
+src/           → TypeScript source (main project)
+dist/          → Compiled JavaScript (npm package)
+lib/           → Native shell scripts (bash, PowerShell)
+ui/src/        → React components, hooks, pages
+ui/src/components/ui/ → shadcn/ui components
+dist/ui/       → Built UI bundle (served by Express)
 ```
 
-**Fix issues before committing:**
+### Development Server
+
 ```bash
-cd ui
-bun run typecheck    # Type check only
-bun run lint:fix     # Auto-fix lint issues
-bun run format       # Auto-fix formatting
-bun run format:check # Verify formatting (no changes)
+bun run dev          # Build + start config server (http://localhost:3000)
 ```
-
-**Linting rules (ui/eslint.config.js) - ALL errors:**
-- `@typescript-eslint/no-unused-vars` - error (ignore `_` prefix)
-- `@typescript-eslint/no-explicit-any` - error
-- `@typescript-eslint/no-non-null-assertion` - error
-- `prefer-const`, `no-var`, `eqeqeq` - error
-- `react-hooks/exhaustive-deps` - warning
-- `react-refresh/only-export-components` - error
-
-**Type safety (ui/tsconfig.app.json):**
-- `strict: true` with `verbatimModuleSyntax` enabled
-- `noUnusedLocals`, `noUnusedParameters` - enabled
-- Type-only imports required: `import type { X }` for types
-
-**UI file structure:**
-- `ui/src/` - React components, hooks, pages
-- `ui/src/components/ui/` - shadcn/ui components
-- `ui/src/hooks/` - Custom React hooks
-- `ui/src/pages/` - Route pages
-- `ui/src/providers/` - Context providers
-- `dist/ui/` - Built bundle (served by Express)
-
-**Linting rules (eslint.config.mjs) - ALL errors:**
-- `@typescript-eslint/no-unused-vars` - error (ignore `_` prefix)
-- `@typescript-eslint/no-explicit-any` - error
-- `@typescript-eslint/no-non-null-assertion` - error
-- `prefer-const`, `no-var`, `eqeqeq` - error
-
-**Type safety (tsconfig.json):**
-- `strict: true` with all strict flags enabled
-- `noUnusedLocals`, `noUnusedParameters`, `noImplicitReturns` - enabled
-- Avoid `any` types - use proper typing or `unknown`
-- Avoid `@ts-ignore` - fix the type error properly
+**IMPORTANT:** Use `bun run dev` at CCS root for always up-to-date code. Do NOT use `ccs config` during development as it uses the globally installed version.
 
 ## Critical Constraints (NEVER VIOLATE)
 
@@ -375,7 +388,11 @@ rm -rf ~/.ccs                  # Clean environment
 
 ## Pre-PR Checklist (MANDATORY)
 
-- [ ] `bun run validate` passes (typecheck + lint:fix + format:check + tests)
+**Quality Gates:**
+- [ ] `bun run validate` passes (main: typecheck + lint:fix + format:check + tests)
+- [ ] `cd ui && bun run validate` passes (ui: typecheck + lint:fix + format:check)
+
+**Code Quality:**
 - [ ] All commits follow conventional format (`feat:`, `fix:`, etc.)
 - [ ] `--help` updated and consistent across src/ccs.ts, lib/ccs, lib/ccs.ps1
 - [ ] ASCII only (NO emojis), NO_COLOR respected
