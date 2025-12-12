@@ -18,7 +18,7 @@ import { UsageTrendChart } from '@/components/analytics/usage-trend-chart';
 import { ModelBreakdownChart } from '@/components/analytics/model-breakdown-chart';
 import { ModelDetailsContent } from '@/components/analytics/model-details-content';
 import { SessionStatsCard } from '@/components/analytics/session-stats-card';
-import { UsageInsightsCard } from '@/components/analytics/usage-insights-card';
+import { CliproxyStatsCard } from '@/components/analytics/cliproxy-stats-card';
 import { TrendingUp, PieChart, RefreshCw, DollarSign, ChevronRight } from 'lucide-react';
 import {
   useUsageSummary,
@@ -26,7 +26,6 @@ import {
   useModelUsage,
   useRefreshUsage,
   useUsageStatus,
-  useUsageInsights,
   useSessions,
   type ModelUsage,
 } from '@/hooks/use-usage';
@@ -73,7 +72,6 @@ export function AnalyticsPage() {
   const { data: summary, isLoading: isSummaryLoading } = useUsageSummary(apiOptions);
   const { data: trends, isLoading: isTrendsLoading } = useUsageTrends(apiOptions);
   const { data: models, isLoading: isModelsLoading } = useModelUsage(apiOptions);
-  const { data: insights, isLoading: isInsightsLoading } = useUsageInsights(apiOptions);
   const { data: sessions, isLoading: isSessionsLoading } = useSessions({ ...apiOptions, limit: 3 });
   const { data: status } = useUsageStatus();
 
@@ -96,7 +94,7 @@ export function AnalyticsPage() {
   }, []);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5.5rem)] overflow-hidden p-4 gap-3">
+    <div className="flex flex-col h-full overflow-hidden px-4 pt-4 pb-50 gap-4">
       {/* Header */}
       <div className="flex items-center justify-between shrink-0">
         <div>
@@ -114,6 +112,7 @@ export function AnalyticsPage() {
               { label: 'All Time', range: { from: undefined, to: new Date() } },
             ]}
           />
+
           {lastUpdatedText && (
             <span className="text-xs text-muted-foreground whitespace-nowrap">
               Updated {lastUpdatedText}
@@ -135,22 +134,22 @@ export function AnalyticsPage() {
       <UsageSummaryCards data={summary} isLoading={isSummaryLoading} />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-0 gap-3">
+      <div className="flex-1 flex flex-col min-h-0 gap-4">
         {/* Usage Trend Chart - Full Width */}
-        <Card className="flex flex-col flex-1 min-h-0 shadow-sm">
-          <CardHeader className="px-3 py-2">
+        <Card className="flex flex-col flex-1 min-h-0 max-h-[500px] overflow-hidden shadow-sm">
+          <CardHeader className="px-3 py-2 shrink-0">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
               Usage Trends
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-3 pb-3 pt-0 flex-1 min-h-0 flex items-center justify-center">
-            <UsageTrendChart data={trends || []} isLoading={isTrendsLoading} className="h-full" />
+          <CardContent className="px-3 pb-3 pt-0 flex-1 min-h-0">
+            <UsageTrendChart data={trends || []} isLoading={isTrendsLoading} />
           </CardContent>
         </Card>
 
-        {/* Bottom Row - Cost by Model (4) + Model Usage (2) + Session Stats (4) */}
-        <div className="grid grid-cols-1 lg:grid-cols-10 gap-3 flex-1 min-h-0">
+        {/* Bottom Row - Cost by Model (4) + Model Usage (2) + Session Stats (2) + CLIProxy Stats (2) */}
+        <div className="grid grid-cols-1 lg:grid-cols-10 gap-4 h-auto lg:h-[180px] shrink-0">
           {/* Cost by Model - 4/10 width with breakdown */}
           <Card className="flex flex-col h-full min-h-0 shadow-sm lg:col-span-4">
             <CardHeader className="px-3 py-2">
@@ -291,13 +290,8 @@ export function AnalyticsPage() {
             className="lg:col-span-2"
           />
 
-          {/* Usage Insights - 2/10 width */}
-          <UsageInsightsCard
-            anomalies={insights?.anomalies}
-            summary={insights?.summary}
-            isLoading={isInsightsLoading}
-            className="lg:col-span-2"
-          />
+          {/* CLIProxy Stats - 2/10 width */}
+          <CliproxyStatsCard className="lg:col-span-2" />
         </div>
 
         {/* Model Details Popover - positioned at cursor */}

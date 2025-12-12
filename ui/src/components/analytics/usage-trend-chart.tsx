@@ -46,20 +46,20 @@ export function UsageTrendChart({
   }, [data, granularity]);
 
   if (isLoading) {
-    return <Skeleton className={cn('h-[300px] w-full', className)} />;
+    return <Skeleton className={cn('h-full w-full', className)} />;
   }
 
   if (!data || data.length === 0) {
     return (
-      <div className={cn('h-[300px] flex items-center justify-center', className)}>
+      <div className={cn('h-full flex items-center justify-center', className)}>
         <p className="text-muted-foreground">No usage data available</p>
       </div>
     );
   }
 
   return (
-    <div className={cn('w-full', className)}>
-      <ResponsiveContainer width="100%" height={300}>
+    <div className={cn('w-full h-full', className)}>
+      <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <defs>
             <linearGradient id="tokenGradient" x1="0" y1="0" x2="0" y2="1">

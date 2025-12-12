@@ -4,7 +4,7 @@
  * Uses react-simple-code-editor + prism-react-renderer for minimal bundle size (~18KB)
  */
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Editor from 'react-simple-code-editor';
 import { Highlight, themes } from 'prism-react-renderer';
 import { useTheme } from '@/hooks/use-theme';
@@ -74,18 +74,6 @@ export function CodeEditor({
   const { isDark } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
   const [isMasked, setIsMasked] = useState(true);
-  // Force Editor remount when theme changes (works around react-simple-code-editor caching)
-  const [editorKey, setEditorKey] = useState(0);
-  const isFirstRender = useRef(true);
-
-  useEffect(() => {
-    // Skip first render, only trigger on theme changes
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    setEditorKey((k) => k + 1);
-  }, [isDark]);
 
   // Validate on every change for JSON
   const validation = useMemo(() => {
@@ -138,11 +126,7 @@ export function CodeEditor({
                     // Reset flag on commas or new keys (handled by property check),
                     // but persist through colons and whitespace
                     else if (token.types.includes('punctuation')) {
-                      if (
-                        token.content !== ':' &&
-                        token.content !== '[' &&
-                        token.content !== '{'
-                      ) {
+                      if (token.content !== ':' && token.content !== '[' && token.content !== '{') {
                         nextValueIsSensitive = false;
                       }
                     }
@@ -185,7 +169,7 @@ export function CodeEditor({
           value={value}
           onValueChange={readonly ? () => {} : onChange}
           highlight={highlightCode}
-          key={editorKey}
+          key={isDark ? 'dark-editor' : 'light-editor'}
           padding={12}
           disabled={readonly}
           onFocus={() => setIsFocused(true)}

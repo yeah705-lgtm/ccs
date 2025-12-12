@@ -17,6 +17,9 @@ import {
   getConfigPath,
   getInstalledCliproxyVersion,
   CLIPROXY_DEFAULT_PORT,
+  configNeedsRegeneration,
+  regenerateConfig,
+  CLIPROXY_CONFIG_VERSION,
 } from '../cliproxy';
 import { getPortProcess, isCLIProxyProcess } from '../utils/port-utils';
 import { getEnvironmentDiagnostics } from './environment-diagnostics';
@@ -919,17 +922,38 @@ class Doctor {
       );
     }
 
-    // 2. Config file exists?
+    // 2. Config file exists and is up-to-date?
     const configSpinner = ora('Checking CLIProxy config').start();
     const configPath = getConfigPath();
 
     if (fs.existsSync(configPath)) {
-      configSpinner.succeed();
-      console.log(`  ${ok('CLIProxy Config'.padEnd(22))}  cliproxy/config.yaml`);
-      this.results.addCheck('CLIProxy Config', 'success', undefined, undefined, {
-        status: 'OK',
-        info: 'cliproxy/config.yaml',
-      });
+      // Check if config needs regeneration (version mismatch or missing features)
+      if (configNeedsRegeneration()) {
+        configSpinner.warn();
+        console.log(
+          `  ${warn('CLIProxy Config'.padEnd(22))}  Outdated config, upgrading to v${CLIPROXY_CONFIG_VERSION}...`
+        );
+
+        // Regenerate config with new features
+        regenerateConfig();
+
+        console.log(
+          `  ${ok('CLIProxy Config'.padEnd(22))}  Upgraded to v${CLIPROXY_CONFIG_VERSION}`
+        );
+        this.results.addCheck('CLIProxy Config', 'success', undefined, undefined, {
+          status: 'OK',
+          info: `Upgraded to v${CLIPROXY_CONFIG_VERSION}`,
+        });
+      } else {
+        configSpinner.succeed();
+        console.log(
+          `  ${ok('CLIProxy Config'.padEnd(22))}  cliproxy/config.yaml (v${CLIPROXY_CONFIG_VERSION})`
+        );
+        this.results.addCheck('CLIProxy Config', 'success', undefined, undefined, {
+          status: 'OK',
+          info: `cliproxy/config.yaml (v${CLIPROXY_CONFIG_VERSION})`,
+        });
+      }
     } else {
       configSpinner.info();
       console.log(`  ${info('CLIProxy Config'.padEnd(22))}  Not created (on first use)`);

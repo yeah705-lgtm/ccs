@@ -9,6 +9,7 @@ import {
   FolderOpen,
   ChevronRight,
   BarChart3,
+  Gauge,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -43,7 +44,16 @@ const navGroups = [
     title: 'Identity & Access',
     items: [
       { path: '/api', icon: Key, label: 'API Profiles' },
-      { path: '/cliproxy', icon: Zap, label: 'CLIProxy' },
+      {
+        path: '/cliproxy',
+        icon: Zap,
+        label: 'CLIProxy',
+        isCollapsible: true,
+        children: [
+          { path: '/cliproxy', label: 'Overview' },
+          { path: '/cliproxy/control-panel', icon: Gauge, label: 'Control Panel' },
+        ],
+      },
       {
         path: '/accounts',
         icon: Users,
@@ -69,12 +79,15 @@ export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
 
-  // Helper to check if a route is active (including sub-routes if needed)
+  // Helper to check if a route is active (exact match)
   const isRouteActive = (path: string) => location.pathname === path;
 
   // Helper to check if a group/parent should be open based on active child
+  // Also handles sub-routes (e.g., /cliproxy/control-panel matches /cliproxy)
   const isParentActive = (children: { path: string }[]) => {
-    return children.some((child) => isRouteActive(child.path));
+    return children.some(
+      (child) => isRouteActive(child.path) || location.pathname.startsWith(child.path + '/')
+    );
   };
 
   return (

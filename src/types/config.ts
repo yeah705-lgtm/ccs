@@ -53,11 +53,25 @@ export type EnvValue = string;
 export type EnvVars = Record<string, EnvValue>;
 
 /**
+ * Model preset configuration
+ * Stores named model mappings for quick switching
+ */
+export interface ModelPreset {
+  name: string;
+  default: string;
+  opus: string;
+  sonnet: string;
+  haiku: string;
+}
+
+/**
  * Claude CLI settings.json structure
  * Located at: ~/.claude/settings.json or profile-specific
  */
 export interface Settings {
   env?: EnvVars;
+  /** Saved model presets for this provider */
+  presets?: ModelPreset[];
   [key: string]: unknown; // Allow other settings
 }
 

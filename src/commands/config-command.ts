@@ -2,6 +2,7 @@
  * Config Command Handler
  *
  * Launches web-based configuration dashboard.
+ * Ensures CLIProxy service is running for dashboard features.
  * Usage: ccs config [--port PORT] [--dev]
  */
 
@@ -9,7 +10,9 @@ import getPort from 'get-port';
 import open from 'open';
 import { startServer } from '../web-server';
 import { setupGracefulShutdown } from '../web-server/shutdown';
-import { initUI, header, ok, info } from '../utils/ui';
+import { ensureCliproxyService } from '../cliproxy/service-manager';
+import { CLIPROXY_DEFAULT_PORT } from '../cliproxy/config-generator';
+import { initUI, header, ok, info, warn } from '../utils/ui';
 
 interface ConfigOptions {
   port?: number;
@@ -72,10 +75,31 @@ export async function handleConfigCommand(args: string[]): Promise<void> {
   await initUI();
 
   const options = parseArgs(args);
+  const verbose = options.dev || false;
 
   console.log(header('CCS Config Dashboard'));
   console.log('');
-  console.log(info('Starting server...'));
+
+  // Ensure CLIProxy service is running for dashboard features
+  console.log(info('Starting CLIProxy service...'));
+  const cliproxyResult = await ensureCliproxyService(CLIPROXY_DEFAULT_PORT, verbose);
+
+  if (cliproxyResult.started) {
+    if (cliproxyResult.alreadyRunning) {
+      console.log(ok(`CLIProxy already running on port ${cliproxyResult.port}`));
+      if (cliproxyResult.configRegenerated) {
+        console.log(warn('Config updated - restart CLIProxy to apply changes'));
+      }
+    } else {
+      console.log(ok(`CLIProxy started on port ${cliproxyResult.port}`));
+    }
+  } else {
+    console.log(warn(`CLIProxy not available: ${cliproxyResult.error}`));
+    console.log(info('Dashboard will work but Control Panel/Stats may be limited'));
+  }
+  console.log('');
+
+  console.log(info('Starting dashboard server...'));
 
   // Find available port
   const port =

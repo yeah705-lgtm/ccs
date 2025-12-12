@@ -48,6 +48,8 @@ export {
 // Config generation
 export {
   generateConfig,
+  regenerateConfig,
+  configNeedsRegeneration,
   getClaudeEnvVars,
   getEffectiveEnvVars,
   getProviderSettingsPath,
@@ -62,6 +64,7 @@ export {
   configExists,
   deleteConfig,
   CLIPROXY_DEFAULT_PORT,
+  CLIPROXY_CONFIG_VERSION,
 } from './config-generator';
 
 // Base config loader (for reading config/base-*.settings.json)
@@ -98,3 +101,23 @@ export {
   getProviderTokenDir,
   displayAuthStatus,
 } from './auth-handler';
+
+// Stats fetcher
+export type { CliproxyStats } from './stats-fetcher';
+export { fetchCliproxyStats, isCliproxyRunning } from './stats-fetcher';
+
+// OpenAI compatibility layer
+export type { OpenAICompatProvider, OpenAICompatModel } from './openai-compat-manager';
+export {
+  listOpenAICompatProviders,
+  getOpenAICompatProvider,
+  addOpenAICompatProvider,
+  updateOpenAICompatProvider,
+  removeOpenAICompatProvider,
+  OPENROUTER_TEMPLATE,
+  TOGETHER_TEMPLATE,
+} from './openai-compat-manager';
+
+// Service manager (background CLIProxy for dashboard)
+export type { ServiceStartResult } from './service-manager';
+export { ensureCliproxyService, stopCliproxyService, getServiceStatus } from './service-manager';

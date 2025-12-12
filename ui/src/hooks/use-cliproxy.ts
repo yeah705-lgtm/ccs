@@ -5,7 +5,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, type CreateVariant, type UpdateVariant } from '@/lib/api-client';
+import { api, type CreateVariant, type UpdateVariant, type CreatePreset } from '@/lib/api-client';
 import { toast } from 'sonner';
 
 export function useCliproxy() {
@@ -18,7 +18,7 @@ export function useCliproxy() {
 export function useCliproxyAuth() {
   return useQuery({
     queryKey: ['cliproxy-auth'],
-    queryFn: () => api.cliproxy.auth(),
+    queryFn: () => api.cliproxy.getAuthStatus(),
   });
 }
 
@@ -111,6 +111,98 @@ export function useRemoveAccount() {
       queryClient.invalidateQueries({ queryKey: ['cliproxy-accounts'] });
       queryClient.invalidateQueries({ queryKey: ['cliproxy-auth'] });
       toast.success('Account removed');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+// OAuth flow hook
+export function useStartAuth() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ provider, nickname }: { provider: string; nickname?: string }) =>
+      api.cliproxy.auth.start(provider, nickname),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['cliproxy-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['cliproxy-auth'] });
+      toast.success(`Account added for ${variables.provider}`);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+// Stats and models hooks for Overview tab
+export function useCliproxyStats() {
+  return useQuery({
+    queryKey: ['cliproxy-stats'],
+    queryFn: () => api.cliproxy.stats(),
+    refetchInterval: 30000, // Refresh every 30s
+  });
+}
+
+export function useCliproxyModels() {
+  return useQuery({
+    queryKey: ['cliproxy-models'],
+    queryFn: () => api.cliproxy.models(),
+  });
+}
+
+export function useUpdateModel() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ provider, model }: { provider: string; model: string }) =>
+      api.cliproxy.updateModel(provider, model),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cliproxy-models'] });
+      toast.success('Model updated');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+// ==================== Presets ====================
+
+export function usePresets(profile: string) {
+  return useQuery({
+    queryKey: ['presets', profile],
+    queryFn: () => api.presets.list(profile),
+    enabled: !!profile,
+  });
+}
+
+export function useCreatePreset() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ profile, data }: { profile: string; data: CreatePreset }) =>
+      api.presets.create(profile, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['presets', variables.profile] });
+      toast.success(`Preset "${variables.data.name}" saved`);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+export function useDeletePreset() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ profile, name }: { profile: string; name: string }) =>
+      api.presets.delete(profile, name),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['presets', variables.profile] });
+      toast.success('Preset deleted');
     },
     onError: (error: Error) => {
       toast.error(error.message);

@@ -11,7 +11,26 @@ import { getCcsDir, getConfigPath, loadConfig, loadSettings } from '../utils/con
 import { Config, Settings } from '../types/config';
 import { expandPath } from '../utils/helpers';
 import { runHealthChecks, fixHealthIssue } from './health-service';
-import { getAllAuthStatus, getOAuthConfig, initializeAccounts } from '../cliproxy/auth-handler';
+import {
+  getAllAuthStatus,
+  getOAuthConfig,
+  initializeAccounts,
+  triggerOAuth,
+} from '../cliproxy/auth-handler';
+import {
+  fetchCliproxyStats,
+  fetchCliproxyModels,
+  isCliproxyRunning,
+} from '../cliproxy/stats-fetcher';
+import {
+  listOpenAICompatProviders,
+  getOpenAICompatProvider,
+  addOpenAICompatProvider,
+  updateOpenAICompatProvider,
+  removeOpenAICompatProvider,
+  OPENROUTER_TEMPLATE,
+  TOGETHER_TEMPLATE,
+} from '../cliproxy/openai-compat-manager';
 import {
   getAllAccountsSummary,
   getProviderAccounts,
@@ -19,6 +38,7 @@ import {
   removeAccount as removeAccountFn,
 } from '../cliproxy/account-manager';
 import type { CLIProxyProvider } from '../cliproxy/types';
+import { getClaudeEnvVars } from '../cliproxy/config-generator';
 // Unified config imports
 import {
   hasUnifiedConfig,
@@ -186,12 +206,25 @@ function updateSettingsFile(
 
 /**
  * Helper: Create cliproxy variant settings
+ * Includes base URL and auth token for proper Claude CLI integration
  */
-function createCliproxySettings(name: string, model?: string): string {
+function createCliproxySettings(name: string, provider: CLIProxyProvider, model?: string): string {
   const settingsPath = path.join(getCcsDir(), `${name}.settings.json`);
 
+  // Get base env vars from provider config (includes BASE_URL, AUTH_TOKEN)
+  const baseEnv = getClaudeEnvVars(provider);
+
   const settings: Settings = {
-    env: model ? { ANTHROPIC_MODEL: model } : {},
+    env: {
+      ANTHROPIC_BASE_URL: baseEnv.ANTHROPIC_BASE_URL || '',
+      ANTHROPIC_AUTH_TOKEN: baseEnv.ANTHROPIC_AUTH_TOKEN || '',
+      ANTHROPIC_MODEL: model || (baseEnv.ANTHROPIC_MODEL as string) || '',
+      ANTHROPIC_DEFAULT_OPUS_MODEL: model || (baseEnv.ANTHROPIC_DEFAULT_OPUS_MODEL as string) || '',
+      ANTHROPIC_DEFAULT_SONNET_MODEL:
+        model || (baseEnv.ANTHROPIC_DEFAULT_SONNET_MODEL as string) || '',
+      ANTHROPIC_DEFAULT_HAIKU_MODEL:
+        (baseEnv.ANTHROPIC_DEFAULT_HAIKU_MODEL as string) || model || '',
+    },
   };
 
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
@@ -342,7 +375,7 @@ apiRoutes.post('/cliproxy', (req: Request, res: Response): void => {
   }
 
   // Create settings file for variant
-  const settingsPath = createCliproxySettings(name, model);
+  const settingsPath = createCliproxySettings(name, provider as CLIProxyProvider, model);
 
   // Include account if specified (defaults to 'default' if not provided)
   config.cliproxy[name] = {
@@ -520,10 +553,34 @@ apiRoutes.post('/cliproxy/accounts/:provider/default', (req: Request, res: Respo
 /**
  * DELETE /api/cliproxy/accounts/:provider/:accountId - Remove an account
  */
-apiRoutes.delete(
-  '/api/cliproxy/accounts/:provider/:accountId',
-  (req: Request, res: Response): void => {
-    const { provider, accountId } = req.params;
+apiRoutes.delete('/cliproxy/accounts/:provider/:accountId', (req: Request, res: Response): void => {
+  const { provider, accountId } = req.params;
+
+  // Validate provider
+  const validProviders: CLIProxyProvider[] = ['gemini', 'codex', 'agy', 'qwen', 'iflow'];
+  if (!validProviders.includes(provider as CLIProxyProvider)) {
+    res.status(400).json({ error: `Invalid provider: ${provider}` });
+    return;
+  }
+
+  const success = removeAccountFn(provider as CLIProxyProvider, accountId);
+
+  if (success) {
+    res.json({ provider, accountId, deleted: true });
+  } else {
+    res.status(404).json({ error: 'Account not found' });
+  }
+});
+
+/**
+ * POST /api/cliproxy/auth/:provider/start - Start OAuth flow for a provider
+ * Opens browser for authentication and returns account info when complete
+ */
+apiRoutes.post(
+  '/cliproxy/auth/:provider/start',
+  async (req: Request, res: Response): Promise<void> => {
+    const { provider } = req.params;
+    const { nickname } = req.body;
 
     // Validate provider
     const validProviders: CLIProxyProvider[] = ['gemini', 'codex', 'agy', 'qwen', 'iflow'];
@@ -532,12 +589,30 @@ apiRoutes.delete(
       return;
     }
 
-    const success = removeAccountFn(provider as CLIProxyProvider, accountId);
+    try {
+      // Trigger OAuth flow - this opens browser and waits for completion
+      const account = await triggerOAuth(provider as CLIProxyProvider, {
+        add: true, // Always add mode from UI
+        headless: false, // Force interactive mode
+        nickname: nickname || undefined,
+      });
 
-    if (success) {
-      res.json({ provider, accountId, deleted: true });
-    } else {
-      res.status(404).json({ error: 'Account not found' });
+      if (account) {
+        res.json({
+          success: true,
+          account: {
+            id: account.id,
+            email: account.email,
+            nickname: account.nickname,
+            provider: account.provider,
+            isDefault: account.isDefault,
+          },
+        });
+      } else {
+        res.status(400).json({ error: 'Authentication failed or was cancelled' });
+      }
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
     }
   }
 );
@@ -656,6 +731,93 @@ apiRoutes.put('/settings/:profile', (req: Request, res: Response): void => {
     mtime: newStat.mtime.getTime(),
     backupPath,
   });
+});
+
+// ==================== Presets ====================
+
+/**
+ * GET /api/settings/:profile/presets - Get saved presets for a provider
+ */
+apiRoutes.get('/settings/:profile/presets', (req: Request, res: Response): void => {
+  const { profile } = req.params;
+  const ccsDir = getCcsDir();
+  const settingsPath = path.join(ccsDir, `${profile}.settings.json`);
+
+  if (!fs.existsSync(settingsPath)) {
+    res.json({ presets: [] });
+    return;
+  }
+
+  const settings = loadSettings(settingsPath);
+  res.json({ presets: settings.presets || [] });
+});
+
+/**
+ * POST /api/settings/:profile/presets - Create a new preset
+ */
+apiRoutes.post('/settings/:profile/presets', (req: Request, res: Response): void => {
+  const { profile } = req.params;
+  const { name, default: defaultModel, opus, sonnet, haiku } = req.body;
+
+  if (!name || !defaultModel) {
+    res.status(400).json({ error: 'Missing required fields: name, default' });
+    return;
+  }
+
+  const ccsDir = getCcsDir();
+  const settingsPath = path.join(ccsDir, `${profile}.settings.json`);
+
+  // Create settings file if it doesn't exist
+  if (!fs.existsSync(settingsPath)) {
+    fs.writeFileSync(settingsPath, JSON.stringify({ env: {}, presets: [] }, null, 2) + '\n');
+  }
+
+  const settings = loadSettings(settingsPath);
+  settings.presets = settings.presets || [];
+
+  // Check for duplicate name
+  if (settings.presets.some((p) => p.name === name)) {
+    res.status(409).json({ error: 'Preset with this name already exists' });
+    return;
+  }
+
+  const preset = {
+    name,
+    default: defaultModel,
+    opus: opus || defaultModel,
+    sonnet: sonnet || defaultModel,
+    haiku: haiku || defaultModel,
+  };
+
+  settings.presets.push(preset);
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+
+  res.status(201).json({ preset });
+});
+
+/**
+ * DELETE /api/settings/:profile/presets/:name - Delete a preset
+ */
+apiRoutes.delete('/settings/:profile/presets/:name', (req: Request, res: Response): void => {
+  const { profile, name } = req.params;
+  const ccsDir = getCcsDir();
+  const settingsPath = path.join(ccsDir, `${profile}.settings.json`);
+
+  if (!fs.existsSync(settingsPath)) {
+    res.status(404).json({ error: 'Settings not found' });
+    return;
+  }
+
+  const settings = loadSettings(settingsPath);
+  if (!settings.presets || !settings.presets.some((p) => p.name === name)) {
+    res.status(404).json({ error: 'Preset not found' });
+    return;
+  }
+
+  settings.presets = settings.presets.filter((p) => p.name !== name);
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+
+  res.json({ success: true });
 });
 
 // ==================== Accounts ====================
@@ -1019,6 +1181,218 @@ apiRoutes.get('/files', (_req: Request, res: Response): void => {
       .sort((a, b) => a.name.localeCompare(b.name));
 
     res.json({ files });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+/**
+ * GET /api/cliproxy/stats - Get CLIProxyAPI usage statistics
+ * Returns: CliproxyStats or error if proxy not running
+ */
+apiRoutes.get('/cliproxy/stats', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    // Check if proxy is running first
+    const running = await isCliproxyRunning();
+    if (!running) {
+      res.status(503).json({
+        error: 'CLIProxyAPI not running',
+        message: 'Start a CLIProxy session (gemini, codex, agy) to collect stats',
+      });
+      return;
+    }
+
+    // Fetch stats from management API
+    const stats = await fetchCliproxyStats();
+    if (!stats) {
+      res.status(503).json({
+        error: 'Stats unavailable',
+        message: 'CLIProxyAPI is running but stats endpoint not responding',
+      });
+      return;
+    }
+
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+/**
+ * GET /api/cliproxy/status - Check CLIProxyAPI running status
+ * Returns: { running: boolean }
+ */
+apiRoutes.get('/cliproxy/status', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const running = await isCliproxyRunning();
+    res.json({ running });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+/**
+ * GET /api/cliproxy/models - Get available models from CLIProxyAPI
+ * Returns: { models: CliproxyModel[], byCategory: Record<string, CliproxyModel[]>, totalCount: number }
+ */
+apiRoutes.get('/cliproxy/models', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    // Check if proxy is running first
+    const running = await isCliproxyRunning();
+    if (!running) {
+      res.status(503).json({
+        error: 'CLIProxyAPI not running',
+        message: 'Start a CLIProxy session (gemini, codex, agy) to fetch available models',
+      });
+      return;
+    }
+
+    // Fetch models from /v1/models endpoint
+    const modelsResponse = await fetchCliproxyModels();
+    if (!modelsResponse) {
+      res.status(503).json({
+        error: 'Models unavailable',
+        message: 'CLIProxyAPI is running but /v1/models endpoint not responding',
+      });
+      return;
+    }
+
+    res.json(modelsResponse);
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// ============================================
+// OpenAI Compatibility Layer Routes
+// ============================================
+
+/**
+ * GET /api/cliproxy/openai-compat - List all OpenAI-compatible providers
+ */
+apiRoutes.get('/cliproxy/openai-compat', (_req: Request, res: Response): void => {
+  try {
+    const providers = listOpenAICompatProviders();
+    // Mask API keys for security
+    const masked = providers.map((p) => ({
+      ...p,
+      apiKey: p.apiKey ? `...${p.apiKey.slice(-4)}` : '',
+    }));
+    res.json({ providers: masked });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+/**
+ * GET /api/cliproxy/openai-compat/templates - Get pre-configured provider templates
+ */
+apiRoutes.get('/cliproxy/openai-compat/templates', (_req: Request, res: Response): void => {
+  res.json({
+    templates: [
+      { ...OPENROUTER_TEMPLATE, description: 'OpenRouter - Access multiple AI models' },
+      { ...TOGETHER_TEMPLATE, description: 'Together AI - Open source models' },
+    ],
+  });
+});
+
+/**
+ * GET /api/cliproxy/openai-compat/:name - Get a specific provider
+ */
+apiRoutes.get('/cliproxy/openai-compat/:name', (req: Request, res: Response): void => {
+  try {
+    const provider = getOpenAICompatProvider(req.params.name);
+    if (!provider) {
+      res.status(404).json({ error: `Provider '${req.params.name}' not found` });
+      return;
+    }
+    // Mask API key
+    res.json({
+      ...provider,
+      apiKey: provider.apiKey ? `...${provider.apiKey.slice(-4)}` : '',
+    });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+/**
+ * POST /api/cliproxy/openai-compat - Add a new provider
+ * Body: { name, baseUrl, apiKey, models: [{ name, alias }] }
+ */
+apiRoutes.post('/cliproxy/openai-compat', (req: Request, res: Response): void => {
+  try {
+    const { name, baseUrl, apiKey, models } = req.body;
+
+    // Validation
+    if (!name || typeof name !== 'string') {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+    if (!baseUrl || typeof baseUrl !== 'string') {
+      res.status(400).json({ error: 'baseUrl is required' });
+      return;
+    }
+    if (!apiKey || typeof apiKey !== 'string') {
+      res.status(400).json({ error: 'apiKey is required' });
+      return;
+    }
+
+    addOpenAICompatProvider({
+      name,
+      baseUrl,
+      apiKey,
+      models: models || [],
+    });
+
+    res.status(201).json({ success: true, name });
+  } catch (error) {
+    const message = (error as Error).message;
+    if (message.includes('already exists')) {
+      res.status(409).json({ error: message });
+    } else {
+      res.status(500).json({ error: message });
+    }
+  }
+});
+
+/**
+ * PUT /api/cliproxy/openai-compat/:name - Update a provider
+ * Body: { baseUrl?, apiKey?, models?, name? (for rename) }
+ */
+apiRoutes.put('/cliproxy/openai-compat/:name', (req: Request, res: Response): void => {
+  try {
+    const { baseUrl, apiKey, models, name: newName } = req.body;
+
+    updateOpenAICompatProvider(req.params.name, {
+      baseUrl,
+      apiKey,
+      models,
+      name: newName,
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    const message = (error as Error).message;
+    if (message.includes('not found')) {
+      res.status(404).json({ error: message });
+    } else {
+      res.status(500).json({ error: message });
+    }
+  }
+});
+
+/**
+ * DELETE /api/cliproxy/openai-compat/:name - Remove a provider
+ */
+apiRoutes.delete('/cliproxy/openai-compat/:name', (req: Request, res: Response): void => {
+  try {
+    const removed = removeOpenAICompatProvider(req.params.name);
+    if (!removed) {
+      res.status(404).json({ error: `Provider '${req.params.name}' not found` });
+      return;
+    }
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
