@@ -1,3 +1,29 @@
+# [5.17.0](https://github.com/kaitranntt/ccs/compare/v5.16.0...v5.17.0) (2025-12-12)
+
+
+### Bug Fixes
+
+* **ci:** improve issue tagging - use bot, skip duplicates, simpler msg ([27f9ea8](https://github.com/kaitranntt/ccs/commit/27f9ea8f0f518c40096404f11f5964d0c42fdfdc))
+* **ci:** resolve YAML syntax error in dev-release workflow ([763928f](https://github.com/kaitranntt/ccs/commit/763928f2820f1c018e127e506c0d1590aecbeafa))
+* **cliproxy:** inherit stdin for OAuth interactive prompts ([84484c0](https://github.com/kaitranntt/ccs/commit/84484c06c33b19a198d876bc7c071d9f83f3741f)), closes [#91](https://github.com/kaitranntt/ccs/issues/91)
+* **cliproxy:** respect version pin when user installs specific version ([a7ba1a1](https://github.com/kaitranntt/ccs/commit/a7ba1a198398c33af23f43fc07ff871ce068b4e7)), closes [#88](https://github.com/kaitranntt/ccs/issues/88)
+* **config:** prevent profile loss from strict config validation ([d343abc](https://github.com/kaitranntt/ccs/commit/d343abca53eb0fd238d0ff2c59f674a05a651721)), closes [#82](https://github.com/kaitranntt/ccs/issues/82)
+* **update:** add shell option for Windows npm/cache spawn ([8c1b8e4](https://github.com/kaitranntt/ccs/commit/8c1b8e49aecf3b7901c3ddf8b2f1ba69233671ec)), closes [#85](https://github.com/kaitranntt/ccs/issues/85)
+* **update:** avoid Node deprecation warning on Windows spawn ([bace084](https://github.com/kaitranntt/ccs/commit/bace084e75442a4321659fceea19b89ffdfa9b6b))
+* **update:** suppress Node deprecation warnings on Windows ([d616e61](https://github.com/kaitranntt/ccs/commit/d616e613c857176a0cfb3f5f0dc9485b11326344))
+
+
+### Features
+
+* **analytics:** add 24H hourly chart with caching and UI improvements ([d64115f](https://github.com/kaitranntt/ccs/commit/d64115f91a7005f2c4ff09a63831da2aac050ba2))
+* **cli:** standardize UI output with ui.ts abstraction layer ([4005f1c](https://github.com/kaitranntt/ccs/commit/4005f1c01ca9fa921978664a0a1b929689513456))
+
+
+### Performance Improvements
+
+* **ci:** add HUSKY=0 to release workflow ([99f3a67](https://github.com/kaitranntt/ccs/commit/99f3a674b858021e577edd7650afd872a1e251ae))
+* **ci:** reduce test redundancy from 4x to 1x per release ([d39095c](https://github.com/kaitranntt/ccs/commit/d39095c7d6923219d7ade0fca59cc555a4489cc9))
+
 # [5.16.0](https://github.com/kaitranntt/ccs/compare/v5.15.0...v5.16.0) (2025-12-12)
 
 
