@@ -11,7 +11,7 @@ Run Claude, Gemini, GLM, and more - concurrently, without conflicts.
 [![npm](https://img.shields.io/npm/v/@kaitranntt/ccs?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@kaitranntt/ccs)
 [![PoweredBy](https://img.shields.io/badge/PoweredBy-ClaudeKit-C15F3C?style=for-the-badge)](https://claudekit.cc?ref=HMNKXOHN)
 
-**[Features & Pricing](https://ccs.kaitran.ca)** | **[Documentation](./docs/en/)** | [Tiếng Việt](docs/vi/README.md) | [日本語](docs/ja/README.md)
+**[Features & Pricing](https://ccs.kaitran.ca)** | **[Documentation](https://docs.ccs.kaitran.ca)**
 
 </div>
 
@@ -196,14 +196,14 @@ Without Developer Mode, CCS falls back to copying directories.
 
 | Topic | Link |
 |-------|------|
-| Installation | [docs/en/installation.md](./docs/en/installation.md) |
-| Configuration | [docs/en/configuration.md](./docs/en/configuration.md) |
-| OAuth Providers | [docs/en/oauth.md](./docs/en/oauth.md) |
-| Multi-Account Claude | [docs/en/multi-account.md](./docs/en/multi-account.md) |
-| Delegation | [docs/en/delegation.md](./docs/en/delegation.md) |
-| GLMT (Experimental) | [docs/en/glmt.md](./docs/en/glmt.md) |
-| Architecture | [docs/system-architecture.md](./docs/system-architecture.md) |
-| Troubleshooting | [docs/en/troubleshooting.md](./docs/en/troubleshooting.md) |
+| Installation | [docs.ccs.kaitran.ca/getting-started/installation](https://docs.ccs.kaitran.ca/getting-started/installation) |
+| Configuration | [docs.ccs.kaitran.ca/getting-started/configuration](https://docs.ccs.kaitran.ca/getting-started/configuration) |
+| OAuth Providers | [docs.ccs.kaitran.ca/providers/oauth-providers](https://docs.ccs.kaitran.ca/providers/oauth-providers) |
+| Multi-Account Claude | [docs.ccs.kaitran.ca/providers/claude-accounts](https://docs.ccs.kaitran.ca/providers/claude-accounts) |
+| API Profiles | [docs.ccs.kaitran.ca/providers/api-profiles](https://docs.ccs.kaitran.ca/providers/api-profiles) |
+| CLI Reference | [docs.ccs.kaitran.ca/reference/cli-commands](https://docs.ccs.kaitran.ca/reference/cli-commands) |
+| Architecture | [docs.ccs.kaitran.ca/reference/architecture](https://docs.ccs.kaitran.ca/reference/architecture) |
+| Troubleshooting | [docs.ccs.kaitran.ca/reference/troubleshooting](https://docs.ccs.kaitran.ca/reference/troubleshooting) |
 
 <br>
 
