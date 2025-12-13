@@ -4,8 +4,8 @@
 
 ![CCS Logo](assets/ccs-logo-medium.png)
 
-### Manage multiple AI accounts from one dashboard.
-Run Claude, Gemini, GLM, and more - concurrently, without conflicts.
+### The universal AI profile manager for Claude Code.
+Run Claude, Gemini, GLM, and any Anthropic-compatible API - concurrently, without conflicts.
 
 [![License](https://img.shields.io/badge/license-MIT-C15F3C?style=for-the-badge)](LICENSE)
 [![npm](https://img.shields.io/npm/v/@kaitranntt/ccs?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@kaitranntt/ccs)
@@ -23,7 +23,7 @@ Run Claude, Gemini, GLM, and more - concurrently, without conflicts.
 |------------|--------------|------------|
 | **Multiple Claude Accounts** | Run work + personal Claude subs simultaneously | Dashboard |
 | **OAuth Providers** | Gemini, Codex, Antigravity - zero API keys needed | Dashboard |
-| **API Profiles** | GLM, Kimi with your own API keys | Dashboard |
+| **API Profiles** | GLM, Kimi, or any Anthropic-compatible API | Dashboard |
 
 <br>
 
@@ -76,7 +76,7 @@ The dashboard provides visual management for all account types:
 
 <br>
 
-## Supported Providers
+## Built-in Providers
 
 | Provider | Auth Type | Command | Best For |
 |----------|-----------|---------|----------|
@@ -88,6 +88,9 @@ The dashboard provides visual management for all account types:
 | **Kimi** | API Key | `ccs kimi` | Long-context, thinking mode |
 
 > **OAuth providers** authenticate via browser on first run. Tokens are cached in `~/.ccs/cliproxy/auth/`.
+
+> [!TIP]
+> **Need more?** CCS supports **any Anthropic-compatible API**. Create custom profiles for self-hosted LLMs, enterprise gateways, or alternative providers. See [API Profiles documentation](https://docs.ccs.kaitran.ca/providers/api-profiles).
 
 <br>
 
