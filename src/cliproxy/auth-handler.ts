@@ -16,7 +16,7 @@ import { execSync, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ProgressIndicator } from '../utils/progress-indicator';
-import { ok, fail, info, warn } from '../utils/ui';
+import { ok, fail, info, warn, color } from '../utils/ui';
 import { ensureCLIProxyBinary } from './binary-manager';
 import { generateConfig, getProviderAuthDir } from './config-generator';
 import { CLIProxyProvider } from './types';
@@ -537,8 +537,14 @@ export async function triggerOAuth(
   console.log('');
   if (headless) {
     console.log(info('Headless mode detected - manual authentication required'));
-    console.log(info(`${oauthConfig.displayName} will display an OAuth URL below`));
     console.log('');
+    console.log(warn('PORT FORWARDING REQUIRED'));
+    console.log('    OAuth callback uses localhost:8085 which must be reachable.');
+    console.log('    Run this on your LOCAL machine (replace <USER> and <HOST>):');
+    console.log('');
+    console.log(`    ${color('ssh -L 8085:localhost:8085 <USER>@<HOST>', 'command')}`);
+    console.log('');
+    console.log(info(`${oauthConfig.displayName} OAuth URL:`));
   } else {
     console.log(info(`Opening browser for ${oauthConfig.displayName} authentication...`));
     console.log(info('Complete the login in your browser.'));
