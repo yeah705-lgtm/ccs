@@ -1,3 +1,16 @@
+# [5.20.0](https://github.com/kaitranntt/ccs/compare/v5.19.2...v5.20.0) (2025-12-15)
+
+
+### Bug Fixes
+
+* **auth:** improve default account hint and add reset-default command ([2fb266c](https://github.com/kaitranntt/ccs/commit/2fb266c01f0a6a5bf10a0fe1662e1f315b732a61)), closes [#106](https://github.com/kaitranntt/ccs/issues/106)
+* resolve ESM/CJS compatibility for Node.js 18 ([b915127](https://github.com/kaitranntt/ccs/commit/b915127b3a775667c171fd12a9756fc3d5d321d0)), closes [#110](https://github.com/kaitranntt/ccs/issues/110)
+
+
+### Features
+
+* **oauth:** enhance auth flow with detailed pre-flight checks and real-time progress ([e80c48c](https://github.com/kaitranntt/ccs/commit/e80c48c55f8b74614d0bebb3336163588018ebd6))
+
 ## [5.19.2](https://github.com/kaitranntt/ccs/compare/v5.19.1...v5.19.2) (2025-12-14)
 
 
