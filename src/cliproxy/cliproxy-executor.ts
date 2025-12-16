@@ -39,7 +39,11 @@ import {
 } from './account-manager';
 import { getPortCheckCommand, getCatCommand, killProcessOnPort } from '../utils/platform-commands';
 import { getPortProcess, isCLIProxyProcess } from '../utils/port-utils';
-import { ensureMcpWebSearch, installWebSearchHook } from '../utils/mcp-manager';
+import {
+  ensureMcpWebSearch,
+  installWebSearchHook,
+  displayWebSearchStatus,
+} from '../utils/mcp-manager';
 
 /** Default executor configuration */
 const DEFAULT_CONFIG: ExecutorConfig = {
@@ -121,6 +125,9 @@ export async function execClaudeWithCLIProxy(
   // Install WebSearch hook for Gemini CLI + MCP fallback
   // Hook intercepts WebSearch, tries Gemini CLI first, falls back to MCP
   installWebSearchHook();
+
+  // Display WebSearch status (single line, equilibrium UX)
+  displayWebSearchStatus();
 
   // Validate provider
   const providerConfig = getProviderConfig(provider);

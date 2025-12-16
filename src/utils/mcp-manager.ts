@@ -14,7 +14,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { info, warn } from './ui';
+import { ok, info, warn, fail } from './ui';
 import { getWebSearchConfig } from '../config/unified-config-loader';
 
 // MCP configuration file path
@@ -30,6 +30,7 @@ interface McpServerConfig {
   command?: string;
   args?: string[];
   env?: Record<string, string>;
+  _managedBy?: 'ccs'; // CCS-managed marker (Option C hybrid)
 }
 
 /**
@@ -48,6 +49,7 @@ const WEB_SEARCH_PRIME_CONFIG: McpServerConfig = {
   type: 'http',
   url: 'https://api.z.ai/api/mcp/web_search_prime/mcp',
   headers: {},
+  _managedBy: 'ccs',
 };
 
 /**
@@ -61,6 +63,7 @@ const BRAVE_SEARCH_CONFIG: McpServerConfig = {
   command: 'npx',
   args: ['-y', '@modelcontextprotocol/server-brave-search'],
   env: {},
+  _managedBy: 'ccs',
 };
 
 /**
@@ -74,6 +77,7 @@ const TAVILY_CONFIG: McpServerConfig = {
   command: 'npx',
   args: ['-y', '@tavily/mcp-server'],
   env: {},
+  _managedBy: 'ccs',
 };
 
 /**
@@ -569,5 +573,232 @@ function ensureWebSearchHookConfigInternal(): boolean {
       console.error(warn(`Failed to configure WebSearch hook: ${(error as Error).message}`));
     }
     return false;
+  }
+}
+
+// ========== Phase 1: MCP Status Functions ==========
+
+/**
+ * MCP web search status with ownership tracking
+ */
+export interface McpWebSearchStatus {
+  configured: boolean;
+  ccsManaged: string[]; // CCS-managed server names
+  userAdded: string[]; // User-added server names
+}
+
+/**
+ * Get comprehensive MCP web search status
+ *
+ * Distinguishes CCS-managed vs user-added MCP servers
+ * based on _managedBy marker.
+ */
+export function getMcpWebSearchStatus(): McpWebSearchStatus {
+  const result: McpWebSearchStatus = {
+    configured: false,
+    ccsManaged: [],
+    userAdded: [],
+  };
+
+  try {
+    if (!fs.existsSync(MCP_CONFIG_PATH)) return result;
+
+    const content = fs.readFileSync(MCP_CONFIG_PATH, 'utf8');
+    const config: McpConfig = JSON.parse(content);
+
+    if (!config.mcpServers) return result;
+
+    for (const [name, server] of Object.entries(config.mcpServers)) {
+      // Check if it's a web search server
+      const lowerName = name.toLowerCase();
+      const isWebSearch =
+        lowerName.includes('web-search') ||
+        lowerName.includes('websearch') ||
+        lowerName.includes('tavily') ||
+        lowerName.includes('brave');
+
+      if (!isWebSearch) continue;
+
+      if (server._managedBy === 'ccs') {
+        result.ccsManaged.push(name);
+      } else {
+        result.userAdded.push(name);
+      }
+    }
+
+    result.configured = result.ccsManaged.length > 0 || result.userAdded.length > 0;
+    return result;
+  } catch {
+    return result;
+  }
+}
+
+/**
+ * Check if CCS-managed web search MCP is configured
+ */
+export function hasCcsManagedWebSearch(): boolean {
+  const status = getMcpWebSearchStatus();
+  return status.ccsManaged.length > 0;
+}
+
+// ========== Phase 2: Gemini CLI Detection ==========
+
+import { execSync } from 'child_process';
+
+/**
+ * Gemini CLI installation status
+ */
+export interface GeminiCliStatus {
+  installed: boolean;
+  path: string | null;
+  version: string | null;
+}
+
+// Cache for Gemini CLI status (per process)
+let geminiCliCache: GeminiCliStatus | null = null;
+
+/**
+ * Check if Gemini CLI is installed globally
+ *
+ * Requires global install: `npm install -g @google/gemini-cli`
+ * No npx fallback - must be in PATH
+ *
+ * @returns Gemini CLI status with path and version
+ */
+export function getGeminiCliStatus(): GeminiCliStatus {
+  // Return cached result if available
+  if (geminiCliCache) {
+    return geminiCliCache;
+  }
+
+  const result: GeminiCliStatus = {
+    installed: false,
+    path: null,
+    version: null,
+  };
+
+  try {
+    const isWindows = process.platform === 'win32';
+    const whichCmd = isWindows ? 'where gemini' : 'which gemini';
+
+    const pathResult = execSync(whichCmd, {
+      encoding: 'utf8',
+      timeout: 5000,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    const geminiPath = pathResult.trim().split('\n')[0]; // First result on Windows
+
+    if (geminiPath) {
+      result.installed = true;
+      result.path = geminiPath;
+
+      // Try to get version
+      try {
+        const versionResult = execSync('gemini --version', {
+          encoding: 'utf8',
+          timeout: 5000,
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        result.version = versionResult.trim();
+      } catch {
+        // Version check failed, but CLI is installed
+        result.version = 'unknown';
+      }
+    }
+  } catch {
+    // Command not found - Gemini CLI not installed
+  }
+
+  // Cache result
+  geminiCliCache = result;
+  return result;
+}
+
+/**
+ * Check if Gemini CLI is available (quick boolean check)
+ */
+export function hasGeminiCli(): boolean {
+  return getGeminiCliStatus().installed;
+}
+
+/**
+ * Clear Gemini CLI cache (for testing or after installation)
+ */
+export function clearGeminiCliCache(): void {
+  geminiCliCache = null;
+}
+
+// ========== Phase 3: WebSearch Readiness Status ==========
+
+/**
+ * WebSearch availability status for third-party profiles
+ */
+export type WebSearchReadiness = 'ready' | 'mcp-only' | 'unavailable';
+
+/**
+ * WebSearch status for display
+ */
+export interface WebSearchStatus {
+  readiness: WebSearchReadiness;
+  geminiCli: boolean;
+  mcpConfigured: boolean;
+  message: string;
+}
+
+/**
+ * Get WebSearch readiness status for display
+ *
+ * Called on third-party profile startup to inform user.
+ */
+export function getWebSearchReadiness(): WebSearchStatus {
+  const geminiCli = hasGeminiCli();
+  const mcpStatus = getMcpWebSearchStatus();
+  const mcpConfigured = mcpStatus.configured;
+
+  if (geminiCli) {
+    return {
+      readiness: 'ready',
+      geminiCli: true,
+      mcpConfigured,
+      message: 'Ready (Gemini CLI)',
+    };
+  }
+
+  if (mcpConfigured) {
+    return {
+      readiness: 'mcp-only',
+      geminiCli: false,
+      mcpConfigured: true,
+      message: 'MCP fallback only',
+    };
+  }
+
+  return {
+    readiness: 'unavailable',
+    geminiCli: false,
+    mcpConfigured: false,
+    message: 'Unavailable (run: ccs config)',
+  };
+}
+
+/**
+ * Display WebSearch status (single line, equilibrium UX)
+ *
+ * Only call for third-party profiles.
+ */
+export function displayWebSearchStatus(): void {
+  const status = getWebSearchReadiness();
+
+  switch (status.readiness) {
+    case 'ready':
+      console.error(ok(`WebSearch: ${status.message}`));
+      break;
+    case 'mcp-only':
+      console.error(info(`WebSearch: ${status.message}`));
+      break;
+    case 'unavailable':
+      console.error(fail(`WebSearch: ${status.message}`));
+      break;
   }
 }

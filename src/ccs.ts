@@ -14,7 +14,11 @@ import { detectClaudeCli } from './utils/claude-detector';
 import { getSettingsPath } from './utils/config-manager';
 import { ErrorManager } from './utils/error-manager';
 import { execClaudeWithCLIProxy, CLIProxyProvider } from './cliproxy';
-import { ensureMcpWebSearch, installWebSearchHook } from './utils/mcp-manager';
+import {
+  ensureMcpWebSearch,
+  installWebSearchHook,
+  displayWebSearchStatus,
+} from './utils/mcp-manager';
 
 // Import extracted command handlers
 import { handleVersionCommand } from './commands/version-command';
@@ -383,6 +387,9 @@ async function main(): Promise<void> {
       // WebSearch is server-side tool - third-party providers have no access
       ensureMcpWebSearch();
       installWebSearchHook();
+
+      // Display WebSearch status (single line, equilibrium UX)
+      displayWebSearchStatus();
 
       // Check if this is GLMT profile (requires proxy)
       if (profileInfo.name === 'glmt') {

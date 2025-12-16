@@ -4,13 +4,20 @@
 #
 # Options:
 #   --skip-validate  Skip validation (faster, use when you're sure code is good)
+#   --npm            Force npm install (default: auto-detect, fallback to bun)
+#   --bun            Force bun install
 
 set -e
 
 SKIP_VALIDATE=false
+FORCE_NPM=false
+FORCE_BUN=false
+
 for arg in "$@"; do
     case $arg in
         --skip-validate) SKIP_VALIDATE=true ;;
+        --npm) FORCE_NPM=true ;;
+        --bun) FORCE_BUN=true ;;
     esac
 done
 
@@ -18,6 +25,42 @@ echo "[i] CCS Dev Install - Starting..."
 
 # Get to the right directory
 cd "$(dirname "$0")/.."
+
+# Detect installation method
+# Priority: CLI flags > existing global install location > bun (default)
+detect_pkg_manager() {
+    if [ "$FORCE_NPM" = true ]; then
+        echo "npm"
+        return
+    fi
+
+    if [ "$FORCE_BUN" = true ]; then
+        echo "bun"
+        return
+    fi
+
+    # Check existing ccs installation location
+    CCS_PATH=$(which ccs 2>/dev/null || true)
+
+    if [ -n "$CCS_PATH" ]; then
+        # Check if installed via bun
+        if [[ "$CCS_PATH" == *".bun"* ]]; then
+            echo "bun"
+            return
+        fi
+        # Check if installed via npm
+        if [[ "$CCS_PATH" == *"npm"* ]] || [[ "$CCS_PATH" == *"node_modules"* ]]; then
+            echo "npm"
+            return
+        fi
+    fi
+
+    # Default fallback: bun (preferred)
+    echo "bun"
+}
+
+PKG_MANAGER=$(detect_pkg_manager)
+echo "[i] Detected package manager: $PKG_MANAGER"
 
 # Build TypeScript first
 echo "[i] Building TypeScript..."
@@ -27,10 +70,10 @@ bun run build
 echo "[i] Creating package..."
 if [ "$SKIP_VALIDATE" = true ]; then
     # Skip validation, just pack
-    bun pm pack --ignore-scripts
+    npm pack --ignore-scripts 2>/dev/null || bun pm pack --ignore-scripts
 else
     # Full pack with validation (runs prepublishOnly)
-    bun pm pack
+    npm pack 2>/dev/null || bun pm pack
 fi
 
 # Find the tarball
@@ -43,9 +86,15 @@ fi
 
 echo "[i] Found tarball: $TARBALL"
 
-# Install globally using npm (handles bin linking correctly)
-echo "[i] Installing globally with npm..."
-npm install -g "$TARBALL"
+# Install globally using detected package manager
+echo "[i] Installing globally with $PKG_MANAGER..."
+
+if [ "$PKG_MANAGER" = "bun" ]; then
+    # Bun requires file: protocol for local tarballs
+    bun add -g "file:$(pwd)/$TARBALL"
+else
+    npm install -g "$TARBALL"
+fi
 
 # Clean up
 echo "[i] Cleaning up..."

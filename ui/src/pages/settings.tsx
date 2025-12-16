@@ -23,16 +23,36 @@ interface WebSearchConfig {
   fallback: boolean;
 }
 
+interface WebSearchStatus {
+  geminiCli: {
+    installed: boolean;
+    path: string | null;
+    version: string | null;
+  };
+  mcpServers: {
+    configured: boolean;
+    ccsManaged: string[];
+    userAdded: string[];
+  };
+  readiness: {
+    status: 'ready' | 'mcp-only' | 'unavailable';
+    message: string;
+  };
+}
+
 export function SettingsPage() {
   const [config, setConfig] = useState<WebSearchConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [status, setStatus] = useState<WebSearchStatus | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
 
-  // Load config on mount
+  // Load config and status on mount
   useEffect(() => {
     fetchConfig();
+    fetchStatus();
   }, []);
 
   const fetchConfig = async () => {
@@ -47,6 +67,20 @@ export function SettingsPage() {
       setError((err as Error).message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchStatus = async () => {
+    try {
+      setStatusLoading(true);
+      const res = await fetch('/api/websearch/status');
+      if (!res.ok) throw new Error('Failed to load status');
+      const data = await res.json();
+      setStatus(data);
+    } catch (err) {
+      console.error('Failed to fetch WebSearch status:', err);
+    } finally {
+      setStatusLoading(false);
     }
   };
 
@@ -130,6 +164,93 @@ export function SettingsPage() {
               configures MCP web search servers as a fallback.
             </AlertDescription>
           </Alert>
+
+          {/* WebSearch Status Panel */}
+          <div className="space-y-4 pb-4 border-b">
+            <h4 className="font-medium flex items-center gap-2">
+              Status
+              <Button variant="ghost" size="sm" onClick={fetchStatus} disabled={statusLoading}>
+                <RefreshCw className={`w-3 h-3 ${statusLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </h4>
+
+            {statusLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Checking status...
+              </div>
+            ) : status ? (
+              <div className="space-y-3">
+                {/* Overall Readiness */}
+                <div className="flex items-center gap-2">
+                  {status.readiness.status === 'ready' && (
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+                  )}
+                  {status.readiness.status === 'mcp-only' && (
+                    <Info className="w-4 h-4 text-blue-600" />
+                  )}
+                  {status.readiness.status === 'unavailable' && (
+                    <AlertCircle className="w-4 h-4 text-red-600" />
+                  )}
+                  <span className="font-medium">{status.readiness.message}</span>
+                </div>
+
+                {/* Gemini CLI Status */}
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                  <div
+                    className={`w-2 h-2 rounded-full mt-2 ${
+                      status.geminiCli.installed ? 'bg-green-500' : 'bg-gray-400'
+                    }`}
+                  />
+                  <div className="flex-1">
+                    <p className="font-medium">Gemini CLI</p>
+                    {status.geminiCli.installed ? (
+                      <p className="text-sm text-muted-foreground">
+                        Installed {status.geminiCli.version && `(${status.geminiCli.version})`}
+                      </p>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        <p>Not installed</p>
+                        <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                          npm install -g @google/gemini-cli
+                        </code>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* MCP Servers */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">MCP Servers</p>
+                  {status.mcpServers.ccsManaged.length === 0 &&
+                  status.mcpServers.userAdded.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No web search MCP configured</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {status.mcpServers.ccsManaged.map((name) => (
+                        <div key={name} className="flex items-center gap-2 text-sm">
+                          <span className="px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                            Managed by CCS
+                          </span>
+                          <span>{name}</span>
+                        </div>
+                      ))}
+                      {status.mcpServers.userAdded.map((name) => (
+                        <div key={name} className="flex items-center gap-2 text-sm">
+                          <span className="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                            User-added
+                          </span>
+                          <span>{name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Status unavailable</p>
+            )}
+          </div>
 
           <div className="space-y-4">
             {/* Enable/Disable */}

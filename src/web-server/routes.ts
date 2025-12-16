@@ -57,6 +57,11 @@ import { getWebSearchConfig } from '../config/unified-config-loader';
 import type { WebSearchConfig } from '../config/unified-config-types';
 import { isUnifiedConfig } from '../config/unified-config-types';
 import { isSensitiveKey, maskSensitiveValue } from '../utils/sensitive-keys';
+import {
+  getWebSearchReadiness,
+  getMcpWebSearchStatus,
+  getGeminiCliStatus,
+} from '../utils/mcp-manager';
 
 export const apiRoutes = Router();
 
@@ -1470,6 +1475,37 @@ apiRoutes.put('/websearch', (req: Request, res: Response): void => {
     res.json({
       success: true,
       websearch: existingConfig.websearch,
+    });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+/**
+ * GET /api/websearch/status - Get comprehensive WebSearch status
+ * Returns: { geminiCli, mcpServers, readiness }
+ */
+apiRoutes.get('/websearch/status', (_req: Request, res: Response): void => {
+  try {
+    const geminiCli = getGeminiCliStatus();
+    const mcpStatus = getMcpWebSearchStatus();
+    const readiness = getWebSearchReadiness();
+
+    res.json({
+      geminiCli: {
+        installed: geminiCli.installed,
+        path: geminiCli.path,
+        version: geminiCli.version,
+      },
+      mcpServers: {
+        configured: mcpStatus.configured,
+        ccsManaged: mcpStatus.ccsManaged,
+        userAdded: mcpStatus.userAdded,
+      },
+      readiness: {
+        status: readiness.readiness,
+        message: readiness.message,
+      },
     });
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
