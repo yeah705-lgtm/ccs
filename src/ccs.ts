@@ -14,6 +14,7 @@ import { detectClaudeCli } from './utils/claude-detector';
 import { getSettingsPath } from './utils/config-manager';
 import { ErrorManager } from './utils/error-manager';
 import { execClaudeWithCLIProxy, CLIProxyProvider } from './cliproxy';
+import { ensureMcpWebSearch } from './utils/mcp-manager';
 
 // Import extracted command handlers
 import { handleVersionCommand } from './commands/version-command';
@@ -378,6 +379,10 @@ async function main(): Promise<void> {
       const customSettingsPath = profileInfo.settingsPath; // undefined for hardcoded profiles
       await execClaudeWithCLIProxy(claudeCli, provider, remainingArgs, { customSettingsPath });
     } else if (profileInfo.type === 'settings') {
+      // Settings-based profiles (glm, glmt, kimi) are third-party providers
+      // WebSearch is server-side tool - third-party providers have no access
+      ensureMcpWebSearch();
+
       // Check if this is GLMT profile (requires proxy)
       if (profileInfo.name === 'glmt') {
         // GLMT FLOW: Settings-based with embedded proxy for thinking support

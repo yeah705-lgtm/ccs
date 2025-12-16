@@ -39,6 +39,7 @@ import {
 } from './account-manager';
 import { getPortCheckCommand, getCatCommand, killProcessOnPort } from '../utils/platform-commands';
 import { getPortProcess, isCLIProxyProcess } from '../utils/port-utils';
+import { ensureMcpWebSearch } from '../utils/mcp-manager';
 
 /** Default executor configuration */
 const DEFAULT_CONFIG: ExecutorConfig = {
@@ -111,6 +112,11 @@ export async function execClaudeWithCLIProxy(
       console.error(`[cliproxy] ${msg}`);
     }
   };
+
+  // Ensure MCP web-search is configured for third-party profiles
+  // WebSearch is a server-side tool executed by Anthropic's API
+  // Third-party providers don't have access, so we use MCP fallback
+  ensureMcpWebSearch();
 
   // Validate provider
   const providerConfig = getProviderConfig(provider);

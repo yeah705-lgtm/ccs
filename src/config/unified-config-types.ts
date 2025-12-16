@@ -101,6 +101,21 @@ export interface PreferencesConfig {
 }
 
 /**
+ * WebSearch configuration.
+ * Controls MCP web-search auto-configuration for third-party profiles.
+ */
+export interface WebSearchConfig {
+  /** Enable auto-configuration of MCP web-search (default: true) */
+  enabled?: boolean;
+  /** Preferred provider: auto uses fallback chain, or specify one */
+  provider?: 'auto' | 'web-search-prime' | 'brave' | 'tavily';
+  /** Enable fallback chain when preferred provider fails (default: true) */
+  fallback?: boolean;
+  /** Custom URL for web-search-prime provider (optional, overrides default) */
+  webSearchPrimeUrl?: string;
+}
+
+/**
  * Main unified configuration structure.
  * Stored in ~/.ccs/config.yaml
  */
@@ -117,6 +132,8 @@ export interface UnifiedConfig {
   cliproxy: CLIProxyConfig;
   /** User preferences */
   preferences: PreferencesConfig;
+  /** WebSearch configuration */
+  websearch?: WebSearchConfig;
 }
 
 /**
@@ -153,6 +170,11 @@ export function createEmptyUnifiedConfig(): UnifiedConfig {
       theme: 'system',
       telemetry: false,
       auto_update: true,
+    },
+    websearch: {
+      enabled: true,
+      provider: 'auto',
+      fallback: true,
     },
   };
 }

@@ -195,6 +195,45 @@ Without Developer Mode, CCS falls back to copying directories.
 
 <br>
 
+## WebSearch
+
+Third-party profiles (Gemini, Codex, GLM, etc.) cannot use Anthropic's native WebSearch. CCS automatically configures MCP-based web search as a fallback.
+
+### How It Works
+
+| Profile Type | WebSearch Method |
+|--------------|------------------|
+| Claude (native) | Anthropic WebSearch API |
+| OAuth providers | MCP web-search-prime (auto-configured) |
+| API profiles | MCP web-search-prime (auto-configured) |
+
+### Configuration
+
+Configure via dashboard (**Settings** page) or `~/.ccs/config.yaml`:
+
+```yaml
+websearch:
+  enabled: true                    # Enable/disable auto-config
+  provider: auto                   # auto | web-search-prime | brave | tavily
+  fallback: true                   # Enable fallback chain
+```
+
+### Optional API Keys
+
+For additional search providers, set environment variables:
+
+```bash
+export BRAVE_API_KEY="your-key"    # Free tier: 15k queries/month
+export TAVILY_API_KEY="your-key"   # AI-optimized search (paid)
+```
+
+> [!NOTE]
+> `web-search-prime` works without API keys. Brave/Tavily are optional fallbacks.
+
+See [docs/websearch.md](./docs/websearch.md) for detailed configuration and troubleshooting.
+
+<br>
+
 ## Documentation
 
 | Topic | Link |

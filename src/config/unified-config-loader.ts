@@ -115,6 +115,13 @@ function mergeWithDefaults(partial: Partial<UnifiedConfig>): UnifiedConfig {
       ...defaults.preferences,
       ...partial.preferences,
     },
+    websearch: {
+      enabled: partial.websearch?.enabled ?? defaults.websearch?.enabled ?? true,
+      provider: partial.websearch?.provider ?? defaults.websearch?.provider ?? 'auto',
+      fallback: partial.websearch?.fallback ?? defaults.websearch?.fallback ?? true,
+      webSearchPrimeUrl:
+        partial.websearch?.webSearchPrimeUrl ?? defaults.websearch?.webSearchPrimeUrl,
+    },
   };
 }
 
@@ -149,8 +156,7 @@ function generateYamlHeader(): string {
 #
 # To customize a profile:
 #   1. Edit the *.settings.json file directly (e.g., ~/.ccs/glm.settings.json)
-#   2. The file format matches Claude's settings.json: { "env": { ... } }
-#
+#   2. The file format matches Claude's settings.json: { "env": { ... } }\n#
 # Structure:
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ profiles      - References to *.settings.json files for API providers       │
@@ -228,6 +234,23 @@ function generateYamlWithComments(config: UnifiedConfig): string {
   );
   lines.push('');
 
+  // WebSearch section
+  if (config.websearch) {
+    lines.push('# ----------------------------------------------------------------------------');
+    lines.push('# WebSearch: MCP auto-configuration for third-party profiles');
+    lines.push('# enabled: true/false - Enable/disable MCP web-search auto-config');
+    lines.push('# provider: auto | web-search-prime | brave | tavily');
+    lines.push('# fallback: true/false - Enable fallback chain when provider fails');
+    lines.push('# API keys: Set BRAVE_API_KEY or TAVILY_API_KEY env vars');
+    lines.push('# ----------------------------------------------------------------------------');
+    lines.push(
+      yaml
+        .dump({ websearch: config.websearch }, { indent: 2, lineWidth: -1, quotingType: '"' })
+        .trim()
+    );
+    lines.push('');
+  }
+
   return lines.join('\n');
 }
 
@@ -291,4 +314,23 @@ export function getDefaultProfile(): string | undefined {
 
 export function setDefaultProfile(name: string): void {
   updateUnifiedConfig({ default: name });
+}
+
+/**
+ * Get websearch configuration.
+ * Returns defaults if not configured.
+ */
+export function getWebSearchConfig(): {
+  enabled: boolean;
+  provider: 'auto' | 'web-search-prime' | 'brave' | 'tavily';
+  fallback: boolean;
+  webSearchPrimeUrl?: string;
+} {
+  const config = loadOrCreateUnifiedConfig();
+  return {
+    enabled: config.websearch?.enabled ?? true,
+    provider: config.websearch?.provider ?? 'auto',
+    fallback: config.websearch?.fallback ?? true,
+    webSearchPrimeUrl: config.websearch?.webSearchPrimeUrl,
+  };
 }

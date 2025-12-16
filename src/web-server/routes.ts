@@ -53,6 +53,8 @@ import {
   getBackupDirectories,
 } from '../config/migration-manager';
 import { getProfileSecrets, setProfileSecrets } from '../config/secrets-manager';
+import { getWebSearchConfig } from '../config/unified-config-loader';
+import type { WebSearchConfig } from '../config/unified-config-types';
 import { isUnifiedConfig } from '../config/unified-config-types';
 import { isSensitiveKey, maskSensitiveValue } from '../utils/sensitive-keys';
 
@@ -1393,6 +1395,82 @@ apiRoutes.delete('/cliproxy/openai-compat/:name', (req: Request, res: Response):
       return;
     }
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// ==================== WebSearch Configuration ====================
+
+/**
+ * GET /api/websearch - Get WebSearch configuration
+ * Returns: WebSearchConfig with enabled, provider, fallback
+ */
+apiRoutes.get('/websearch', (_req: Request, res: Response): void => {
+  try {
+    const config = getWebSearchConfig();
+    res.json(config);
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+/**
+ * PUT /api/websearch - Update WebSearch configuration
+ * Body: { enabled?: boolean, provider?: string, fallback?: boolean }
+ */
+apiRoutes.put('/websearch', (req: Request, res: Response): void => {
+  const { enabled, provider, fallback, webSearchPrimeUrl } = req.body as Partial<WebSearchConfig>;
+
+  // Validate enabled
+  if (enabled !== undefined && typeof enabled !== 'boolean') {
+    res.status(400).json({ error: 'Invalid value for enabled. Must be a boolean.' });
+    return;
+  }
+
+  // Validate fallback
+  if (fallback !== undefined && typeof fallback !== 'boolean') {
+    res.status(400).json({ error: 'Invalid value for fallback. Must be a boolean.' });
+    return;
+  }
+
+  // Validate provider if specified
+  const validProviders = ['auto', 'web-search-prime', 'brave', 'tavily'];
+  if (provider && !validProviders.includes(provider)) {
+    res.status(400).json({
+      error: `Invalid provider. Must be one of: ${validProviders.join(', ')}`,
+    });
+    return;
+  }
+
+  // Validate webSearchPrimeUrl if specified
+  if (webSearchPrimeUrl !== undefined && typeof webSearchPrimeUrl !== 'string') {
+    res.status(400).json({ error: 'Invalid value for webSearchPrimeUrl. Must be a string.' });
+    return;
+  }
+
+  try {
+    // Load existing config and update websearch section
+    const existingConfig = loadUnifiedConfig();
+    if (!existingConfig) {
+      res.status(500).json({ error: 'Failed to load config' });
+      return;
+    }
+
+    // Merge updates
+    existingConfig.websearch = {
+      enabled: enabled ?? existingConfig.websearch?.enabled ?? true,
+      provider: provider ?? existingConfig.websearch?.provider ?? 'auto',
+      fallback: fallback ?? existingConfig.websearch?.fallback ?? true,
+      webSearchPrimeUrl: webSearchPrimeUrl ?? existingConfig.websearch?.webSearchPrimeUrl,
+    };
+
+    saveUnifiedConfig(existingConfig);
+
+    res.json({
+      success: true,
+      websearch: existingConfig.websearch,
+    });
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
