@@ -1498,7 +1498,7 @@ apiRoutes.put('/websearch', (req: Request, res: Response): void => {
               model:
                 providers.opencode?.model ??
                 existingConfig.websearch?.providers?.opencode?.model ??
-                'opencode/gpt-5-nano',
+                'opencode/grok-code',
               timeout:
                 providers.opencode?.timeout ??
                 existingConfig.websearch?.providers?.opencode?.timeout ??

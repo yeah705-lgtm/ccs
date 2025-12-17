@@ -144,8 +144,8 @@ function mergeWithDefaults(partial: Partial<UnifiedConfig>): UnifiedConfig {
         },
         opencode: {
           enabled: partial.websearch?.providers?.opencode?.enabled ?? false,
-          model: partial.websearch?.providers?.opencode?.model ?? 'opencode/gpt-5-nano',
-          timeout: partial.websearch?.providers?.opencode?.timeout ?? 60,
+          model: partial.websearch?.providers?.opencode?.model ?? 'opencode/grok-code',
+          timeout: partial.websearch?.providers?.opencode?.timeout ?? 90,
         },
         grok: {
           enabled: partial.websearch?.providers?.grok?.enabled ?? false,
@@ -392,8 +392,8 @@ export function getWebSearchConfig(): {
 
   const opencodeConfig = {
     enabled: config.websearch?.providers?.opencode?.enabled ?? false,
-    model: config.websearch?.providers?.opencode?.model ?? 'opencode/gpt-5-nano',
-    timeout: config.websearch?.providers?.opencode?.timeout ?? 60,
+    model: config.websearch?.providers?.opencode?.model ?? 'opencode/grok-code',
+    timeout: config.websearch?.providers?.opencode?.timeout ?? 90,
   };
 
   const grokConfig = {

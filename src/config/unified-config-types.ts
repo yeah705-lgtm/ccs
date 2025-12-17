@@ -127,7 +127,7 @@ export interface GrokWebSearchConfig {
 export interface OpenCodeWebSearchConfig {
   /** Enable OpenCode CLI for WebSearch (default: false) */
   enabled?: boolean;
-  /** Model to use (default: opencode/gpt-5-nano) */
+  /** Model to use (default: opencode/grok-code) */
   model?: string;
   /** Timeout in seconds (default: 60) */
   timeout?: number;

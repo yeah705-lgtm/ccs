@@ -26,8 +26,11 @@ const CCS_HOOKS_DIR = path.join(os.homedir(), '.ccs', 'hooks');
 // Hook file name
 const WEBSEARCH_HOOK = 'websearch-transformer.cjs';
 
-// Default hook timeout in seconds (Gemini CLI needs time)
-const HOOK_TIMEOUT_SECONDS = 60;
+// Buffer time added to max provider timeout for hook timeout (seconds)
+const HOOK_TIMEOUT_BUFFER = 30;
+
+// Minimum hook timeout in seconds (fallback if no providers configured)
+const MIN_HOOK_TIMEOUT = 60;
 
 // Path to Claude settings.json
 const CLAUDE_SETTINGS_PATH = path.join(os.homedir(), '.claude', 'settings.json');
@@ -221,7 +224,7 @@ let opencodeCliCache: OpenCodeCliStatus | null = null;
 /**
  * Check if OpenCode CLI is installed globally
  *
- * OpenCode provides built-in web search via opencode/gpt-5-nano model.
+ * OpenCode provides built-in web search via opencode/grok-code model.
  * Install: curl -fsSL https://opencode.ai/install | bash
  *
  * @returns OpenCode CLI status with path and version
@@ -482,9 +485,27 @@ export function hasWebSearchHook(): boolean {
 
 /**
  * Get WebSearch hook configuration for settings.json
+ * Timeout is computed from max provider timeout in config.yaml + buffer
  */
 export function getWebSearchHookConfig(): Record<string, unknown> {
   const hookPath = path.join(CCS_HOOKS_DIR, WEBSEARCH_HOOK);
+  const wsConfig = getWebSearchConfig();
+
+  // Compute max timeout from enabled providers
+  const timeouts: number[] = [];
+  if (wsConfig.providers?.gemini?.enabled && wsConfig.providers.gemini.timeout) {
+    timeouts.push(wsConfig.providers.gemini.timeout);
+  }
+  if (wsConfig.providers?.opencode?.enabled && wsConfig.providers.opencode.timeout) {
+    timeouts.push(wsConfig.providers.opencode.timeout);
+  }
+  if (wsConfig.providers?.grok?.enabled && wsConfig.providers.grok.timeout) {
+    timeouts.push(wsConfig.providers.grok.timeout);
+  }
+
+  // Hook timeout = max provider timeout + buffer (or minimum if none configured)
+  const maxProviderTimeout = timeouts.length > 0 ? Math.max(...timeouts) : MIN_HOOK_TIMEOUT;
+  const hookTimeout = maxProviderTimeout + HOOK_TIMEOUT_BUFFER;
 
   return {
     PreToolUse: [
@@ -494,7 +515,7 @@ export function getWebSearchHookConfig(): Record<string, unknown> {
           {
             type: 'command',
             command: `node "${hookPath}"`,
-            timeout: HOOK_TIMEOUT_SECONDS,
+            timeout: hookTimeout,
           },
         ],
       },
@@ -538,16 +559,30 @@ function ensureHookConfig(): boolean {
       });
 
       if (webSearchHookIndex !== -1) {
-        // Hook exists - check if it needs updating (different command path)
+        // Hook exists - check if it needs updating (different command path or timeout)
         const existingHook = hooks.PreToolUse[webSearchHookIndex] as Record<string, unknown>;
         const existingHooks = existingHook.hooks as Array<Record<string, unknown>>;
+        const currentHookConfig = getWebSearchHookConfig();
+        const expectedHooks = (currentHookConfig.PreToolUse as Array<Record<string, unknown>>)[0]
+          .hooks as Array<Record<string, unknown>>;
+        const expectedTimeout = expectedHooks[0].timeout as number;
+
+        let needsUpdate = false;
 
         if (existingHooks?.[0]?.command !== expectedCommand) {
-          // Update the hook command to point to new file
           existingHooks[0].command = expectedCommand;
+          needsUpdate = true;
+        }
+
+        if (existingHooks?.[0]?.timeout !== expectedTimeout) {
+          existingHooks[0].timeout = expectedTimeout;
+          needsUpdate = true;
+        }
+
+        if (needsUpdate) {
           fs.writeFileSync(CLAUDE_SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf8');
           if (process.env.CCS_DEBUG) {
-            console.error(info('Updated WebSearch hook command in settings.json'));
+            console.error(info('Updated WebSearch hook config in settings.json'));
           }
         }
         return true;
@@ -629,7 +664,7 @@ export function getWebSearchHookEnv(): Record<string, string> {
     }
     // Use opencode timeout if no gemini timeout set
     if (!env.CCS_WEBSEARCH_TIMEOUT) {
-      env.CCS_WEBSEARCH_TIMEOUT = String(wsConfig.providers.opencode.timeout || 60);
+      env.CCS_WEBSEARCH_TIMEOUT = String(wsConfig.providers.opencode.timeout || 90);
     }
   }
 
