@@ -268,11 +268,11 @@ export function getWebSearchCliProviders(): WebSearchCliInfo[] {
       command: 'grok',
       installed: grokStatus.installed,
       version: grokStatus.version,
-      installCommand: 'npm install -g grok-cli',
-      docsUrl: 'https://github.com/lalomorales22/grok-4-cli',
+      installCommand: 'npm install -g @vibe-kit/grok-cli',
+      docsUrl: 'https://github.com/superagent-ai/grok-cli',
       requiresApiKey: true,
-      apiKeyEnvVar: 'XAI_API_KEY',
-      description: 'xAI Grok with web + X search (requires API key)',
+      apiKeyEnvVar: 'GROK_API_KEY',
+      description: 'xAI Grok CLI with AI coding agent capabilities',
       freeTier: false,
     },
   ];
@@ -296,7 +296,7 @@ export function getCliInstallHints(): string[] {
   return [
     '[i] WebSearch: No CLI tools installed',
     '    Gemini CLI (FREE): npm i -g @google/gemini-cli',
-    '    Grok CLI (paid):   npm i -g grok-cli',
+    '    Grok CLI (paid):   npm i -g @vibe-kit/grok-cli',
   ];
 }
 

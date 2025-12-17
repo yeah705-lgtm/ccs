@@ -368,7 +368,7 @@ export function SettingsPage() {
                         <div className="flex items-center gap-2">
                           <p className="font-mono font-medium">grok</p>
                           <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 font-medium">
-                            XAI_API_KEY
+                            GROK_API_KEY
                           </span>
                           {status?.grokCli?.installed ? (
                             <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 font-medium">
@@ -402,11 +402,11 @@ export function SettingsPage() {
                         Install globally (requires xAI API key):
                       </p>
                       <code className="text-sm bg-blue-100 dark:bg-blue-900/40 px-2 py-1 rounded font-mono">
-                        npm install -g grok-cli
+                        npm install -g @vibe-kit/grok-cli
                       </code>
                       <div className="mt-3">
                         <a
-                          href="https://github.com/lalomorales22/grok-4-cli"
+                          href="https://github.com/superagent-ai/grok-cli"
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm text-blue-700 dark:text-blue-300 hover:underline inline-flex items-center gap-1"
