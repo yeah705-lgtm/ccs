@@ -426,7 +426,12 @@ export async function execClaudeWithCLIProxy(
   // Uses custom settings path (for variants), user settings, or bundled defaults
   const envVars = getEffectiveEnvVars(provider, cfg.port, cfg.customSettingsPath);
   const webSearchEnv = getWebSearchHookEnv();
-  const env = { ...process.env, ...envVars, ...webSearchEnv };
+  const env = {
+    ...process.env,
+    ...envVars,
+    ...webSearchEnv,
+    CCS_PROFILE_TYPE: 'cliproxy', // Signal to WebSearch hook this is a third-party provider
+  };
 
   log(`Claude env: ANTHROPIC_BASE_URL=${envVars.ANTHROPIC_BASE_URL}`);
   log(`Claude env: ANTHROPIC_MODEL=${envVars.ANTHROPIC_MODEL}`);

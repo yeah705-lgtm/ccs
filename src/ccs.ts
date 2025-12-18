@@ -154,7 +154,12 @@ async function execClaudeWithProxy(
   const isWindows = process.platform === 'win32';
   const needsShell = isWindows && /\.(cmd|bat|ps1)$/i.test(claudeCli);
   const webSearchEnv = getWebSearchHookEnv();
-  const env = { ...process.env, ...envVars, ...webSearchEnv };
+  const env = {
+    ...process.env,
+    ...envVars,
+    ...webSearchEnv,
+    CCS_PROFILE_TYPE: 'settings', // Signal to WebSearch hook this is a third-party provider
+  };
 
   let claude: ChildProcess;
   if (needsShell) {
@@ -401,7 +406,12 @@ async function main(): Promise<void> {
         // EXISTING FLOW: Settings-based profile (glm, kimi)
         // Use --settings flag (backward compatible)
         const expandedSettingsPath = getSettingsPath(profileInfo.name);
-        execClaude(claudeCli, ['--settings', expandedSettingsPath, ...remainingArgs]);
+        const webSearchEnv = getWebSearchHookEnv();
+        const envVars: NodeJS.ProcessEnv = {
+          ...webSearchEnv,
+          CCS_PROFILE_TYPE: 'settings', // Signal to WebSearch hook this is a third-party provider
+        };
+        execClaude(claudeCli, ['--settings', expandedSettingsPath, ...remainingArgs], envVars);
       }
     } else if (profileInfo.type === 'account') {
       // NEW FLOW: Account-based profile (work, personal)
@@ -420,11 +430,21 @@ async function main(): Promise<void> {
       }
 
       // Execute Claude with instance isolation
-      const envVars: NodeJS.ProcessEnv = { CLAUDE_CONFIG_DIR: instancePath };
+      // Skip WebSearch hook - account profiles use native server-side WebSearch
+      const envVars: NodeJS.ProcessEnv = {
+        CLAUDE_CONFIG_DIR: instancePath,
+        CCS_PROFILE_TYPE: 'account',
+        CCS_WEBSEARCH_SKIP: '1',
+      };
       execClaude(claudeCli, remainingArgs, envVars);
     } else {
       // DEFAULT: No profile configured, use Claude's own defaults
-      execClaude(claudeCli, remainingArgs);
+      // Skip WebSearch hook - native Claude has server-side WebSearch
+      const envVars: NodeJS.ProcessEnv = {
+        CCS_PROFILE_TYPE: 'default',
+        CCS_WEBSEARCH_SKIP: '1',
+      };
+      execClaude(claudeCli, remainingArgs, envVars);
     }
   } catch (error) {
     const err = error as ProfileError;
