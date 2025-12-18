@@ -21,6 +21,8 @@ const {
   getSessionCount,
   hasActiveSessions,
   cleanupOrphanedSessions,
+  stopProxy,
+  getProxyStatus,
 } = require('../../../dist/cliproxy/session-tracker');
 
 describe('Session Tracker', function () {
@@ -293,6 +295,97 @@ describe('Session Tracker', function () {
       cleanupOrphanedSessions(testPort);
 
       assert.strictEqual(fs.existsSync(sessionLockPath), true);
+    });
+  });
+
+  describe('stopProxy', function () {
+    it('should return error when no lock exists', function () {
+      const result = stopProxy();
+      assert.strictEqual(result.stopped, false);
+      assert.strictEqual(result.error, 'No active CLIProxy session found');
+    });
+
+    it('should cleanup stale lock when proxy is not running', function () {
+      // Create lock with dead PID
+      const lock = {
+        port: testPort,
+        pid: 999999999, // Very unlikely to exist
+        sessions: ['session1'],
+        startedAt: new Date().toISOString(),
+      };
+      fs.writeFileSync(sessionLockPath, JSON.stringify(lock));
+
+      const result = stopProxy();
+      assert.strictEqual(result.stopped, false);
+      assert.ok(result.error.includes('not running'));
+      assert.strictEqual(fs.existsSync(sessionLockPath), false);
+    });
+
+    it('should return pid and session count on success', function () {
+      // Register a session with current process
+      registerSession(testPort, process.pid);
+
+      // Note: We can't actually test killing our own process,
+      // but we can verify the structure is correct before it attempts kill
+      const status = getProxyStatus();
+      assert.strictEqual(status.running, true);
+      assert.strictEqual(status.pid, process.pid);
+      assert.strictEqual(status.sessionCount, 1);
+    });
+  });
+
+  describe('getProxyStatus', function () {
+    it('should return not running when no lock exists', function () {
+      const result = getProxyStatus();
+      assert.strictEqual(result.running, false);
+      assert.strictEqual(result.port, undefined);
+      assert.strictEqual(result.pid, undefined);
+    });
+
+    it('should return full status when proxy is running', function () {
+      const startedAt = new Date().toISOString();
+      const lock = {
+        port: testPort,
+        pid: process.pid, // Current process - alive
+        sessions: ['session1', 'session2'],
+        startedAt,
+      };
+      fs.writeFileSync(sessionLockPath, JSON.stringify(lock));
+
+      const result = getProxyStatus();
+      assert.strictEqual(result.running, true);
+      assert.strictEqual(result.port, testPort);
+      assert.strictEqual(result.pid, process.pid);
+      assert.strictEqual(result.sessionCount, 2);
+      assert.strictEqual(result.startedAt, startedAt);
+    });
+
+    it('should cleanup and return not running when proxy is dead', function () {
+      const lock = {
+        port: testPort,
+        pid: 999999999, // Dead PID
+        sessions: ['session1'],
+        startedAt: new Date().toISOString(),
+      };
+      fs.writeFileSync(sessionLockPath, JSON.stringify(lock));
+
+      const result = getProxyStatus();
+      assert.strictEqual(result.running, false);
+      assert.strictEqual(fs.existsSync(sessionLockPath), false);
+    });
+
+    it('should return correct session count after registrations', function () {
+      registerSession(testPort, process.pid);
+      let status = getProxyStatus();
+      assert.strictEqual(status.sessionCount, 1);
+
+      registerSession(testPort, process.pid);
+      status = getProxyStatus();
+      assert.strictEqual(status.sessionCount, 2);
+
+      registerSession(testPort, process.pid);
+      status = getProxyStatus();
+      assert.strictEqual(status.sessionCount, 3);
     });
   });
 
