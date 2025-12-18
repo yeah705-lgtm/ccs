@@ -1,3 +1,16 @@
+# [6.3.0](https://github.com/kaitranntt/ccs/compare/v6.2.1...v6.3.0) (2025-12-18)
+
+
+### Bug Fixes
+
+* **dashboard:** detect legacy proxy instances without session lock ([85cfbde](https://github.com/kaitranntt/ccs/commit/85cfbde5fd95850a28e962be01fc8655a69e8b1c))
+
+
+### Features
+
+* **cliproxy:** default session persistence for CLIProxy ([a7450bd](https://github.com/kaitranntt/ccs/commit/a7450bdffeb9679a02608cb76686e006afa6455f)), closes [#129](https://github.com/kaitranntt/ccs/issues/129)
+* **dashboard:** add CLIProxy status widget with start button ([589cd2c](https://github.com/kaitranntt/ccs/commit/589cd2c2b7607b1092f6ee1ce4bf044269ba05e5))
+
 ## [6.2.1](https://github.com/kaitranntt/ccs/compare/v6.2.0...v6.2.1) (2025-12-18)
 
 
