@@ -174,6 +174,27 @@ Claude Code Profile & Model Switcher`.trim();
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // MAJOR SECTION 4: GitHub Copilot Integration
+  // ═══════════════════════════════════════════════════════════════════════════
+  printMajorSection(
+    'GitHub Copilot Integration',
+    [
+      'Use your GitHub Copilot subscription with Claude Code',
+      'Requires: npm install -g copilot-api',
+    ],
+    [
+      ['ccs copilot', 'Use Copilot as API backend'],
+      ['ccs copilot auth', 'Authenticate with GitHub'],
+      ['ccs copilot status', 'Show integration status'],
+      ['ccs copilot models', 'List available models'],
+      ['ccs copilot start', 'Start copilot-api daemon'],
+      ['ccs copilot stop', 'Stop copilot-api daemon'],
+      ['ccs copilot enable', 'Enable integration'],
+      ['ccs copilot disable', 'Disable integration'],
+    ]
+  );
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // SUB-SECTIONS (simpler styling)
   // ═══════════════════════════════════════════════════════════════════════════
 
