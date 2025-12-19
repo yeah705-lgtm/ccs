@@ -1,3 +1,9 @@
+## [6.6.0-dev.4](https://github.com/kaitranntt/ccs/compare/v6.6.0-dev.3...v6.6.0-dev.4) (2025-12-19)
+
+### Bug Fixes
+
+* **profiles:** prevent env var inheritance for settings-based profiles ([903bc10](https://github.com/kaitranntt/ccs/commit/903bc10fea11694474f772356f301b8e4b37298e))
+
 ## [6.6.0-dev.3](https://github.com/kaitranntt/ccs/compare/v6.6.0-dev.2...v6.6.0-dev.3) (2025-12-19)
 
 ### Features
