@@ -188,6 +188,7 @@ export function CliproxyPage() {
   const [addAccountProvider, setAddAccountProvider] = useState<{
     provider: string;
     displayName: string;
+    isFirstAccount: boolean;
   } | null>(null);
 
   const providers = authData?.authStatus || [];
@@ -341,6 +342,7 @@ export function CliproxyPage() {
               setAddAccountProvider({
                 provider: selectedVariantData.provider,
                 displayName: parentAuthForVariant.displayName,
+                isFirstAccount: (parentAuthForVariant.accounts?.length || 0) === 0,
               })
             }
             onSetDefault={(accountId) =>
@@ -367,6 +369,7 @@ export function CliproxyPage() {
               setAddAccountProvider({
                 provider: selectedStatus.provider,
                 displayName: selectedStatus.displayName,
+                isFirstAccount: (selectedStatus.accounts?.length || 0) === 0,
               })
             }
             onSetDefault={(accountId) =>
@@ -395,6 +398,7 @@ export function CliproxyPage() {
         onClose={() => setAddAccountProvider(null)}
         provider={addAccountProvider?.provider || ''}
         displayName={addAccountProvider?.displayName || ''}
+        isFirstAccount={addAccountProvider?.isFirstAccount || false}
       />
     </div>
   );

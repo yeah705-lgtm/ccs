@@ -1,6 +1,7 @@
 /**
  * Add Account Dialog Component
  * Triggers OAuth flow server-side to add another account to a provider
+ * Applies default preset when adding first account
  */
 
 import { useState } from 'react';
@@ -16,15 +17,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, ExternalLink, User } from 'lucide-react';
 import { useStartAuth } from '@/hooks/use-cliproxy';
+import { applyDefaultPreset } from '@/lib/preset-utils';
+import { toast } from 'sonner';
 
 interface AddAccountDialogProps {
   open: boolean;
   onClose: () => void;
   provider: string;
   displayName: string;
+  /** Whether this is the first account being added (triggers preset application) */
+  isFirstAccount?: boolean;
 }
 
-export function AddAccountDialog({ open, onClose, provider, displayName }: AddAccountDialogProps) {
+export function AddAccountDialog({
+  open,
+  onClose,
+  provider,
+  displayName,
+  isFirstAccount = false,
+}: AddAccountDialogProps) {
   const [nickname, setNickname] = useState('');
   const startAuthMutation = useStartAuth();
 
@@ -32,7 +43,16 @@ export function AddAccountDialog({ open, onClose, provider, displayName }: AddAc
     startAuthMutation.mutate(
       { provider, nickname: nickname.trim() || undefined },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
+          // Apply default preset if this is the first account
+          if (isFirstAccount) {
+            const result = await applyDefaultPreset(provider);
+            if (result.success && result.presetName) {
+              toast.success(`Applied "${result.presetName}" preset`);
+            } else if (!result.success) {
+              toast.warning('Account added, but failed to apply default preset');
+            }
+          }
           setNickname('');
           onClose();
         },

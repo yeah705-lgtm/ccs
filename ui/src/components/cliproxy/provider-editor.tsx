@@ -57,6 +57,7 @@ import {
   useDeletePreset,
 } from '@/hooks/use-cliproxy';
 import { cn } from '@/lib/utils';
+import { CLIPROXY_PORT } from '@/lib/preset-utils';
 import { GlobalEnvIndicator } from '@/components/global-env-indicator';
 import { usePrivacy, PRIVACY_BLUR_CLASS } from '@/contexts/privacy-context';
 
@@ -298,7 +299,7 @@ export function ProviderEditor({
                             };
                             // Always include BASE_URL and AUTH_TOKEN for CLIProxy providers
                             updateEnvValues({
-                              ANTHROPIC_BASE_URL: `http://127.0.0.1:8317/api/provider/${provider}`,
+                              ANTHROPIC_BASE_URL: `http://127.0.0.1:${CLIPROXY_PORT}/api/provider/${provider}`,
                               ANTHROPIC_AUTH_TOKEN: 'ccs-internal-managed',
                               ANTHROPIC_MODEL: mapping.default,
                               ANTHROPIC_DEFAULT_OPUS_MODEL: mapping.opus,
@@ -323,7 +324,7 @@ export function ProviderEditor({
                             onClick={() => {
                               // Always include BASE_URL and AUTH_TOKEN for CLIProxy providers
                               updateEnvValues({
-                                ANTHROPIC_BASE_URL: `http://127.0.0.1:8317/api/provider/${provider}`,
+                                ANTHROPIC_BASE_URL: `http://127.0.0.1:${CLIPROXY_PORT}/api/provider/${provider}`,
                                 ANTHROPIC_AUTH_TOKEN: 'ccs-internal-managed',
                                 ANTHROPIC_MODEL: preset.default,
                                 ANTHROPIC_DEFAULT_OPUS_MODEL: preset.opus,
@@ -663,7 +664,7 @@ export function ProviderEditor({
         onApply={(values, presetName) => {
           // Always include BASE_URL and AUTH_TOKEN for CLIProxy providers
           updateEnvValues({
-            ANTHROPIC_BASE_URL: `http://127.0.0.1:8317/api/provider/${provider}`,
+            ANTHROPIC_BASE_URL: `http://127.0.0.1:${CLIPROXY_PORT}/api/provider/${provider}`,
             ANTHROPIC_AUTH_TOKEN: 'ccs-internal-managed',
             ANTHROPIC_MODEL: values.default,
             ANTHROPIC_DEFAULT_OPUS_MODEL: values.opus,

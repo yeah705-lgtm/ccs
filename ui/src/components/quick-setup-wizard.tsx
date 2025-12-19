@@ -39,8 +39,10 @@ import {
 import { useCliproxyAuth, useCreateVariant, useStartAuth } from '@/hooks/use-cliproxy';
 import type { AuthStatus, OAuthAccount } from '@/lib/api-client';
 import { MODEL_CATALOGS } from '@/lib/model-catalogs';
+import { applyDefaultPreset } from '@/lib/preset-utils';
 import { cn } from '@/lib/utils';
 import { usePrivacy, PRIVACY_BLUR_CLASS } from '@/contexts/privacy-context';
+import { toast } from 'sonner';
 
 interface QuickSetupWizardProps {
   open: boolean;
@@ -118,10 +120,23 @@ export function QuickSetupWizard({ open, onClose }: QuickSetupWizardProps) {
   };
 
   const handleStartAuth = () => {
+    // Check if this is the first account before auth
+    const isFirstAccount = (providerAuth?.accounts?.length || 0) === 0;
+
     startAuthMutation.mutate(
       { provider: selectedProvider },
       {
-        onSuccess: (data) => {
+        onSuccess: async (data) => {
+          // Apply default preset if this was the first account
+          if (isFirstAccount) {
+            const result = await applyDefaultPreset(selectedProvider);
+            if (result.success && result.presetName) {
+              toast.success(`Applied "${result.presetName}" preset`);
+            } else if (!result.success) {
+              toast.warning('Account added, but failed to apply default preset');
+            }
+          }
+
           // Account created, select it and advance to variant step
           if (data.account) {
             setSelectedAccount(data.account as OAuthAccount);
