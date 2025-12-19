@@ -1,3 +1,9 @@
+## [6.6.2-dev.1](https://github.com/kaitranntt/ccs/compare/v6.6.1...v6.6.2-dev.1) (2025-12-19)
+
+### Bug Fixes
+
+* **ci:** use built-in GITHUB_TOKEN for release comments ([cff38ac](https://github.com/kaitranntt/ccs/commit/cff38ac53d392317325e2cbf5281956ff59174be))
+
 ## [6.6.1](https://github.com/kaitranntt/ccs/compare/v6.6.0...v6.6.1) (2025-12-19)
 
 ### Bug Fixes
