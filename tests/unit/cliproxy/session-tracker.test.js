@@ -299,13 +299,13 @@ describe('Session Tracker', function () {
   });
 
   describe('stopProxy', function () {
-    it('should return error when no lock exists', function () {
-      const result = stopProxy();
+    it('should return error when no lock exists', async function () {
+      const result = await stopProxy();
       assert.strictEqual(result.stopped, false);
       assert.strictEqual(result.error, 'No active CLIProxy session found');
     });
 
-    it('should cleanup stale lock when proxy is not running', function () {
+    it('should cleanup stale lock when proxy is not running', async function () {
       // Create lock with dead PID
       const lock = {
         port: testPort,
@@ -315,7 +315,7 @@ describe('Session Tracker', function () {
       };
       fs.writeFileSync(sessionLockPath, JSON.stringify(lock));
 
-      const result = stopProxy();
+      const result = await stopProxy();
       assert.strictEqual(result.stopped, false);
       assert.ok(result.error.includes('not running'));
       assert.strictEqual(fs.existsSync(sessionLockPath), false);

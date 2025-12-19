@@ -88,7 +88,7 @@ async function getPortProcessWindows(port: number): Promise<PortProcess | null> 
     }
 
     // Parse netstat output to get PID (last column)
-    const match = netstatOut.match(/\\s+(\d+)\\s*$/m);
+    const match = netstatOut.match(/\s+(\d+)\s*$/m);
     if (!match) {
       return null;
     }
@@ -100,7 +100,7 @@ async function getPortProcessWindows(port: number): Promise<PortProcess | null> 
       timeout: 3000,
     });
 
-    const taskMatch = tasklistOut.match(/^([^\\s]+)/);
+    const taskMatch = tasklistOut.match(/^([^\s]+)/);
     const processName = taskMatch ? taskMatch[1] : `PID-${pid}`;
 
     return { pid, processName };

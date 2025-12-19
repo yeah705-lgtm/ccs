@@ -1069,7 +1069,7 @@ async function handleStop(): Promise<void> {
   console.log(header('Stop CLIProxy'));
   console.log('');
 
-  const result = stopProxy();
+  const result = await stopProxy();
 
   if (result.stopped) {
     console.log(ok(`CLIProxy stopped (PID ${result.pid})`));

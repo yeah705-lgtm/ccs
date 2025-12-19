@@ -1394,9 +1394,9 @@ apiRoutes.post('/cliproxy/proxy-start', async (_req: Request, res: Response): Pr
  * POST /api/cliproxy/proxy-stop - Stop the CLIProxy service
  * Returns: { stopped, pid?, sessionCount?, error? }
  */
-apiRoutes.post('/cliproxy/proxy-stop', (_req: Request, res: Response): void => {
+apiRoutes.post('/cliproxy/proxy-stop', async (_req: Request, res: Response): Promise<void> => {
   try {
-    const result = stopProxy();
+    const result = await stopProxy();
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });

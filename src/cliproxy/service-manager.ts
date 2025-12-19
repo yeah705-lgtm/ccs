@@ -22,6 +22,7 @@ import {
   getCliproxyWritablePath,
 } from './config-generator';
 import { isCliproxyRunning } from './stats-fetcher';
+import { registerSession } from './session-tracker';
 
 /** Background proxy process reference */
 let proxyProcess: ChildProcess | null = null;
@@ -219,6 +220,13 @@ export async function ensureCliproxyService(
   }
 
   log(`CLIProxy service started on port ${port}`);
+
+  // 5. Register session so stopProxy() can find and kill this process
+  if (proxyProcess.pid) {
+    registerSession(port, proxyProcess.pid);
+    log(`Session registered for PID ${proxyProcess.pid}`);
+  }
+
   return { started: true, alreadyRunning: false, port };
 }
 
