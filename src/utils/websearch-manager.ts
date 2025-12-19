@@ -13,9 +13,6 @@
  * @module utils/websearch-manager
  */
 
-import * as path from 'path';
-import * as os from 'os';
-
 // Re-export types
 export type {
   GeminiCliStatus,
@@ -82,18 +79,4 @@ export function clearAllCliCaches(): void {
  */
 export function ensureMcpWebSearch(): boolean {
   return false;
-}
-
-/**
- * @deprecated MCP is no longer used
- */
-export function hasMcpWebSearch(): boolean {
-  return false;
-}
-
-/**
- * @deprecated MCP is no longer used
- */
-export function getMcpConfigPath(): string {
-  return path.join(os.homedir(), '.claude', '.mcp.json');
 }
