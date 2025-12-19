@@ -6,13 +6,15 @@ on:
 
 jobs:
   release:
-    # Skip if commit message contains [skip ci] or is a release commit
+    # Skip if commit message contains [skip ci]
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
 
     permissions:
       contents: write
       issues: write
+      pull-requests: write
+      id-token: write
 
     steps:
       - name: Checkout
@@ -43,84 +45,59 @@ jobs:
       - name: Validate (typecheck + lint + tests)
         run: bun run validate
 
-      - name: Bump dev version
-        id: bump
-        run: |
-          CURRENT=$(cat VERSION)
-          PKG_NAME=$(jq -r '.name' package.json)
-
-          # Extract base version
-          if [[ "$CURRENT" =~ ^([0-9]+\.[0-9]+\.[0-9]+)(-dev\.([0-9]+))?$ ]]; then
-            BASE="${BASH_REMATCH[1]}"
-          else
-            echo "Invalid version format: $CURRENT"
-            exit 1
-          fi
-
-          # Find highest published dev version for this base
-          LATEST_DEV=$(npm view "${PKG_NAME}" versions --json 2>/dev/null | \
-            jq -r '.[]' | \
-            grep "^${BASE}-dev\." | \
-            sed "s/${BASE}-dev\.//" | \
-            sort -n | \
-            tail -1)
-
-          if [[ -z "$LATEST_DEV" ]]; then
-            NEW_DEV=1
-          else
-            NEW_DEV=$((LATEST_DEV + 1))
-          fi
-
-          NEW_VERSION="${BASE}-dev.${NEW_DEV}"
-
-          echo "current=$CURRENT" >> $GITHUB_OUTPUT
-          echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "Bumping: $CURRENT -> $NEW_VERSION"
-
-      - name: Update version files
-        run: |
-          NEW_VERSION="${{ steps.bump.outputs.new }}"
-
-          # Update VERSION file
-          echo "$NEW_VERSION" > VERSION
-
-          # Update package.json
-          jq --arg v "$NEW_VERSION" '.version = $v' package.json > package.json.tmp
-          mv package.json.tmp package.json
-
-      - name: Publish to npm
+      - name: Release
+        id: release
         env:
+          HUSKY: 0
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --tag dev
+        run: |
+          OUTPUT=$(bunx semantic-release 2>&1) || true
+          echo "$OUTPUT"
+          if echo "$OUTPUT" | grep -q "Published release"; then
+            echo "released=true" >> $GITHUB_OUTPUT
+          else
+            echo "released=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Notify Discord
+        if: success() && steps.release.outputs.released == 'true'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL not set, skipping"
+            exit 0
+          fi
+          node scripts/send-discord-release.cjs dev "$DISCORD_WEBHOOK_URL"
 
       - name: Tag resolved issues
+        if: success() && steps.release.outputs.released == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          NEW_VERSION="${{ steps.bump.outputs.new }}"
+          # Get version from package.json (updated by semantic-release)
+          VERSION=$(jq -r '.version' package.json)
 
-          # Find commits since last dev release (look for version bump commits)
-          LAST_RELEASE_COMMIT=$(git log --oneline --grep="chore(release):" -n 2 | tail -1 | cut -d' ' -f1)
-
-          if [[ -n "$LAST_RELEASE_COMMIT" ]]; then
-            RANGE="${LAST_RELEASE_COMMIT}..HEAD"
-          else
-            RANGE="HEAD~20..HEAD"
-          fi
+          # Find commits since last release
+          LAST_RELEASE=$(git log --oneline --grep="chore(release):" -n 2 | tail -1 | cut -d' ' -f1)
+          RANGE="${LAST_RELEASE:-HEAD~20}..HEAD"
 
           echo "Checking commits in range: $RANGE"
 
-          # Extract issue numbers from commits
+          # Extract issue numbers
           ISSUES=$(git log $RANGE --pretty=format:"%s %b" | \
             grep -oE "(Fixes|Closes|Resolves|Refs?) #[0-9]+" | \
             grep -oE "#[0-9]+" | sort -u || true)
 
           if [[ -z "$ISSUES" ]]; then
-            echo "No linked issues found in commits"
+            echo "No linked issues found"
             exit 0
           fi
 
-          # Create labels if they don't exist
+          # Create label if needed
           gh label create "released-dev" \
             --color "1d76db" \
             --description "Fix available in @dev npm channel" \
@@ -129,41 +106,13 @@ jobs:
           for ISSUE in $ISSUES; do
             NUM=${ISSUE#\#}
 
-            # Skip if already tagged (avoid spam)
+            # Skip if already tagged
             if gh issue view "$NUM" --repo "${{ github.repository }}" --json labels --jq '.labels[].name' | grep -q "released-dev"; then
-              echo "Issue #$NUM already has released-dev label, skipping"
+              echo "Issue #$NUM already tagged, skipping"
               continue
             fi
 
-            echo "Tagging issue #$NUM as released-dev"
-
-            # Add comment
-            gh issue comment "$NUM" --repo "${{ github.repository }}" --body ":test_tube: Available in \`$NEW_VERSION\`. Install: \`npm i @kaitranntt/ccs@dev\`" || true
-
-            # Add released-dev label
+            echo "Tagging issue #$NUM"
+            gh issue comment "$NUM" --repo "${{ github.repository }}" --body "[i] Available in \`$VERSION\`. Install: \`npm i @kaitranntt/ccs@dev\`" || true
             gh issue edit "$NUM" --add-label "released-dev" --repo "${{ github.repository }}" || true
           done
-
-      - name: Commit version bump
-        env:
-          HUSKY: 0
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add VERSION package.json
-          git commit -m "chore(release): ${{ steps.bump.outputs.new }} [skip ci]"
-          git push origin dev
-
-      - name: Notify Discord
-        if: success()
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          VERSION: ${{ steps.bump.outputs.new }}
-        run: |
-          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
-            echo "DISCORD_WEBHOOK_URL not set, skipping notification"
-            exit 0
-          fi
-          curl -s -X POST "$DISCORD_WEBHOOK_URL" \
-            -H "Content-Type: application/json" \
-            -d "{\"username\":\"CCS Dev Release\",\"embeds\":[{\"title\":\"Dev Release $VERSION\",\"url\":\"https://www.npmjs.com/package/@kaitranntt/ccs/v/$VERSION\",\"color\":15638323,\"description\":\"Pre-release version available for testing.\",\"footer\":{\"text\":\"npm i @kaitranntt/ccs@dev\"}}]}"

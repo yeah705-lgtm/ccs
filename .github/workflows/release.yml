@@ -45,49 +45,29 @@ jobs:
         run: bun run validate
 
       - name: Release
+        id: release
         env:
           HUSKY: 0
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: bunx semantic-release
+        run: |
+          OUTPUT=$(bunx semantic-release 2>&1) || true
+          echo "$OUTPUT"
+          if echo "$OUTPUT" | grep -q "Published release"; then
+            echo "released=true" >> $GITHUB_OUTPUT
+          else
+            echo "released=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Notify Discord
-        if: success()
-        uses: actions/github-script@v7
+        if: success() && steps.release.outputs.released == 'true'
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            if (!process.env.DISCORD_WEBHOOK_URL) {
-              core.warning('DISCORD_WEBHOOK_URL not set, skipping notification')
-              return
-            }
-            const { data: releases } = await github.rest.repos.listReleases({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              per_page: 1
-            })
-            if (!releases.length) {
-              core.warning('No releases found, skipping notification')
-              return
-            }
-            const r = releases[0]
-            const desc = (r.body || 'No changelog available').slice(0, 2000)
-            await fetch(process.env.DISCORD_WEBHOOK_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                username: 'CCS Release',
-                embeds: [{
-                  title: `Release ${r.name || r.tag_name}`,
-                  url: r.html_url,
-                  color: 0x10B981,
-                  description: desc,
-                  timestamp: r.created_at,
-                  footer: { text: 'npm i @kaitranntt/ccs@latest' }
-                }]
-              })
-            })
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL not set, skipping"
+            exit 0
+          fi
+          node scripts/send-discord-release.cjs production "$DISCORD_WEBHOOK_URL"
