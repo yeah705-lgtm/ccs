@@ -195,8 +195,14 @@ export interface ProxyRemoteConfig {
   enabled: boolean;
   /** Remote proxy hostname or IP (empty = not configured) */
   host: string;
-  /** Remote proxy port (default: 8317) */
-  port: number;
+  /**
+   * Remote proxy port.
+   * Optional - defaults based on protocol:
+   * - HTTPS: 443
+   * - HTTP: 80
+   * When empty/undefined, uses protocol default.
+   */
+  port?: number;
   /** Protocol for remote connection */
   protocol: 'http' | 'https';
   /** Auth token for remote proxy (optional, sent as header) */
@@ -345,12 +351,13 @@ export const DEFAULT_COPILOT_CONFIG: CopilotConfig = {
 /**
  * Default CLIProxy server configuration.
  * Local mode by default - remote must be explicitly enabled.
+ * Port is optional for remote - defaults based on protocol.
  */
 export const DEFAULT_CLIPROXY_SERVER_CONFIG: CliproxyServerConfig = {
   remote: {
     enabled: false,
     host: '',
-    port: 8317,
+    // port is intentionally omitted - will use protocol default (443 for HTTPS, 80 for HTTP)
     protocol: 'http',
     auth_token: '',
   },

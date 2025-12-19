@@ -463,8 +463,8 @@ export function SettingsPage() {
     if (!proxyConfig) return;
 
     const { host, port, protocol, auth_token } = proxyConfig.remote;
-    if (!host || !port) {
-      setProxyError('Host and port are required');
+    if (!host) {
+      setProxyError('Host is required');
       return;
     }
 
@@ -475,7 +475,7 @@ export function SettingsPage() {
 
       const result = await api.cliproxyServer.test({
         host,
-        port,
+        port: port || undefined, // Empty/0 means use protocol default
         protocol,
         authToken: auth_token || undefined,
       });
@@ -1310,20 +1310,24 @@ function ProxyContent({
   fetchCliproxyServerConfig,
   fetchRawConfig,
 }: ProxyContentProps) {
-  // Memoized default config to avoid recreation
+  // Default configs for fallback
   const defaultRemote = {
     enabled: false,
     host: '',
-    port: 8317,
+    port: undefined as number | undefined,
     protocol: 'http' as const,
     auth_token: '',
   };
   const defaultFallback = { enabled: true, auto_start: true };
   const defaultLocal = { port: 8317, auto_start: true };
 
+  // Helper to get default port based on protocol
+  const getDefaultPort = (protocol: 'http' | 'https') => (protocol === 'https' ? 443 : 80);
+
   // Sync local state with config (using refs to avoid lint warnings)
   const hostInput = config?.remote.host ?? '';
-  const portInput = (config?.remote.port ?? 8317).toString();
+  // Show empty string for port if undefined (will use protocol default)
+  const portInput = config?.remote.port !== undefined ? config.remote.port.toString() : '';
   const authTokenInput = config?.remote.auth_token ?? '';
   const localPortInput = (config?.local.port ?? 8317).toString();
 
@@ -1365,9 +1369,13 @@ function ProxyContent({
   };
 
   const savePort = () => {
-    const port = parseInt(editedPort ?? displayPort, 10);
-    if (!isNaN(port) && port !== config?.remote.port) {
-      saveCliproxyServerConfig({ remote: { ...remoteConfig, port } });
+    const portStr = editedPort ?? displayPort;
+    // Empty string means use protocol default (undefined)
+    const port = portStr === '' ? undefined : parseInt(portStr, 10);
+    const effectivePort = port && !isNaN(port) && port > 0 ? port : undefined;
+
+    if (effectivePort !== config?.remote.port) {
+      saveCliproxyServerConfig({ remote: { ...remoteConfig, port: effectivePort } });
     }
     setEditedPort(null);
   };
@@ -1496,13 +1504,19 @@ function ProxyContent({
               {/* Port and Protocol */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-sm text-muted-foreground">Port</label>
+                  <label className="text-sm text-muted-foreground">
+                    Port{' '}
+                    <span className="text-xs opacity-70">
+                      (default: {getDefaultPort(config?.remote.protocol || 'http')})
+                    </span>
+                  </label>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={displayPort}
-                    onChange={(e) => setEditedPort(e.target.value)}
+                    onChange={(e) => setEditedPort(e.target.value.replace(/\D/g, ''))}
                     onBlur={savePort}
-                    placeholder="8317"
+                    placeholder={`Leave empty for ${getDefaultPort(config?.remote.protocol || 'http')}`}
                     className="font-mono"
                     disabled={saving}
                   />
@@ -1545,7 +1559,7 @@ function ProxyContent({
               <div className="space-y-3 pt-2">
                 <Button
                   onClick={handleTestConnection}
-                  disabled={testing || !displayHost || !displayPort}
+                  disabled={testing || !displayHost}
                   variant="outline"
                   className="w-full"
                 >

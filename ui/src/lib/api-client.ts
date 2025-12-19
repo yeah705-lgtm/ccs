@@ -166,7 +166,8 @@ export interface RemoteProxyStatus {
 export interface ProxyRemoteConfig {
   enabled: boolean;
   host: string;
-  port: number;
+  /** Port is optional - uses protocol default (443 for HTTPS, 80 for HTTP) */
+  port?: number;
   protocol: 'http' | 'https';
   auth_token: string;
 }
@@ -402,7 +403,8 @@ export const api = {
     /** Test remote proxy connection */
     test: (params: {
       host: string;
-      port: number;
+      /** Port is optional - uses protocol default (443 for HTTPS, 80 for HTTP) */
+      port?: number;
       protocol: 'http' | 'https';
       authToken?: string;
       allowSelfSigned?: boolean;

@@ -490,9 +490,13 @@ export function ensureProviderSettings(provider: CLIProxyProvider): void {
  */
 export function getRemoteEnvVars(
   provider: CLIProxyProvider,
-  remoteConfig: { host: string; port: number; protocol: 'http' | 'https'; authToken?: string }
+  remoteConfig: { host: string; port?: number; protocol: 'http' | 'https'; authToken?: string }
 ): Record<string, string> {
-  const baseUrl = `${remoteConfig.protocol}://${remoteConfig.host}:${remoteConfig.port}/api/provider/${provider}`;
+  // Build URL with smart port handling - omit if using protocol default
+  const defaultPort = remoteConfig.protocol === 'https' ? 443 : 80;
+  const effectivePort = remoteConfig.port ?? defaultPort;
+  const portSuffix = effectivePort === defaultPort ? '' : `:${effectivePort}`;
+  const baseUrl = `${remoteConfig.protocol}://${remoteConfig.host}${portSuffix}/api/provider/${provider}`;
   const models = getModelMapping(provider);
 
   // Get global env vars (DISABLE_TELEMETRY, etc.)

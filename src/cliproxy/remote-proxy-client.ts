@@ -26,8 +26,13 @@ export interface RemoteProxyStatus {
 export interface RemoteProxyClientConfig {
   /** Remote proxy host (IP or hostname) */
   host: string;
-  /** Remote proxy port */
-  port: number;
+  /**
+   * Remote proxy port.
+   * Optional - defaults based on protocol:
+   * - HTTPS: 443
+   * - HTTP: 80
+   */
+  port?: number;
   /** Protocol to use (http or https) */
   protocol: 'http' | 'https';
   /** Optional auth token for Authorization header */
@@ -42,11 +47,44 @@ export interface RemoteProxyClientConfig {
 const DEFAULT_TIMEOUT_MS = 2000;
 
 /**
+ * Get default port for protocol
+ */
+function getDefaultPort(protocol: 'http' | 'https'): number {
+  return protocol === 'https' ? 443 : 80;
+}
+
+/**
+ * Build URL for remote proxy, intelligently omitting default ports
+ */
+function buildProxyUrl(
+  host: string,
+  port: number | undefined,
+  protocol: 'http' | 'https',
+  path: string
+): string {
+  const defaultPort = getDefaultPort(protocol);
+  const effectivePort = port ?? defaultPort;
+
+  // Omit port from URL if it matches the default for the protocol
+  if (effectivePort === defaultPort) {
+    return `${protocol}://${host}${path}`;
+  }
+  return `${protocol}://${host}:${effectivePort}${path}`;
+}
+
+/**
  * Map error to RemoteProxyErrorCode
+ *
+ * Handles various error types including:
+ * - NodeJS.ErrnoException (ECONNREFUSED, ETIMEDOUT)
+ * - Fetch errors (AbortError, TypeError)
+ * - HTTP status codes (401, 403)
  */
 function mapErrorToCode(error: Error, statusCode?: number): RemoteProxyErrorCode {
   const message = error.message.toLowerCase();
-  const code = (error as NodeJS.ErrnoException).code?.toLowerCase();
+  // Handle error.code safely - it may be string, number, or undefined
+  const rawCode = (error as NodeJS.ErrnoException).code;
+  const code = typeof rawCode === 'string' ? rawCode.toLowerCase() : undefined;
 
   // Connection refused
   if (code === 'econnrefused' || message.includes('connection refused')) {
@@ -110,7 +148,17 @@ export async function checkRemoteProxy(
   const { host, port, protocol, authToken, allowSelfSigned = false } = config;
   const timeout = config.timeout ?? DEFAULT_TIMEOUT_MS;
 
-  const url = `${protocol}://${host}:${port}/health`;
+  // Validate host is provided
+  if (!host || host.trim() === '') {
+    return {
+      reachable: false,
+      error: 'Host is required',
+      errorCode: 'UNKNOWN',
+    };
+  }
+
+  // Use smart URL building - omit port if it's the default for the protocol
+  const url = buildProxyUrl(host, port, protocol, '/health');
   const startTime = Date.now();
 
   try {

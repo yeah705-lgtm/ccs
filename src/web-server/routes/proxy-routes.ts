@@ -72,14 +72,20 @@ router.post('/test', async (req: Request, res: Response) => {
   try {
     const { host, port, protocol, authToken, allowSelfSigned } = req.body;
 
-    if (!host || !port) {
-      res.status(400).json({ error: 'Host and port are required' });
+    // Host is required, port is optional (uses protocol defaults)
+    if (!host) {
+      res.status(400).json({ error: 'Host is required' });
       return;
     }
 
+    // Parse port - treat empty string, 0, null as "use default"
+    const parsedPort = port && port !== '' ? parseInt(String(port), 10) : undefined;
+    const effectivePort =
+      parsedPort && !isNaN(parsedPort) && parsedPort > 0 ? parsedPort : undefined;
+
     const status = await testConnection({
       host,
-      port: typeof port === 'number' ? port : parseInt(port, 10),
+      port: effectivePort,
       protocol: protocol || 'http',
       authToken,
       allowSelfSigned: allowSelfSigned || false,
