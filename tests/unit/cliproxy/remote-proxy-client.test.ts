@@ -105,14 +105,15 @@ describe('remote-proxy-client', () => {
   });
 
   describe('health check URL construction', () => {
-    it('should construct correct health check URL pattern', () => {
+    // CLIProxyAPI uses /v1/models for health checks (no /health endpoint)
+    it('should construct correct health check URL pattern using /v1/models', () => {
       const config: RemoteProxyClientConfig = {
         host: '192.168.1.100',
         port: 8317,
         protocol: 'http',
       };
-      const expectedUrl = `${config.protocol}://${config.host}:${config.port}/health`;
-      expect(expectedUrl).toBe('http://192.168.1.100:8317/health');
+      const expectedUrl = `${config.protocol}://${config.host}:${config.port}/v1/models`;
+      expect(expectedUrl).toBe('http://192.168.1.100:8317/v1/models');
     });
 
     it('should construct HTTPS URL when protocol is https', () => {
@@ -121,8 +122,8 @@ describe('remote-proxy-client', () => {
         port: 443,
         protocol: 'https',
       };
-      const expectedUrl = `${config.protocol}://${config.host}:${config.port}/health`;
-      expect(expectedUrl).toBe('https://secure.example.com:443/health');
+      const expectedUrl = `${config.protocol}://${config.host}:${config.port}/v1/models`;
+      expect(expectedUrl).toBe('https://secure.example.com:443/v1/models');
     });
   });
 });

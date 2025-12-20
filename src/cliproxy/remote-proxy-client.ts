@@ -139,6 +139,9 @@ function createHttpsAgent(allowSelfSigned: boolean): https.Agent | undefined {
 /**
  * Check health of remote CLIProxyAPI instance
  *
+ * Uses /v1/models endpoint for health check since CLIProxyAPI doesn't expose /health.
+ * This endpoint is always available and returns 200 when the server is operational.
+ *
  * @param config Remote proxy client configuration
  * @returns RemoteProxyStatus with reachability and latency
  */
@@ -157,8 +160,8 @@ export async function checkRemoteProxy(
     };
   }
 
-  // Use smart URL building - omit port if it's the default for the protocol
-  const url = buildProxyUrl(host, port, protocol, '/health');
+  // Use /v1/models as health check - CLIProxyAPI doesn't have /health endpoint
+  const url = buildProxyUrl(host, port, protocol, '/v1/models');
   const startTime = Date.now();
 
   try {
