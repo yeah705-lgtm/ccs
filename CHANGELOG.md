@@ -1,3 +1,9 @@
+## [6.7.2-dev.1](https://github.com/kaitranntt/ccs/compare/v6.7.1...v6.7.2-dev.1) (2025-12-20)
+
+### Code Refactoring
+
+* **ui:** rename /api route to /providers ([9382278](https://github.com/kaitranntt/ccs/commit/93822787045188e3e006b8671ea5ae24f94459ce))
+
 ## [6.7.1](https://github.com/kaitranntt/ccs/compare/v6.7.0...v6.7.1) (2025-12-20)
 
 ### Documentation
