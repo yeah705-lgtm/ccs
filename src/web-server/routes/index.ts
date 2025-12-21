@@ -31,9 +31,8 @@ apiRoutes.use('/settings', settingsRoutes);
 apiRoutes.use('/accounts', profileRoutes);
 
 // ==================== Unified Config ====================
-// Config format, migration, secrets
+// Config format, migration
 apiRoutes.use('/config', configRoutes);
-apiRoutes.use('/secrets', configRoutes);
 
 // ==================== Health Checks ====================
 apiRoutes.use('/health', healthRoutes);

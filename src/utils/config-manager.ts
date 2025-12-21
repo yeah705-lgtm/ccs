@@ -4,6 +4,7 @@ import * as os from 'os';
 import { Config, isConfig, Settings, isSettings } from '../types';
 import { expandPath, error } from './helpers';
 import { info } from './ui';
+import { isUnifiedMode, loadOrCreateUnifiedConfig } from '../config/unified-config-loader';
 
 // TODO: Replace with proper imports after converting these files
 // const { ErrorManager } = require('./error-manager');
@@ -82,16 +83,52 @@ export function readConfig(): Config {
 }
 
 /**
- * Get settings path for profile
+ * Get settings path for profile.
+ * In unified mode (config.yaml exists), reads from config.yaml first,
+ * then falls back to config.json for backward compatibility.
  */
 export function getSettingsPath(profile: string): string {
-  const config = readConfig();
+  let settingsPath: string | undefined;
+  let availableProfiles: string[] = [];
 
-  // Get settings path
-  const settingsPath = config.profiles[profile];
+  // Check unified config first (config.yaml)
+  if (isUnifiedMode()) {
+    const unifiedConfig = loadOrCreateUnifiedConfig();
+
+    // Check if profile exists in unified config
+    const profileConfig = unifiedConfig.profiles[profile];
+    if (profileConfig?.settings) {
+      settingsPath = profileConfig.settings;
+    }
+
+    // Collect available profiles from unified config
+    availableProfiles = Object.keys(unifiedConfig.profiles);
+
+    // If not found in unified config, try legacy config.json as fallback
+    if (!settingsPath) {
+      try {
+        const legacyConfig = loadConfig();
+        if (legacyConfig.profiles[profile]) {
+          settingsPath = legacyConfig.profiles[profile];
+          // Merge legacy profiles into available list (avoid duplicates)
+          for (const p of Object.keys(legacyConfig.profiles)) {
+            if (!availableProfiles.includes(p)) {
+              availableProfiles.push(p);
+            }
+          }
+        }
+      } catch {
+        // Legacy config doesn't exist or is invalid - that's OK in unified mode
+      }
+    }
+  } else {
+    // Legacy mode - read from config.json only
+    const config = readConfig();
+    settingsPath = config.profiles[profile];
+    availableProfiles = Object.keys(config.profiles);
+  }
 
   if (!settingsPath) {
-    const availableProfiles = Object.keys(config.profiles);
     const profileList = availableProfiles.map((p) => `  - ${p}`);
     error(`Profile '${profile}' not found. Available profiles:\n${profileList.join('\n')}`);
   }

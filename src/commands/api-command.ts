@@ -384,11 +384,9 @@ async function handleRemove(args: string[]): Promise<void> {
   // Confirm deletion
   console.log('');
   console.log(`API '${color(name, 'command')}' will be removed.`);
+  console.log(`  Settings: ~/.ccs/${name}.settings.json`);
   if (isUsingUnifiedConfig()) {
     console.log('  Config: ~/.ccs/config.yaml');
-    console.log('  Secrets: ~/.ccs/secrets.yaml');
-  } else {
-    console.log(`  Settings: ~/.ccs/${name}.settings.json`);
   }
   console.log('');
 

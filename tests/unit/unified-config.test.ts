@@ -11,14 +11,12 @@ import {
 } from '../../src/config/reserved-names';
 import {
   createEmptyUnifiedConfig,
-  createEmptySecretsConfig,
   isUnifiedConfig,
-  isSecretsConfig,
   UNIFIED_CONFIG_VERSION,
 } from '../../src/config/unified-config-types';
 import { isUnifiedConfigEnabled } from '../../src/config/feature-flags';
 
-// Inline helper to test secret key detection (copied from secrets-manager to avoid import chain)
+// Inline helper to test secret key detection (utility kept for potential reuse)
 function isSecretKey(key: string): boolean {
   const upper = key.toUpperCase();
   const secretPatterns = ['TOKEN', 'SECRET', 'API_KEY', 'APIKEY', 'PASSWORD', 'CREDENTIAL', 'AUTH', 'PRIVATE'];
@@ -102,18 +100,6 @@ describe('unified-config-types', () => {
     });
   });
 
-  describe('createEmptySecretsConfig', () => {
-    it('should create secrets with version 1', () => {
-      const secrets = createEmptySecretsConfig();
-      expect(secrets.version).toBe(1);
-    });
-
-    it('should have empty profiles', () => {
-      const secrets = createEmptySecretsConfig();
-      expect(Object.keys(secrets.profiles)).toHaveLength(0);
-    });
-  });
-
   describe('isUnifiedConfig', () => {
     it('should return true for valid config', () => {
       const config = createEmptyUnifiedConfig();
@@ -143,24 +129,9 @@ describe('unified-config-types', () => {
       expect(isUnifiedConfig({ version: -1 })).toBe(false);
     });
   });
-
-  describe('isSecretsConfig', () => {
-    it('should return true for valid secrets', () => {
-      const secrets = createEmptySecretsConfig();
-      expect(isSecretsConfig(secrets)).toBe(true);
-    });
-
-    it('should return false for null', () => {
-      expect(isSecretsConfig(null)).toBe(false);
-    });
-
-    it('should return false for missing fields', () => {
-      expect(isSecretsConfig({ version: 1 })).toBe(false);
-    });
-  });
 });
 
-describe('secrets-manager', () => {
+describe('sensitive-keys', () => {
   describe('isSecretKey', () => {
     it('should identify token keys as secrets', () => {
       expect(isSecretKey('ANTHROPIC_AUTH_TOKEN')).toBe(true);

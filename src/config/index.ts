@@ -15,7 +15,6 @@ export * from './reserved-names';
 
 // Loaders
 export * from './unified-config-loader';
-export * from './secrets-manager';
 
 // Migration
 export * from './migration-manager';

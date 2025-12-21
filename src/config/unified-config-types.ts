@@ -6,7 +6,7 @@
  * - profiles.json (account metadata)
  * - *.settings.json (env vars)
  *
- * Into a single config.yaml + secrets.yaml structure.
+ * Into a single config.yaml structure.
  */
 
 /**
@@ -322,18 +322,6 @@ export interface UnifiedConfig {
 }
 
 /**
- * Secrets configuration structure.
- * Stored in ~/.ccs/secrets.yaml with chmod 600.
- * Contains sensitive values like API keys.
- */
-export interface SecretsConfig {
-  /** Secrets version */
-  version: number;
-  /** Profile secrets mapping: profile_name -> { key: value } */
-  profiles: Record<string, Record<string, string>>;
-}
-
-/**
  * Default Copilot configuration.
  * Strictly opt-in - disabled by default.
  * Uses gpt-4.1 as default model (free tier compatible).
@@ -423,16 +411,6 @@ export function createEmptyUnifiedConfig(): UnifiedConfig {
 }
 
 /**
- * Create an empty secrets config.
- */
-export function createEmptySecretsConfig(): SecretsConfig {
-  return {
-    version: 1,
-    profiles: {},
-  };
-}
-
-/**
  * Type guard for UnifiedConfig.
  * Relaxed validation: accepts configs with version >= 1 and any subset of sections.
  * Missing sections will be filled with defaults during merge.
@@ -443,13 +421,4 @@ export function isUnifiedConfig(obj: unknown): obj is UnifiedConfig {
   // Only require version to be a number >= 1 (allow future versions)
   // Sections are optional - will be merged with defaults in loadOrCreateUnifiedConfig
   return typeof config.version === 'number' && config.version >= 1;
-}
-
-/**
- * Type guard for SecretsConfig.
- */
-export function isSecretsConfig(obj: unknown): obj is SecretsConfig {
-  if (typeof obj !== 'object' || obj === null) return false;
-  const config = obj as Record<string, unknown>;
-  return typeof config.version === 'number' && typeof config.profiles === 'object';
 }

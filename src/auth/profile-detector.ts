@@ -16,7 +16,6 @@ import { findSimilarStrings } from '../utils/helpers';
 import { Config, Settings, ProfileMetadata } from '../types';
 import { UnifiedConfig, CopilotConfig } from '../config/unified-config-types';
 import { loadUnifiedConfig, isUnifiedMode } from '../config/unified-config-loader';
-import { getProfileSecrets } from '../config/secrets-manager';
 
 export type ProfileType = 'settings' | 'account' | 'cliproxy' | 'copilot' | 'default';
 
@@ -110,12 +109,10 @@ class ProfileDetector {
       const profile = config.profiles[profileName];
       // Load env from settings file
       const settingsEnv = loadSettingsFromFile(profile.settings);
-      // Merge with secrets (for backward compat with any extracted secrets)
-      const secrets = getProfileSecrets(profileName);
       return {
         type: 'settings',
         name: profileName,
-        env: { ...settingsEnv, ...secrets },
+        env: settingsEnv,
       };
     }
 

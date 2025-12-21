@@ -17,7 +17,6 @@ import {
   rollback,
   getBackupDirectories,
 } from '../../config/migration-manager';
-import { getProfileSecrets, setProfileSecrets } from '../../config/secrets-manager';
 import { isUnifiedConfig } from '../../config/unified-config-types';
 
 const router = Router();
@@ -109,38 +108,6 @@ router.post('/rollback', async (req: Request, res: Response): Promise<void> => {
 
   const success = await rollback(backupPath);
   res.json({ success });
-});
-
-/**
- * PUT /api/secrets/:profile - Update profile secrets (write-only)
- */
-router.put('/secrets/:profile', (req: Request, res: Response): void => {
-  const { profile } = req.params;
-  const secrets = req.body;
-
-  if (!secrets || typeof secrets !== 'object') {
-    res.status(400).json({ error: 'Invalid secrets format' });
-    return;
-  }
-
-  try {
-    setProfileSecrets(profile, secrets as Record<string, string>);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
-  }
-});
-
-/**
- * GET /api/secrets/:profile/exists - Check if secrets exist (no values returned)
- */
-router.get('/secrets/:profile/exists', (req: Request, res: Response) => {
-  const { profile } = req.params;
-  const secrets = getProfileSecrets(profile);
-  res.json({
-    exists: Object.keys(secrets).length > 0,
-    keys: Object.keys(secrets), // Only key names, not values
-  });
 });
 
 export default router;

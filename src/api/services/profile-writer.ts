@@ -11,7 +11,6 @@ import {
   saveUnifiedConfig,
   isUnifiedMode,
 } from '../../config/unified-config-loader';
-import { deleteAllProfileSecrets } from '../../config/secrets-manager';
 import type { ModelMapping, CreateApiProfileResult, RemoveApiProfileResult } from './profile-types';
 
 /** Create settings.json file for API profile (legacy format) */
@@ -152,9 +151,6 @@ function removeApiProfileUnified(name: string): void {
   }
 
   saveUnifiedConfig(config);
-
-  // Remove any legacy secrets
-  deleteAllProfileSecrets(name);
 }
 
 /** Remove API profile from legacy config */

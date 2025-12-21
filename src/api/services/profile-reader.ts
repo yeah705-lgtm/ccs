@@ -9,7 +9,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { getCcsDir, loadConfig } from '../../utils/config-manager';
 import { loadOrCreateUnifiedConfig, isUnifiedMode } from '../../config/unified-config-loader';
-import { getProfileSecrets } from '../../config/secrets-manager';
 import type { ApiProfileInfo, CliproxyVariantInfo, ApiListResult } from './profile-types';
 
 /**
@@ -36,29 +35,7 @@ export function isApiProfileConfigured(apiName: string): boolean {
     const ccsDir = getCcsDir();
     const settingsPath = path.join(ccsDir, `${apiName}.settings.json`);
 
-    if (isUnifiedMode()) {
-      // Check secrets.yaml first
-      const secrets = getProfileSecrets(apiName);
-      const secretToken = secrets?.ANTHROPIC_AUTH_TOKEN || '';
-      if (
-        secretToken.length > 0 &&
-        !secretToken.includes('YOUR_') &&
-        !secretToken.includes('your-')
-      ) {
-        return true;
-      }
-
-      // Fallback: check settings.json file (profiles created via UI store keys here)
-      if (fs.existsSync(settingsPath)) {
-        const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-        const token = settings?.env?.ANTHROPIC_AUTH_TOKEN || '';
-        return token.length > 0 && !token.includes('YOUR_') && !token.includes('your-');
-      }
-
-      return false;
-    }
-
-    // Legacy: check settings.json file
+    // Check settings.json file for API key
     if (!fs.existsSync(settingsPath)) return false;
 
     const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));

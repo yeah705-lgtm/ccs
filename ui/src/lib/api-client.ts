@@ -132,11 +132,6 @@ export interface MigrationResult {
   warnings: string[];
 }
 
-export interface SecretsExists {
-  exists: boolean;
-  keys: string[];
-}
-
 /** Model preset for quick model switching */
 export interface ModelPreset {
   name: string;
@@ -368,14 +363,6 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ backupPath }),
       }),
-  },
-  secrets: {
-    update: (profile: string, secrets: Record<string, string>) =>
-      request<{ success: boolean }>(`/secrets/${profile}`, {
-        method: 'PUT',
-        body: JSON.stringify(secrets),
-      }),
-    exists: (profile: string) => request<SecretsExists>(`/secrets/${profile}/exists`),
   },
   /** Model presets for quick model switching */
   presets: {

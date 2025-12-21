@@ -224,11 +224,9 @@ export async function rollback(backupPath: string): Promise<boolean> {
   try {
     // Remove new config files
     const configYaml = path.join(ccsDir, 'config.yaml');
-    const secretsYaml = path.join(ccsDir, 'secrets.yaml');
     const cacheDir = path.join(ccsDir, 'cache');
 
     if (fs.existsSync(configYaml)) fs.unlinkSync(configYaml);
-    if (fs.existsSync(secretsYaml)) fs.unlinkSync(secretsYaml);
 
     // Restore cache files to original locations
     if (fs.existsSync(cacheDir)) {

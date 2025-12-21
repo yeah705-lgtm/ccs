@@ -98,30 +98,3 @@ export function useRollback() {
     },
   });
 }
-
-/**
- * Update profile secrets
- */
-export function useUpdateSecrets() {
-  return useMutation({
-    mutationFn: ({ profile, secrets }: { profile: string; secrets: Record<string, string> }) =>
-      api.secrets.update(profile, secrets),
-    onSuccess: () => {
-      toast.success('Secrets updated successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-}
-
-/**
- * Check if profile has secrets (doesn't return values)
- */
-export function useSecretsExists(profile: string) {
-  return useQuery({
-    queryKey: ['secrets-exists', profile],
-    queryFn: () => api.secrets.exists(profile),
-    enabled: !!profile,
-  });
-}
