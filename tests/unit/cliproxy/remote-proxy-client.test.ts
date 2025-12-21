@@ -47,18 +47,29 @@ describe('remote-proxy-client', () => {
 
   describe('RemoteProxyErrorCode', () => {
     it('should define expected error codes', () => {
-      const validCodes = ['CONNECTION_REFUSED', 'TIMEOUT', 'AUTH_FAILED', 'UNKNOWN'];
+      const validCodes = [
+        'CONNECTION_REFUSED',
+        'TIMEOUT',
+        'AUTH_FAILED',
+        'DNS_FAILED',
+        'NETWORK_UNREACHABLE',
+        'UNKNOWN',
+      ];
 
       // Type-level test - ensure error codes can be used
       const status1: RemoteProxyStatus = { reachable: false, errorCode: 'CONNECTION_REFUSED' };
       const status2: RemoteProxyStatus = { reachable: false, errorCode: 'TIMEOUT' };
       const status3: RemoteProxyStatus = { reachable: false, errorCode: 'AUTH_FAILED' };
       const status4: RemoteProxyStatus = { reachable: false, errorCode: 'UNKNOWN' };
+      const status5: RemoteProxyStatus = { reachable: false, errorCode: 'DNS_FAILED' };
+      const status6: RemoteProxyStatus = { reachable: false, errorCode: 'NETWORK_UNREACHABLE' };
 
       expect(validCodes).toContain(status1.errorCode);
       expect(validCodes).toContain(status2.errorCode);
       expect(validCodes).toContain(status3.errorCode);
       expect(validCodes).toContain(status4.errorCode);
+      expect(validCodes).toContain(status5.errorCode);
+      expect(validCodes).toContain(status6.errorCode);
     });
   });
 

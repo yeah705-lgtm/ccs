@@ -8,7 +8,13 @@
 import * as https from 'https';
 
 /** Error codes for remote proxy status */
-export type RemoteProxyErrorCode = 'CONNECTION_REFUSED' | 'TIMEOUT' | 'AUTH_FAILED' | 'UNKNOWN';
+export type RemoteProxyErrorCode =
+  | 'CONNECTION_REFUSED'
+  | 'TIMEOUT'
+  | 'AUTH_FAILED'
+  | 'DNS_FAILED'
+  | 'NETWORK_UNREACHABLE'
+  | 'UNKNOWN';
 
 /** Status returned from remote proxy health check */
 export interface RemoteProxyStatus {
@@ -77,8 +83,8 @@ function buildProxyUrl(
  * Map error to RemoteProxyErrorCode
  *
  * Handles various error types including:
- * - NodeJS.ErrnoException (ECONNREFUSED, ETIMEDOUT)
- * - Fetch errors (AbortError, TypeError)
+ * - NodeJS.ErrnoException (ECONNREFUSED, ETIMEDOUT, ENOTFOUND, ENETUNREACH)
+ * - Fetch errors (AbortError, TypeError, "fetch failed")
  * - HTTP status codes (401, 403)
  */
 function mapErrorToCode(error: Error, statusCode?: number): RemoteProxyErrorCode {
@@ -86,6 +92,27 @@ function mapErrorToCode(error: Error, statusCode?: number): RemoteProxyErrorCode
   // Handle error.code safely - it may be string, number, or undefined
   const rawCode = (error as NodeJS.ErrnoException).code;
   const code = typeof rawCode === 'string' ? rawCode.toLowerCase() : undefined;
+
+  // DNS resolution failed
+  if (
+    code === 'enotfound' ||
+    code === 'eai_again' ||
+    message.includes('getaddrinfo') ||
+    message.includes('dns')
+  ) {
+    return 'DNS_FAILED';
+  }
+
+  // Network unreachable / host unreachable
+  if (
+    code === 'enetunreach' ||
+    code === 'ehostunreach' ||
+    code === 'enetdown' ||
+    message.includes('network') ||
+    message.includes('unreachable')
+  ) {
+    return 'NETWORK_UNREACHABLE';
+  }
 
   // Connection refused
   if (code === 'econnrefused' || message.includes('connection refused')) {
@@ -107,6 +134,17 @@ function mapErrorToCode(error: Error, statusCode?: number): RemoteProxyErrorCode
     return 'AUTH_FAILED';
   }
 
+  // Generic "fetch failed" - try to extract cause
+  if (message.includes('fetch failed') || message.includes('failed to fetch')) {
+    // Check if there's a cause property (Node.js 18+)
+    const cause = (error as Error & { cause?: Error }).cause;
+    if (cause) {
+      return mapErrorToCode(cause);
+    }
+    // Likely network/DNS issue if no specific cause
+    return 'NETWORK_UNREACHABLE';
+  }
+
   return 'UNKNOWN';
 }
 
@@ -118,11 +156,15 @@ function getErrorMessage(errorCode: RemoteProxyErrorCode, rawError?: string): st
     case 'CONNECTION_REFUSED':
       return 'Connection refused - is the proxy running?';
     case 'TIMEOUT':
-      return 'Connection timed out';
+      return 'Connection timed out - server may be slow or unreachable';
     case 'AUTH_FAILED':
       return 'Authentication failed - check auth token';
+    case 'DNS_FAILED':
+      return 'DNS lookup failed - check hostname';
+    case 'NETWORK_UNREACHABLE':
+      return 'Network unreachable - check if host is on same network';
     default:
-      return rawError || 'Unknown error';
+      return rawError || 'Connection failed';
   }
 }
 

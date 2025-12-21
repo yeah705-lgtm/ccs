@@ -124,6 +124,11 @@ export function SettingsPage() {
   const [proxySuccess, setProxySuccess] = useState(false);
   const [testResult, setTestResult] = useState<RemoteProxyStatus | null>(null);
   const [testing, setTesting] = useState(false);
+  // Proxy input state (lifted from ProxyContent to persist across tab switches)
+  const [proxyEditedHost, setProxyEditedHost] = useState<string | null>(null);
+  const [proxyEditedPort, setProxyEditedPort] = useState<string | null>(null);
+  const [proxyEditedAuthToken, setProxyEditedAuthToken] = useState<string | null>(null);
+  const [proxyEditedLocalPort, setProxyEditedLocalPort] = useState<string | null>(null);
 
   // Load config and status on mount
   useEffect(() => {
@@ -459,10 +464,13 @@ export function SettingsPage() {
     }
   };
 
-  const handleTestConnection = async () => {
-    if (!proxyConfig) return;
-
-    const { host, port, protocol, auth_token } = proxyConfig.remote;
+  const handleTestConnection = async (params: {
+    host: string;
+    port: string;
+    protocol: 'http' | 'https';
+    authToken: string;
+  }) => {
+    const { host, port, protocol, authToken } = params;
     if (!host) {
       setProxyError('Host is required');
       return;
@@ -473,11 +481,13 @@ export function SettingsPage() {
       setProxyError(null);
       setTestResult(null);
 
+      // Parse port - empty string means use protocol default
+      const portNum = port ? parseInt(port, 10) : undefined;
       const result = await api.cliproxyServer.test({
         host,
-        port: port || undefined, // Empty/0 means use protocol default
+        port: portNum || undefined, // Empty/0 means use protocol default
         protocol,
-        authToken: auth_token || undefined,
+        authToken: authToken || undefined,
       });
       setTestResult(result);
     } catch (err) {
@@ -590,6 +600,14 @@ export function SettingsPage() {
                 handleTestConnection={handleTestConnection}
                 fetchCliproxyServerConfig={fetchCliproxyServerConfig}
                 fetchRawConfig={fetchRawConfig}
+                editedHost={proxyEditedHost}
+                setEditedHost={setProxyEditedHost}
+                editedPort={proxyEditedPort}
+                setEditedPort={setProxyEditedPort}
+                editedAuthToken={proxyEditedAuthToken}
+                setEditedAuthToken={setProxyEditedAuthToken}
+                editedLocalPort={proxyEditedLocalPort}
+                setEditedLocalPort={setProxyEditedLocalPort}
               />
             )}
           </div>
@@ -1292,9 +1310,23 @@ interface ProxyContentProps {
   testResult: RemoteProxyStatus | null;
   testing: boolean;
   saveCliproxyServerConfig: (updates: Partial<CliproxyServerConfig>) => void;
-  handleTestConnection: () => void;
+  handleTestConnection: (params: {
+    host: string;
+    port: string;
+    protocol: 'http' | 'https';
+    authToken: string;
+  }) => void;
   fetchCliproxyServerConfig: () => void;
   fetchRawConfig: () => void;
+  // Lifted input state for persistence across tab switches
+  editedHost: string | null;
+  setEditedHost: (value: string | null) => void;
+  editedPort: string | null;
+  setEditedPort: (value: string | null) => void;
+  editedAuthToken: string | null;
+  setEditedAuthToken: (value: string | null) => void;
+  editedLocalPort: string | null;
+  setEditedLocalPort: (value: string | null) => void;
 }
 
 function ProxyContent({
@@ -1309,6 +1341,14 @@ function ProxyContent({
   handleTestConnection,
   fetchCliproxyServerConfig,
   fetchRawConfig,
+  editedHost,
+  setEditedHost,
+  editedPort,
+  setEditedPort,
+  editedAuthToken,
+  setEditedAuthToken,
+  editedLocalPort,
+  setEditedLocalPort,
 }: ProxyContentProps) {
   // Default configs for fallback
   const defaultRemote = {
@@ -1331,12 +1371,6 @@ function ProxyContent({
   const portInput = config?.remote.port !== undefined ? config.remote.port.toString() : '';
   const authTokenInput = config?.remote.auth_token ?? '';
   const localPortInput = (config?.local.port ?? 8317).toString();
-
-  // Track edited values separately
-  const [editedHost, setEditedHost] = useState<string | null>(null);
-  const [editedPort, setEditedPort] = useState<string | null>(null);
-  const [editedAuthToken, setEditedAuthToken] = useState<string | null>(null);
-  const [editedLocalPort, setEditedLocalPort] = useState<string | null>(null);
 
   // Get display values (edited or from config)
   const displayHost = editedHost ?? hostInput;
@@ -1559,7 +1593,14 @@ function ProxyContent({
               {/* Test Connection */}
               <div className="space-y-3 pt-2">
                 <Button
-                  onClick={handleTestConnection}
+                  onClick={() =>
+                    handleTestConnection({
+                      host: displayHost,
+                      port: displayPort,
+                      protocol: config?.remote.protocol || 'http',
+                      authToken: displayAuthToken,
+                    })
+                  }
                   disabled={testing || !displayHost}
                   variant="outline"
                   className="w-full"
