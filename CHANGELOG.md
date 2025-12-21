@@ -1,3 +1,24 @@
+## [7.1.1](https://github.com/kaitranntt/ccs/compare/v7.1.0...v7.1.1) (2025-12-21)
+
+### Bug Fixes
+
+* **hooks:** memoize return objects to prevent infinite render loops ([f15b989](https://github.com/kaitranntt/ccs/commit/f15b98950865c01ec6d8d846e3a197bb04e6cf6e))
+* **settings:** memoize useSettingsActions to prevent infinite render loop ([4f75e10](https://github.com/kaitranntt/ccs/commit/4f75e105a9ab0c498fb1748829396d695836be65))
+
+### Documentation
+
+* update documentation for modularization phases 6-9 ([e45b46d](https://github.com/kaitranntt/ccs/commit/e45b46d20708e29e770307dbfcce33d84465f137))
+
+### Code Refactoring
+
+* **ui:** modularize analytics page into directory structure ([03d9bf7](https://github.com/kaitranntt/ccs/commit/03d9bf76c474f93f12fcc5dbdaa55c1f215b1e39))
+* **ui:** modularize auth-monitor into directory structure ([8ead6fa](https://github.com/kaitranntt/ccs/commit/8ead6fa0bf05fc8d37563a618c473d7eae808920))
+* **ui:** modularize settings page into directory structure ([104a404](https://github.com/kaitranntt/ccs/commit/104a40414437a4f32492e4bcc33fdfbbec386e2f))
+
+### Tests
+
+* **ui:** add vitest testing infrastructure with 99 unit tests ([3fca933](https://github.com/kaitranntt/ccs/commit/3fca9338f9a77ac202dde6095bf70b5094199888))
+
 ## [7.1.0](https://github.com/kaitranntt/ccs/compare/v7.0.0...v7.1.0) (2025-12-21)
 
 ### Features
