@@ -116,7 +116,10 @@ export function CliproxyHeader({
     { id: 'gemini', displayName: 'Gemini' },
     { id: 'codex', displayName: 'Codex' },
     { id: 'agy', displayName: 'Agy' },
+    { id: 'qwen', displayName: 'Qwen' },
+    { id: 'iflow', displayName: 'iFlow' },
     { id: 'kiro', displayName: 'Kiro' },
+    { id: 'ghcp', displayName: 'GitHub Copilot' },
   ];
 
   const getProviderStatus = (providerId: string) => {

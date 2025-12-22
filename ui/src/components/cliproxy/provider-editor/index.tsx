@@ -55,7 +55,7 @@ export function ProviderEditor({
       qwen: ['alibaba', 'qwen'],
       iflow: ['iflow'],
       kiro: ['kiro', 'aws'],
-      copilot: ['github', 'copilot'],
+      ghcp: ['github', 'copilot'],
     };
     const owners = ownerMap[provider.toLowerCase()] || [provider.toLowerCase()];
     return modelsData.models.filter((m) =>

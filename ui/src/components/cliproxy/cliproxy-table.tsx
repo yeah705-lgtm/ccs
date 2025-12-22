@@ -35,6 +35,8 @@ const providerLabels: Record<string, string> = {
   agy: 'Antigravity',
   qwen: 'Alibaba Qwen',
   iflow: 'iFlow',
+  kiro: 'Kiro (AWS)',
+  ghcp: 'GitHub Copilot (OAuth)',
 };
 
 export function CliproxyTable({ data }: CliproxyTableProps) {
