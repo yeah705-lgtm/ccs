@@ -25,10 +25,10 @@ import {
   ensureBinary,
 } from './binary';
 
-/** Default configuration */
+/** Default configuration (uses CLIProxyAPIPlus fork with Kiro + Copilot support) */
 const DEFAULT_CONFIG: BinaryManagerConfig = {
   version: CLIPROXY_FALLBACK_VERSION,
-  releaseUrl: 'https://github.com/router-for-me/CLIProxyAPI/releases/download',
+  releaseUrl: 'https://github.com/router-for-me/CLIProxyAPIPlus/releases/download',
   binPath: getBinDir(),
   maxRetries: 3,
   verbose: false,

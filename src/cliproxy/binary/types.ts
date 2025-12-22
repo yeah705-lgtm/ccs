@@ -24,6 +24,6 @@ export const VERSION_CACHE_DURATION_MS = 60 * 60 * 1000;
 /** Version pin file name - stores user's explicit version choice */
 export const VERSION_PIN_FILE = '.version-pin';
 
-/** GitHub API URL for latest release */
+/** GitHub API URL for latest release (CLIProxyAPIPlus fork with Kiro + Copilot support) */
 export const GITHUB_API_LATEST_RELEASE =
-  'https://api.github.com/repos/router-for-me/CLIProxyAPI/releases/latest';
+  'https://api.github.com/repos/router-for-me/CLIProxyAPIPlus/releases/latest';

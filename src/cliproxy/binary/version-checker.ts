@@ -9,10 +9,15 @@ import { UpdateCheckResult, GITHUB_API_LATEST_RELEASE } from './types';
 
 /**
  * Compare semver versions (true if latest > current)
+ * Handles CLIProxyAPIPlus versioning: strips -0 suffix before comparison
  */
 export function isNewerVersion(latest: string, current: string): boolean {
-  const latestParts = latest.split('.').map((p) => parseInt(p, 10) || 0);
-  const currentParts = current.split('.').map((p) => parseInt(p, 10) || 0);
+  // Strip -0 suffix from CLIProxyAPIPlus versions (e.g., "6.6.40-0" -> "6.6.40")
+  const cleanLatest = latest.replace(/-\d+$/, '');
+  const cleanCurrent = current.replace(/-\d+$/, '');
+
+  const latestParts = cleanLatest.split('.').map((p) => parseInt(p, 10) || 0);
+  const currentParts = cleanCurrent.split('.').map((p) => parseInt(p, 10) || 0);
 
   // Pad arrays to same length
   while (latestParts.length < 3) latestParts.push(0);
