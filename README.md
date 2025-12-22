@@ -95,8 +95,11 @@ The dashboard provides visual management for all account types:
 | **OpenRouter** | API Key | `ccs openrouter` | 300+ models, unified API |
 | **GLM** | API Key | `ccs glm` | Cost-optimized execution |
 | **Kimi** | API Key | `ccs kimi` | Long-context, thinking mode |
+| **Azure Foundry** | API Key | `ccs foundry` | Claude via Microsoft Azure |
 
 **OpenRouter Integration** (v7.0.0): CCS v7.0.0 adds OpenRouter with interactive model picker, dynamic discovery, and tier mapping (opus/sonnet/haiku). Create via `ccs api create --preset openrouter` or dashboard.
+
+**Azure Foundry**: Use `ccs api create --preset foundry` to set up Claude via Microsoft Azure AI Foundry. Requires Azure resource and API key from [ai.azure.com](https://ai.azure.com).
 
 ![OpenRouter API Profiles](assets/screenshots/api-profiles-openrouter.webp)
 

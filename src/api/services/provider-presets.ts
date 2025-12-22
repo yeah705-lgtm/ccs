@@ -87,6 +87,17 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     category: 'alternative',
     alwaysThinkingEnabled: true,
   },
+  {
+    id: 'foundry',
+    name: 'Azure Foundry',
+    description: 'Claude via Microsoft Azure AI Foundry',
+    baseUrl: 'https://<your-resource>.services.ai.azure.com/api/anthropic',
+    defaultProfileName: 'foundry',
+    defaultModel: 'claude-sonnet-4-5',
+    apiKeyPlaceholder: 'YOUR_AZURE_API_KEY',
+    apiKeyHint: 'Create resource at ai.azure.com, get API key from Keys tab',
+    category: 'alternative',
+  },
 ];
 
 /** Get preset by ID */

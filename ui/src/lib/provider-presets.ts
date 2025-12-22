@@ -80,6 +80,19 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     apiKeyHint: 'Get your API key from Moonshot AI',
     category: 'alternative',
   },
+  {
+    id: 'foundry',
+    name: 'Azure Foundry',
+    description: 'Claude via Microsoft Azure AI Foundry',
+    baseUrl: 'https://<your-resource>.services.ai.azure.com/api/anthropic',
+    defaultProfileName: 'foundry',
+    badge: 'Azure',
+    defaultModel: 'claude-sonnet-4-5',
+    requiresApiKey: true,
+    apiKeyPlaceholder: 'YOUR_AZURE_API_KEY',
+    apiKeyHint: 'Create resource at ai.azure.com, get API key from Keys tab',
+    category: 'alternative',
+  },
 ];
 
 /** Get presets by category */

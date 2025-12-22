@@ -426,7 +426,7 @@ async function showHelp(): Promise<void> {
   console.log('');
   console.log(subheader('Options'));
   console.log(
-    `  ${color('--preset <id>', 'command')}        Use provider preset (openrouter, glm, glmt, kimi)`
+    `  ${color('--preset <id>', 'command')}        Use provider preset (openrouter, glm, glmt, kimi, foundry)`
   );
   console.log(`  ${color('--base-url <url>', 'command')}     API base URL (create)`);
   console.log(`  ${color('--api-key <key>', 'command')}      API key (create)`);
@@ -441,6 +441,7 @@ async function showHelp(): Promise<void> {
   console.log(`  ${color('glm', 'command')}           GLM - Claude via Z.AI (GitHub Copilot)`);
   console.log(`  ${color('glmt', 'command')}          GLMT - GLM with Thinking mode`);
   console.log(`  ${color('kimi', 'command')}          Kimi - Moonshot AI reasoning model`);
+  console.log(`  ${color('foundry', 'command')}       Azure Foundry - Claude via Microsoft Azure`);
   console.log('');
   console.log(subheader('Examples'));
   console.log(`  ${dim('# Interactive wizard')}`);
