@@ -35,7 +35,7 @@ const validProviders: CLIProxyProvider[] = [
   'qwen',
   'iflow',
   'kiro',
-  'copilot',
+  'ghcp',
 ];
 
 /**
@@ -66,7 +66,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
       qwen: 'qwen',
       iflow: 'iflow',
       kiro: 'kiro',
-      copilot: 'copilot',
+      copilot: 'ghcp', // CLIProxyAPI returns 'copilot', we map to 'ghcp'
     };
 
     // Update lastUsedAt for providers with recent activity

@@ -58,7 +58,7 @@ export type OAuthAccounts = Record<string, string>;
  */
 export interface CLIProxyVariantConfig {
   /** Base provider to use */
-  provider: 'gemini' | 'codex' | 'agy' | 'qwen' | 'iflow' | 'kiro' | 'copilot';
+  provider: 'gemini' | 'codex' | 'agy' | 'qwen' | 'iflow' | 'kiro' | 'ghcp';
   /** Account nickname (references oauth_accounts) */
   account?: string;
   /** Path to settings file (e.g., "~/.ccs/gemini-custom.settings.json") */
@@ -370,7 +370,7 @@ export function createEmptyUnifiedConfig(): UnifiedConfig {
     profiles: {},
     cliproxy: {
       oauth_accounts: {},
-      providers: ['gemini', 'codex', 'agy', 'qwen', 'iflow'],
+      providers: ['gemini', 'codex', 'agy', 'qwen', 'iflow', 'kiro', 'ghcp'],
       variants: {},
       logging: {
         enabled: false,
