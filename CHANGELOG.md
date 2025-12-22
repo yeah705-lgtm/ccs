@@ -1,3 +1,36 @@
+## [7.3.0](https://github.com/kaitranntt/ccs/compare/v7.2.0...v7.3.0) (2025-12-22)
+
+### Features
+
+* **auth:** add Kiro and GitHub Copilot OAuth providers ([2b441f6](https://github.com/kaitranntt/ccs/commit/2b441f64982c74174cb350537956e24970ef69f4))
+* **cliproxy:** add ghcp settings and update variant adapter ([fae1ee2](https://github.com/kaitranntt/ccs/commit/fae1ee2b3139a22a753b55908305c5d4303be560))
+* **cliproxy:** add kiro and ghcp OAuth configurations ([a01abe1](https://github.com/kaitranntt/ccs/commit/a01abe181b63d88fcf7e7fa9404071a69e7727d7))
+* **cliproxy:** add kiro and ghcp providers to CLIProxyProvider type ([036714c](https://github.com/kaitranntt/ccs/commit/036714c77447c4887da038b7979495c80f171c88))
+* **cliproxy:** add kiro and ghcp to OAuth diagnostics and account manager ([49bc0a4](https://github.com/kaitranntt/ccs/commit/49bc0a44cc58cafdb74d008e32500a6154460246))
+* **cliproxy:** migrate from CLIProxyAPI to CLIProxyAPIPlus ([6f8587d](https://github.com/kaitranntt/ccs/commit/6f8587db6881dd3638320882e2eadcbf943c3945))
+* **config:** add base settings for Kiro and Copilot providers ([b15ff7f](https://github.com/kaitranntt/ccs/commit/b15ff7f2355bf88f5867fe97475690a5affcbe10))
+* **config:** add kiro and ghcp to unified config and auth routes ([d04bcc1](https://github.com/kaitranntt/ccs/commit/d04bcc117f5fd79bf52ab97ce597173a9c40ff00))
+* **ui:** add Kiro and Copilot provider icons ([9ca20e7](https://github.com/kaitranntt/ccs/commit/9ca20e70de856f5cadb2cf8d1aeb60f1e725052a))
+* **ui:** add kiro and ghcp to provider types and configs ([bf3d51a](https://github.com/kaitranntt/ccs/commit/bf3d51ade33620653a9dff297b394d1f3eaa2cf3))
+* **ui:** add kiro and ghcp to wizard, auth flow, and settings ([9221545](https://github.com/kaitranntt/ccs/commit/92215457f0226695a0d57b25fba4744b85401bac))
+* **ui:** integrate Kiro and Copilot providers, rename to CLIProxy Plus ([0f029f9](https://github.com/kaitranntt/ccs/commit/0f029f960a835f307f045eb9b7e01b448d4b539e))
+* **ui:** update cliproxy components with kiro and ghcp providers ([099b712](https://github.com/kaitranntt/ccs/commit/099b712d4a1cd64388e669493851750f072f6d98))
+
+### Bug Fixes
+
+* update download URLs and binary names for CLIProxyAPIPlus ([4829902](https://github.com/kaitranntt/ccs/commit/48299028268a95587e5dbcb8285ab449b83b23ff))
+
+### Documentation
+
+* add CLIProxyAPIPlus attribution for Kiro and Copilot ([743d34a](https://github.com/kaitranntt/ccs/commit/743d34a881dbe3adccaca5d8a8e80529cb061eb7))
+* **cli:** add ccs kiro and ccs ghcp to help text ([8c8a15f](https://github.com/kaitranntt/ccs/commit/8c8a15f1e14a71d0359a9d3a93abb29fee36633c))
+* update documentation for kiro and ghcp providers ([b93b91c](https://github.com/kaitranntt/ccs/commit/b93b91c92596a747aae6b083819b1ec8162c1f5d))
+
+### Code Refactoring
+
+* complete CLIProxy Plus branding across CLI and UI ([af92bc3](https://github.com/kaitranntt/ccs/commit/af92bc30bf45a7816b07b4dfa6a5f0a42b9b03f4))
+* rename CLIProxyAPI to CLIProxy Plus across UI and CLI ([670993d](https://github.com/kaitranntt/ccs/commit/670993d3644e9551c474c27014c25351d0e3c92a))
+
 ## [7.2.0](https://github.com/kaitranntt/ccs/compare/v7.1.1...v7.2.0) (2025-12-22)
 
 ### Features
