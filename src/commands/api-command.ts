@@ -426,7 +426,7 @@ async function showHelp(): Promise<void> {
   console.log('');
   console.log(subheader('Options'));
   console.log(
-    `  ${color('--preset <id>', 'command')}        Use provider preset (openrouter, glm, glmt, kimi, foundry)`
+    `  ${color('--preset <id>', 'command')}        Use provider preset (openrouter, glm, glmt, kimi, foundry, minimax, deepseek, qwen)`
   );
   console.log(`  ${color('--base-url <url>', 'command')}     API base URL (create)`);
   console.log(`  ${color('--api-key <key>', 'command')}      API key (create)`);
@@ -442,6 +442,11 @@ async function showHelp(): Promise<void> {
   console.log(`  ${color('glmt', 'command')}          GLMT - GLM with Thinking mode`);
   console.log(`  ${color('kimi', 'command')}          Kimi - Moonshot AI reasoning model`);
   console.log(`  ${color('foundry', 'command')}       Azure Foundry - Claude via Microsoft Azure`);
+  console.log(`  ${color('minimax', 'command')}       Minimax - M2 series with 1M context`);
+  console.log(`  ${color('deepseek', 'command')}      DeepSeek - V3.2 and R1 reasoning (128K)`);
+  console.log(
+    `  ${color('qwen', 'command')}          Qwen - Alibaba Cloud qwen3-coder-plus (256K)`
+  );
   console.log('');
   console.log(subheader('Examples'));
   console.log(`  ${dim('# Interactive wizard')}`);

@@ -587,7 +587,14 @@ export class GlmtProxy {
         statusCode: 401,
         type: 'authentication_error',
         message:
-          'Authorization token missing or invalid. Please check your ANTHROPIC_AUTH_TOKEN environment variable in ~/.ccs/config.json or settings.json.',
+          'API key rejected by Z.AI. This can happen when:\n' +
+          '  1. Key expired on Z.AI server (most common after idle periods)\n' +
+          '  2. Key was revoked or regenerated\n' +
+          '  3. Key is missing or malformed\n\n' +
+          'To fix:\n' +
+          '  1. Go to Z.AI dashboard and regenerate your API key\n' +
+          '  2. Update ~/.ccs/glm.settings.json with the new key\n' +
+          '  3. Or run: ccs config -> API Profiles -> GLM -> Update key',
       };
     }
 

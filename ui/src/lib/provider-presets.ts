@@ -19,6 +19,10 @@ export interface ProviderPreset {
   apiKeyPlaceholder: string;
   apiKeyHint?: string;
   category: PresetCategory;
+  /** Additional env vars for thinking mode, etc. */
+  extraEnv?: Record<string, string>;
+  /** Enable always thinking mode */
+  alwaysThinkingEnabled?: boolean;
 }
 
 export const OPENROUTER_BASE_URL = 'https://openrouter.ai/api';
@@ -93,6 +97,45 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     apiKeyHint: 'Create resource at ai.azure.com, get API key from Keys tab',
     category: 'alternative',
   },
+  {
+    id: 'minimax',
+    name: 'Minimax',
+    description: 'M2.1/M2.1-lightning/M2 - multilang coding (1M context)',
+    baseUrl: 'https://api.minimax.io/anthropic',
+    defaultProfileName: 'minimax',
+    badge: '1M context',
+    defaultModel: 'MiniMax-M2.1',
+    requiresApiKey: true,
+    apiKeyPlaceholder: 'YOUR_MINIMAX_API_KEY',
+    apiKeyHint: 'Get your API key at platform.minimax.io',
+    category: 'alternative',
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    description: 'V3.2 and R1 reasoning model (128K context)',
+    baseUrl: 'https://api.deepseek.com/anthropic',
+    defaultProfileName: 'deepseek',
+    badge: 'Reasoning',
+    defaultModel: 'deepseek-chat',
+    requiresApiKey: true,
+    apiKeyPlaceholder: 'sk-...',
+    apiKeyHint: 'Get your API key at platform.deepseek.com',
+    category: 'alternative',
+  },
+  {
+    id: 'qwen',
+    name: 'Qwen',
+    description: 'Alibaba Cloud - qwen3-coder-plus (256K context)',
+    baseUrl: 'https://dashscope-intl.aliyuncs.com/apps/anthropic',
+    defaultProfileName: 'qwen',
+    badge: 'Alibaba',
+    defaultModel: 'qwen3-coder-plus',
+    requiresApiKey: true,
+    apiKeyPlaceholder: 'sk-...',
+    apiKeyHint: 'Get your API key from Alibaba Cloud Model Studio',
+    category: 'alternative',
+  },
 ];
 
 /** Get presets by category */
@@ -102,7 +145,7 @@ export function getPresetsByCategory(category: PresetCategory): ProviderPreset[]
 
 /** Get preset by ID */
 export function getPresetById(id: string): ProviderPreset | undefined {
-  return PROVIDER_PRESETS.find((p) => p.id === id);
+  return PROVIDER_PRESETS.find((p) => p.id.toLowerCase() === id.toLowerCase());
 }
 
 /** Check if a URL matches a known preset */

@@ -173,6 +173,7 @@ Run ${color('ccs config', 'command')} for web dashboard`.trim();
       ['ccs <provider> --config', 'Change model (agy, gemini)'],
       ['ccs <provider> --logout', 'Clear authentication'],
       ['ccs <provider> --headless', 'Headless auth (for SSH)'],
+      ['ccs kiro --incognito', 'Use incognito browser (default: normal)'],
       ['ccs codex "explain code"', 'Use with prompt'],
     ]
   );

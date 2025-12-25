@@ -14,9 +14,14 @@ export function error(message: string): never {
  * Path expansion (~ and env vars)
  */
 export function expandPath(pathStr: string): string {
+  // Normalize separators first to handle mixed paths
+  pathStr = pathStr.replace(/\\/g, '/');
+
   // Handle tilde expansion
-  if (pathStr.startsWith('~/') || pathStr.startsWith('~\\')) {
+  if (pathStr.startsWith('~/')) {
     pathStr = path.join(os.homedir(), pathStr.slice(2));
+  } else if (pathStr === '~') {
+    pathStr = os.homedir();
   }
 
   // Expand environment variables (Windows and Unix)

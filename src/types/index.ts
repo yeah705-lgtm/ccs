@@ -46,5 +46,5 @@ export type {
 } from './glmt';
 
 // Utility types
-export { ErrorCode, LogLevel } from './utils';
-export type { ColorName, TerminalInfo, Result } from './utils';
+export { LogLevel } from './utils';
+export type { ErrorCode, ColorName, TerminalInfo, Result } from './utils';

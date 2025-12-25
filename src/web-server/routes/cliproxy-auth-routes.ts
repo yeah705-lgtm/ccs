@@ -23,6 +23,7 @@ import {
 } from '../../cliproxy/account-manager';
 import { getProxyTarget } from '../../cliproxy/proxy-target-resolver';
 import { fetchRemoteAuthStatus } from '../../cliproxy/remote-auth-fetcher';
+import { loadOrCreateUnifiedConfig } from '../../config/unified-config-loader';
 import type { CLIProxyProvider } from '../../cliproxy/types';
 
 const router = Router();
@@ -268,12 +269,20 @@ router.delete('/accounts/:provider/:accountId', (req: Request, res: Response): v
  */
 router.post('/:provider/start', async (req: Request, res: Response): Promise<void> => {
   const { provider } = req.params;
-  const { nickname } = req.body;
+  const { nickname, noIncognito: noIncognitoBody } = req.body;
 
   // Validate provider
   if (!validProviders.includes(provider as CLIProxyProvider)) {
     res.status(400).json({ error: `Invalid provider: ${provider}` });
     return;
+  }
+
+  // Check Kiro no-incognito setting from config (or request body)
+  // Default to true (use normal browser) for reliability - incognito often fails
+  let noIncognito = true;
+  if (provider === 'kiro') {
+    const config = loadOrCreateUnifiedConfig();
+    noIncognito = noIncognitoBody ?? config.cliproxy?.kiro_no_incognito ?? true;
   }
 
   try {
@@ -283,6 +292,7 @@ router.post('/:provider/start', async (req: Request, res: Response): Promise<voi
       headless: false, // Force interactive mode
       nickname: nickname || undefined,
       fromUI: true, // Enable project selection prompt in UI
+      noIncognito, // Kiro: use normal browser if enabled
     });
 
     if (account) {

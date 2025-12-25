@@ -171,4 +171,6 @@ export interface OAuthOptions {
   nickname?: string;
   /** If true, triggered from Web UI (enables project selection prompt) */
   fromUI?: boolean;
+  /** If true, use --no-incognito flag (Kiro only - use normal browser instead of incognito) */
+  noIncognito?: boolean;
 }

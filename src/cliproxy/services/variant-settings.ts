@@ -10,6 +10,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { CLIProxyProfileName } from '../../auth/profile-detector';
 import { getCcsDir } from '../../utils/config-manager';
+import { expandPath } from '../../utils/helpers';
 import { getClaudeEnvVars, CLIPROXY_DEFAULT_PORT } from '../config-generator';
 import { CLIProxyProvider } from '../types';
 
@@ -124,10 +125,11 @@ export function createSettingsFileUnified(
 }
 
 /**
- * Delete settings file if it exists
+ * Delete settings file if it exists.
+ * Uses expandPath() for cross-platform path handling.
  */
 export function deleteSettingsFile(settingsPath: string): boolean {
-  const resolvedPath = settingsPath.replace(/^~/, os.homedir());
+  const resolvedPath = expandPath(settingsPath);
   if (fs.existsSync(resolvedPath)) {
     fs.unlinkSync(resolvedPath);
     return true;

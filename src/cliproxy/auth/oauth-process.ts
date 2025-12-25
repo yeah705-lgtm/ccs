@@ -23,6 +23,7 @@ import { ProviderOAuthConfig } from './auth-types';
 import { getTimeoutTroubleshooting, showStep } from './environment-detector';
 import { isAuthenticated, registerAccountFromToken } from './token-manager';
 import { deviceCodeEvents, type DeviceCodePrompt } from '../device-code-handler';
+import { OAUTH_FLOW_TYPES } from '../../management';
 
 /** Options for OAuth process execution */
 export interface OAuthProcessOptions {
@@ -104,7 +105,9 @@ async function handleStdout(
   log(`stdout: ${output.trim()}`);
   state.accumulatedOutput += output;
 
-  const isDeviceCodeFlow = options.callbackPort === null;
+  // H4: Use explicit flow type from OAUTH_FLOW_TYPES instead of null port check
+  const flowType = OAUTH_FLOW_TYPES[options.provider] || 'authorization_code';
+  const isDeviceCodeFlow = flowType === 'device_code';
 
   // Parse project list when available
   if (isProjectList(state.accumulatedOutput) && state.parsedProjects.length === 0) {
@@ -112,8 +115,8 @@ async function handleStdout(
     log(`Parsed ${state.parsedProjects.length} projects`);
   }
 
-  // Handle project selection prompt
-  if (!state.projectPromptHandled && isProjectSelectionPrompt(output)) {
+  // Handle project selection prompt (Authorization Code flows only - Device Code has no stdin pipe)
+  if (!isDeviceCodeFlow && !state.projectPromptHandled && isProjectSelectionPrompt(output)) {
     state.projectPromptHandled = true;
     await handleProjectSelection(output, state, options, authProcess, log);
   }
@@ -172,8 +175,8 @@ async function handleStdout(
     state.browserOpened = true;
   }
 
-  // Display OAuth URLs in headless mode (for non-device-code flows)
-  if (!isDeviceCodeFlow && options.headless && !state.urlDisplayed) {
+  // Display OAuth URL for all modes (enables VS Code terminal URL detection popup)
+  if (!isDeviceCodeFlow && !state.urlDisplayed) {
     const urlMatch = output.match(/https?:\/\/[^\s]+/);
     if (urlMatch) {
       console.log('');
@@ -258,10 +261,28 @@ export function executeOAuthProcess(options: OAuthProcessOptions): Promise<Accou
   };
 
   return new Promise<AccountInfo | null>((resolve) => {
+    // H4: Use explicit flow type from OAUTH_FLOW_TYPES instead of null port check
+    const flowType = OAUTH_FLOW_TYPES[provider] || 'authorization_code';
+    const isDeviceCodeFlow = flowType === 'device_code';
+
+    // H6: TTY detection - only inherit stdin if TTY available (prevents issues in CI/piped scripts)
+    // Device Code flows may need interactive stdin for email/prompts
+    // Authorization Code flows need piped stdin for project selection
+    const stdinMode = isDeviceCodeFlow && process.stdin.isTTY ? 'inherit' : 'pipe';
+
     const authProcess = spawn(binaryPath, args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
+      stdio: [stdinMode, 'pipe', 'pipe'],
       env: { ...process.env, CLI_PROXY_AUTH_DIR: tokenDir },
     });
+
+    // H5: Signal handling - properly kill child process on SIGINT/SIGTERM
+    const cleanup = () => {
+      if (authProcess && !authProcess.killed) {
+        authProcess.kill('SIGTERM');
+      }
+    };
+    process.on('SIGINT', cleanup);
+    process.on('SIGTERM', cleanup);
 
     const state: ProcessState = {
       stderrData: '',
@@ -291,7 +312,6 @@ export function executeOAuthProcess(options: OAuthProcessOptions): Promise<Accou
     });
 
     // Show waiting message after delay
-    const isDeviceCodeFlow = callbackPort === null;
     setTimeout(() => {
       if (isDeviceCodeFlow) {
         // Device Code Flow: show polling message
@@ -324,6 +344,9 @@ export function executeOAuthProcess(options: OAuthProcessOptions): Promise<Accou
     // Timeout handling
     const timeoutMs = headless ? 300000 : 120000;
     const timeout = setTimeout(() => {
+      // H5: Remove signal handlers before killing process
+      process.removeListener('SIGINT', cleanup);
+      process.removeListener('SIGTERM', cleanup);
       authProcess.kill();
       console.log('');
       console.log(fail(`OAuth timed out after ${headless ? 5 : 2} minutes`));
@@ -335,6 +358,9 @@ export function executeOAuthProcess(options: OAuthProcessOptions): Promise<Accou
 
     authProcess.on('exit', (code) => {
       clearTimeout(timeout);
+      // H5: Remove signal handlers to prevent memory leaks
+      process.removeListener('SIGINT', cleanup);
+      process.removeListener('SIGTERM', cleanup);
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
       if (code === 0) {
@@ -376,6 +402,9 @@ export function executeOAuthProcess(options: OAuthProcessOptions): Promise<Accou
 
     authProcess.on('error', (error) => {
       clearTimeout(timeout);
+      // H5: Remove signal handlers to prevent memory leaks
+      process.removeListener('SIGINT', cleanup);
+      process.removeListener('SIGTERM', cleanup);
       console.log('');
       console.log(fail(`Failed to start auth process: ${error.message}`));
       resolve(null);

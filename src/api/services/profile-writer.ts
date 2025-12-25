@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { getCcsDir, getConfigPath, loadConfig } from '../../utils/config-manager';
+import { expandPath } from '../../utils/helpers';
 import {
   loadOrCreateUnifiedConfig,
   saveUnifiedConfig,
@@ -144,9 +145,10 @@ function removeApiProfileUnified(name: string): void {
     throw new Error(`API profile not found: ${name}`);
   }
 
-  // Delete the settings file if it exists
+  // Delete the settings file if it exists.
+  // Uses expandPath() for cross-platform path handling.
   if (profile.settings) {
-    const settingsPath = profile.settings.replace(/^~/, os.homedir());
+    const settingsPath = expandPath(profile.settings);
     if (fs.existsSync(settingsPath)) {
       fs.unlinkSync(settingsPath);
     }

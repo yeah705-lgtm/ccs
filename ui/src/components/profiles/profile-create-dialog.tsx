@@ -66,7 +66,12 @@ interface ProfileCreateDialogProps {
 // Common URL mistakes to warn about
 const PROBLEMATIC_PATHS = ['/chat/completions', '/v1/messages', '/messages', '/completions'];
 
-export function ProfileCreateDialog({ open, onOpenChange, onSuccess }: ProfileCreateDialogProps) {
+export function ProfileCreateDialog({
+  open,
+  onOpenChange,
+  onSuccess,
+  initialMode = 'openrouter',
+}: ProfileCreateDialogProps) {
   const createMutation = useCreateProfile();
   const [activeTab, setActiveTab] = useState('basic');
   const [urlWarning, setUrlWarning] = useState<string | null>(null);
@@ -123,18 +128,29 @@ export function ProfileCreateDialog({ open, onOpenChange, onSuccess }: ProfileCr
       setActiveTab('basic');
       setUrlWarning(null);
       setShowApiKey(false);
-      setSelectedPreset('openrouter');
       setModelSearch('');
-      // Pre-fill with OpenRouter preset
-      const openrouterPreset = PROVIDER_PRESETS.find((p) => p.id === 'openrouter');
-      if (openrouterPreset) {
+
+      // Set initial preset based on initialMode
+      if (initialMode === 'normal') {
+        // Custom mode - clear form
+        setSelectedPreset('custom');
         setTimeout(() => {
-          setValue('name', openrouterPreset.defaultProfileName);
-          setValue('baseUrl', openrouterPreset.baseUrl);
+          setValue('name', '');
+          setValue('baseUrl', '');
         }, 0);
+      } else {
+        // OpenRouter mode (default)
+        setSelectedPreset('openrouter');
+        const openrouterPreset = PROVIDER_PRESETS.find((p) => p.id === 'openrouter');
+        if (openrouterPreset) {
+          setTimeout(() => {
+            setValue('name', openrouterPreset.defaultProfileName);
+            setValue('baseUrl', openrouterPreset.baseUrl);
+          }, 0);
+        }
       }
     }
-  }, [open, reset, setValue]);
+  }, [open, reset, setValue, initialMode]);
 
   // Handle preset selection
   const handlePresetSelect = (presetId: string) => {
@@ -244,14 +260,14 @@ export function ProfileCreateDialog({ open, onOpenChange, onSuccess }: ProfileCr
                   type="button"
                   onClick={() => handlePresetSelect('custom')}
                   className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-all text-sm',
+                    'flex items-center gap-2 px-4 py-2 rounded-md border-2 transition-all text-sm font-medium',
                     selectedPreset === 'custom' ||
                       getPresetsByCategory('alternative').some((p) => p.id === selectedPreset)
-                      ? 'border-primary bg-primary/5 font-medium'
-                      : 'border-muted hover:border-muted-foreground/30'
+                      ? 'border-primary bg-primary/10 text-primary dark:bg-primary/20'
+                      : 'border-dashed border-muted-foreground/40 hover:border-primary/50 hover:bg-muted/50 text-muted-foreground hover:text-foreground'
                   )}
                 >
-                  <Settings2 className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Settings2 className="w-4 h-4" />
                   <span>Custom</span>
                 </button>
               </div>
@@ -260,8 +276,8 @@ export function ProfileCreateDialog({ open, onOpenChange, onSuccess }: ProfileCr
             {/* Show alternative presets when Custom is selected or an alternative is selected */}
             {(selectedPreset === 'custom' ||
               getPresetsByCategory('alternative').some((p) => p.id === selectedPreset)) && (
-              <div className="pt-2 border-t border-dashed">
-                <Label className="text-xs text-muted-foreground mb-1.5 block">
+              <div className="pt-3 mt-2 border-t border-dashed border-muted-foreground/30">
+                <Label className="text-xs font-medium text-foreground/70 mb-2 block">
                   Quick Templates
                 </Label>
                 <div className="flex gap-2 flex-wrap">
@@ -552,24 +568,27 @@ function CompactPresetCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-all text-sm',
+        'flex items-center gap-2 px-3 py-2 rounded-md border transition-all text-sm',
         isSelected
           ? preset.featured
             ? 'border-accent bg-accent/10 dark:bg-accent/20 font-medium'
-            : 'border-primary bg-primary/5 font-medium'
-          : 'border-muted hover:border-muted-foreground/30'
+            : 'border-primary bg-primary/10 dark:bg-primary/20 font-medium'
+          : 'border-muted-foreground/20 hover:border-muted-foreground/40 hover:bg-muted/50'
       )}
     >
       {preset.icon ? (
-        <img src={preset.icon} alt="" className="w-3.5 h-3.5" />
+        <img src={preset.icon} alt="" className="w-4 h-4" />
       ) : (
-        <div className="w-3.5 h-3.5 rounded-full bg-muted flex items-center justify-center text-[8px] font-bold">
+        <div className="w-4 h-4 rounded-full bg-muted-foreground/20 flex items-center justify-center text-[9px] font-bold text-foreground/70">
           {preset.name.charAt(0)}
         </div>
       )}
-      <span>{preset.name}</span>
+      <span className="font-medium">{preset.name}</span>
       {preset.badge && (
-        <Badge variant="secondary" className="text-[9px] px-1 py-0 ml-0.5">
+        <Badge
+          variant="secondary"
+          className="text-[10px] px-1.5 py-0 ml-0.5 bg-muted-foreground/10 text-muted-foreground"
+        >
           {preset.badge}
         </Badge>
       )}

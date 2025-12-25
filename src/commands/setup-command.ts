@@ -13,6 +13,8 @@
  */
 
 import * as readline from 'readline';
+import * as fs from 'fs';
+import * as path from 'path';
 import { initUI, header, ok, info, warn } from '../utils/ui';
 import {
   loadOrCreateUnifiedConfig,
@@ -21,6 +23,7 @@ import {
   hasUnifiedConfig,
 } from '../config/unified-config-loader';
 import { DEFAULT_CLIPROXY_SERVER_CONFIG } from '../config/unified-config-types';
+import { getCcsDir } from '../utils/config-manager';
 
 /** Custom error for user cancellation (Ctrl+C) */
 class UserCancelledError extends Error {
@@ -112,39 +115,75 @@ async function selectOption(
 /**
  * Check if this is a first-time install (config exists but is empty/unconfigured)
  * Returns true if user should be prompted to run setup wizard
+ *
+ * IMPORTANT: Also checks legacy config.json for existing profiles to avoid
+ * treating users with existing GLM/Kimi setups as "first-time installs"
+ * (Fix for issue #195 - GLM auth persistence regression)
  */
 export function isFirstTimeInstall(): boolean {
-  // No config at all → definitely first time
-  if (!hasUnifiedConfig()) {
-    return true;
-  }
+  // Check unified config first (config.yaml)
+  if (hasUnifiedConfig()) {
+    const loaded = loadUnifiedConfig();
 
-  // Try loading config directly to detect corruption
-  const loaded = loadUnifiedConfig();
-  if (loaded === null) {
     // Config exists but is corrupted/invalid - don't treat as first-time
-    // User should fix or delete the file, or use --force
-    console.log(warn('Warning: ~/.ccs/config.yaml exists but appears corrupted'));
-    console.log(info('  Run `ccs setup --force` to reset, or `ccs doctor` to diagnose'));
-    return false;
+    if (loaded === null) {
+      console.log(warn('Warning: ~/.ccs/config.yaml exists but appears corrupted'));
+      console.log(info('  Run `ccs setup --force` to reset, or `ccs doctor` to diagnose'));
+      return false;
+    }
+
+    // Check for any meaningful configuration in unified config
+    const hasProfiles = Object.keys(loaded.profiles || {}).length > 0;
+    const hasAccounts = Object.keys(loaded.accounts || {}).length > 0;
+    const hasVariants = Object.keys(loaded.cliproxy?.variants || {}).length > 0;
+    const hasOAuthAccounts = Object.keys(loaded.cliproxy?.oauth_accounts || {}).length > 0;
+    const hasRemoteProxy =
+      loaded.cliproxy_server?.remote?.enabled && loaded.cliproxy_server?.remote?.host;
+
+    // If any of these exist in unified config, user has configured something
+    if (hasProfiles || hasAccounts || hasVariants || hasOAuthAccounts || hasRemoteProxy) {
+      return false;
+    }
   }
 
-  // Config exists and is valid - check if it's meaningfully configured
-  const config = loaded;
+  // Also check legacy config.json for existing profiles
+  // This prevents treating users with GLM/Kimi in config.json as "first-time installs"
+  const ccsDir = getCcsDir();
+  const legacyConfigPath = path.join(ccsDir, 'config.json');
 
-  // Check for any meaningful configuration
-  const hasProfiles = Object.keys(config.profiles || {}).length > 0;
-  const hasAccounts = Object.keys(config.accounts || {}).length > 0;
-  const hasVariants = Object.keys(config.cliproxy?.variants || {}).length > 0;
-  const hasOAuthAccounts = Object.keys(config.cliproxy?.oauth_accounts || {}).length > 0;
-  const hasRemoteProxy =
-    config.cliproxy_server?.remote?.enabled && config.cliproxy_server?.remote?.host;
+  if (fs.existsSync(legacyConfigPath)) {
+    try {
+      const content = fs.readFileSync(legacyConfigPath, 'utf8');
+      const legacyConfig = JSON.parse(content) as { profiles?: Record<string, string> };
 
-  // If any of these exist, user has configured something
-  const isConfigured =
-    hasProfiles || hasAccounts || hasVariants || hasOAuthAccounts || hasRemoteProxy;
+      if (legacyConfig.profiles && Object.keys(legacyConfig.profiles).length > 0) {
+        // Has legacy profiles - NOT first time
+        return false;
+      }
+    } catch {
+      // Legacy config exists but is invalid - ignore and continue
+    }
+  }
 
-  return !isConfigured;
+  // Also check profiles.json for existing accounts
+  const legacyProfilesPath = path.join(ccsDir, 'profiles.json');
+
+  if (fs.existsSync(legacyProfilesPath)) {
+    try {
+      const content = fs.readFileSync(legacyProfilesPath, 'utf8');
+      const legacyProfiles = JSON.parse(content) as { profiles?: Record<string, unknown> };
+
+      if (legacyProfiles.profiles && Object.keys(legacyProfiles.profiles).length > 0) {
+        // Has legacy accounts - NOT first time
+        return false;
+      }
+    } catch {
+      // Legacy profiles exists but is invalid - ignore and continue
+    }
+  }
+
+  // No meaningful configuration found anywhere
+  return true;
 }
 
 /**

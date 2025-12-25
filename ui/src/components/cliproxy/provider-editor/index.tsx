@@ -157,6 +157,7 @@ export function ProviderEditor({
                   className="flex-1 mt-0 border-0 p-0 data-[state=inactive]:hidden flex flex-col overflow-hidden"
                 >
                   <ModelConfigTab
+                    provider={provider}
                     catalog={catalog}
                     savedPresets={savedPresets}
                     currentModel={currentModel}

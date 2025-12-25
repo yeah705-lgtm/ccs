@@ -250,6 +250,16 @@ export async function execClaudeWithCLIProxy(
   const forceConfig = argsWithoutProxy.includes('--config');
   const addAccount = argsWithoutProxy.includes('--add');
   const showAccounts = argsWithoutProxy.includes('--accounts');
+  // Kiro-specific: browser mode for OAuth
+  // Default to normal browser (noIncognito=true) for reliability - incognito often fails on Linux
+  // --incognito flag opts into incognito mode, --no-incognito is legacy (now default)
+  const incognitoFlag = argsWithoutProxy.includes('--incognito');
+  const noIncognitoFlag = argsWithoutProxy.includes('--no-incognito');
+  // Config setting (defaults to true = normal browser)
+  const kiroNoIncognitoConfig =
+    provider === 'kiro' ? (unifiedConfig.cliproxy?.kiro_no_incognito ?? true) : false;
+  // --incognito flag overrides everything to use incognito
+  const noIncognito = incognitoFlag ? false : noIncognitoFlag || kiroNoIncognitoConfig;
 
   // Parse --use <account> flag
   let useAccount: string | undefined;
@@ -364,6 +374,7 @@ export async function execClaudeWithCLIProxy(
         add: addAccount,
         ...(forceHeadless ? { headless: true } : {}),
         ...(setNickname ? { nickname: setNickname } : {}),
+        ...(noIncognito ? { noIncognito: true } : {}),
       });
       if (!authSuccess) {
         throw new Error(`Authentication required for ${providerConfig.displayName}`);
@@ -591,6 +602,8 @@ export async function execClaudeWithCLIProxy(
     '--accounts',
     '--use',
     '--nickname',
+    '--incognito',
+    '--no-incognito',
     // Proxy flags are handled by resolveProxyConfig, but list for documentation
     ...PROXY_CLI_FLAGS,
   ];

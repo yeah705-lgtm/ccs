@@ -3,7 +3,8 @@
  */
 
 // Re-export from error-codes for consistency
-export { ERROR_CODES, ErrorCode, getErrorDocUrl, getErrorCategory } from '../utils/error-codes';
+export { ERROR_CODES, getErrorDocUrl, getErrorCategory } from '../utils/error-codes';
+export type { ErrorCode } from '../utils/error-codes';
 
 /**
  * Log levels

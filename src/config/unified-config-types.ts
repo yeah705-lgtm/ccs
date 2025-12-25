@@ -89,6 +89,8 @@ export interface CLIProxyConfig {
   variants: Record<string, CLIProxyVariantConfig>;
   /** Logging configuration (disabled by default) */
   logging?: CLIProxyLoggingConfig;
+  /** Kiro: disable incognito browser mode (use normal browser to save credentials) */
+  kiro_no_incognito?: boolean;
 }
 
 /**

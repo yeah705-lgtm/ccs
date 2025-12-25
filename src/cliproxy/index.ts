@@ -55,6 +55,7 @@ export {
   generateConfig,
   regenerateConfig,
   configNeedsRegeneration,
+  parseUserApiKeys,
   getClaudeEnvVars,
   getEffectiveEnvVars,
   getProviderSettingsPath,

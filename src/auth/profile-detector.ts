@@ -12,7 +12,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { findSimilarStrings } from '../utils/helpers';
+import { findSimilarStrings, expandPath } from '../utils/helpers';
 import { Config, Settings, ProfileMetadata } from '../types';
 import { UnifiedConfig, CopilotConfig } from '../config/unified-config-types';
 import { loadUnifiedConfig, isUnifiedMode } from '../config/unified-config-loader';
@@ -62,10 +62,11 @@ export interface ProfileNotFoundError extends Error {
  */
 /**
  * Load env vars from a settings file (*.settings.json).
- * Expands ~ to home directory. Returns empty object on error.
+ * Uses expandPath() for consistent cross-platform path handling.
+ * Returns empty object on error.
  */
-function loadSettingsFromFile(settingsPath: string): Record<string, string> {
-  const expandedPath = settingsPath.replace(/^~/, os.homedir());
+export function loadSettingsFromFile(settingsPath: string): Record<string, string> {
+  const expandedPath = expandPath(settingsPath);
   try {
     if (!fs.existsSync(expandedPath)) return {};
     const content = fs.readFileSync(expandedPath, 'utf8');
