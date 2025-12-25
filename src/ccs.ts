@@ -255,6 +255,13 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const firstArg = args[0];
 
+  // Initialize UI colors early to ensure consistent colored output
+  // Must happen before any status messages (ok, info, fail, etc.)
+  if (process.stdout.isTTY && !process.env['CI']) {
+    const { initUI } = await import('./utils/ui');
+    await initUI();
+  }
+
   // Trigger update check early for ALL commands except version/help/update
   // Only if TTY and not CI to avoid noise in automated environments
   const skipUpdateCheck = [
