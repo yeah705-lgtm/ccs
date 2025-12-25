@@ -5,7 +5,7 @@
  * Requires usage-statistics-enabled: true in config.yaml.
  */
 
-import { CCS_CONTROL_PANEL_SECRET } from './config-generator';
+import { getEffectiveApiKey, getEffectiveManagementSecret } from './auth-token-manager';
 import { getProxyTarget, buildProxyUrl, buildProxyHeaders } from './proxy-target-resolver';
 
 /** Per-account usage statistics */
@@ -112,7 +112,7 @@ export async function fetchCliproxyStats(port?: number): Promise<CliproxyStats |
     // For management endpoints, use CCS control panel secret for local, remote auth for remote
     const headers = target.isRemote
       ? buildProxyHeaders(target)
-      : { Accept: 'application/json', Authorization: `Bearer ${CCS_CONTROL_PANEL_SECRET}` };
+      : { Accept: 'application/json', Authorization: `Bearer ${getEffectiveManagementSecret()}` };
 
     const response = await fetch(url, {
       signal: controller.signal,
@@ -244,10 +244,10 @@ export async function fetchCliproxyModels(port?: number): Promise<CliproxyModels
     }
     const url = buildProxyUrl(target, '/v1/models');
 
-    // For /v1 endpoints: use remote auth token for remote, ccs-internal-managed for local
+    // For /v1 endpoints: use remote auth token for remote, effective API key for local
     const headers = target.isRemote
       ? buildProxyHeaders(target)
-      : { Accept: 'application/json', Authorization: 'Bearer ccs-internal-managed' };
+      : { Accept: 'application/json', Authorization: `Bearer ${getEffectiveApiKey()}` };
 
     const response = await fetch(url, {
       signal: controller.signal,
@@ -325,7 +325,7 @@ export async function fetchCliproxyErrorLogs(port?: number): Promise<CliproxyErr
     // For management endpoints, use CCS control panel secret for local, remote auth for remote
     const headers = target.isRemote
       ? buildProxyHeaders(target)
-      : { Accept: 'application/json', Authorization: `Bearer ${CCS_CONTROL_PANEL_SECRET}` };
+      : { Accept: 'application/json', Authorization: `Bearer ${getEffectiveManagementSecret()}` };
 
     const response = await fetch(url, {
       signal: controller.signal,
@@ -373,7 +373,7 @@ export async function fetchCliproxyErrorLogContent(
     // For management endpoints, use CCS control panel secret for local, remote auth for remote
     const headers = target.isRemote
       ? buildProxyHeaders(target)
-      : { Authorization: `Bearer ${CCS_CONTROL_PANEL_SECRET}` };
+      : { Authorization: `Bearer ${getEffectiveManagementSecret()}` };
 
     const response = await fetch(url, {
       signal: controller.signal,

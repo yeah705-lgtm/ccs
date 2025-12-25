@@ -16,6 +16,7 @@ import { warn } from '../utils/ui';
 import { CLIProxyProvider, ProviderConfig, ProviderModelMapping } from './types';
 import { getModelMappingFromConfig, getEnvVarsFromConfig } from './base-config-loader';
 import { loadOrCreateUnifiedConfig, getGlobalEnvConfig } from '../config/unified-config-loader';
+import { getEffectiveApiKey, getEffectiveManagementSecret } from './auth-token-manager';
 
 /** Settings file structure for user overrides */
 interface ProviderSettings {
@@ -172,8 +173,12 @@ function generateUnifiedConfigContent(
   // Get logging settings from user config (disabled by default)
   const { loggingToFile, requestLog } = getLoggingSettings();
 
+  // Get effective auth tokens (respects user customization)
+  const effectiveApiKey = getEffectiveApiKey();
+  const effectiveSecret = getEffectiveManagementSecret();
+
   // Build api-keys section with internal key + preserved user keys
-  const allApiKeys = [CCS_INTERNAL_API_KEY, ...userApiKeys];
+  const allApiKeys = [effectiveApiKey, ...userApiKeys];
   const apiKeysYaml = allApiKeys.map((key) => `  - "${key}"`).join('\n');
 
   // Unified config with enhanced CLIProxyAPI features
@@ -219,7 +224,7 @@ usage-statistics-enabled: true
 # Remote management API for CCS dashboard integration
 remote-management:
   allow-remote: true
-  secret-key: "${CCS_CONTROL_PANEL_SECRET}"
+  secret-key: "${effectiveSecret}"
   disable-control-panel: false
 
 # =============================================================================
@@ -443,7 +448,7 @@ export function getClaudeEnvVars(
   const coreEnvVars = {
     // Provider-specific endpoint - routes to correct provider via URL path
     ANTHROPIC_BASE_URL: `http://127.0.0.1:${port}/api/provider/${provider}`,
-    ANTHROPIC_AUTH_TOKEN: CCS_INTERNAL_API_KEY,
+    ANTHROPIC_AUTH_TOKEN: getEffectiveApiKey(),
     ANTHROPIC_MODEL: models.claudeModel,
     ANTHROPIC_DEFAULT_OPUS_MODEL: models.opusModel || models.claudeModel,
     ANTHROPIC_DEFAULT_SONNET_MODEL: models.sonnetModel || models.claudeModel,
@@ -710,7 +715,7 @@ export function getRemoteEnvVars(
     ...userEnvVars,
     // Always override URL and auth token with remote config
     ANTHROPIC_BASE_URL: baseUrl,
-    ANTHROPIC_AUTH_TOKEN: remoteConfig.authToken || CCS_INTERNAL_API_KEY,
+    ANTHROPIC_AUTH_TOKEN: remoteConfig.authToken || getEffectiveApiKey(),
   };
 
   return env;
