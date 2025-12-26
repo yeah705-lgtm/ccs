@@ -163,19 +163,24 @@ export function getSettingsPath(profile: string): string {
 
     // If not found in unified config, try legacy config.json as fallback
     if (!settingsPath) {
-      try {
-        const legacyConfig = loadConfig();
-        if (legacyConfig.profiles[profile]) {
-          settingsPath = legacyConfig.profiles[profile];
-          // Merge legacy profiles into available list (avoid duplicates)
-          for (const p of Object.keys(legacyConfig.profiles)) {
-            if (!availableProfiles.includes(p)) {
-              availableProfiles.push(p);
+      // Use inline safe logic - loadConfig() calls process.exit() which cannot be caught
+      const configPath = getConfigPath();
+      if (fs.existsSync(configPath)) {
+        try {
+          const raw = fs.readFileSync(configPath, 'utf8');
+          const legacyConfig: unknown = JSON.parse(raw);
+          if (isConfig(legacyConfig) && legacyConfig.profiles[profile]) {
+            settingsPath = legacyConfig.profiles[profile];
+            // Merge legacy profiles into available list (avoid duplicates)
+            for (const p of Object.keys(legacyConfig.profiles)) {
+              if (!availableProfiles.includes(p)) {
+                availableProfiles.push(p);
+              }
             }
           }
+        } catch {
+          // Legacy config is invalid JSON - that's OK in unified mode
         }
-      } catch {
-        // Legacy config doesn't exist or is invalid - that's OK in unified mode
       }
     }
   } else {
