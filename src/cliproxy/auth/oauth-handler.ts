@@ -27,8 +27,9 @@ import {
 } from '../../management/oauth-port-diagnostics';
 import { OAuthOptions, OAUTH_CALLBACK_PORTS, getOAuthConfig } from './auth-types';
 import { isHeadlessEnvironment, killProcessOnPort, showStep } from './environment-detector';
-import { getProviderTokenDir, isAuthenticated } from './token-manager';
+import { getProviderTokenDir, isAuthenticated, registerAccountFromToken } from './token-manager';
 import { executeOAuthProcess } from './oauth-process';
+import { importKiroToken } from './kiro-import';
 
 /**
  * Prompt user to add another account
@@ -127,6 +128,17 @@ export async function triggerOAuth(
 ): Promise<AccountInfo | null> {
   const oauthConfig = getOAuthConfig(provider);
   const { verbose = false, add = false, nickname, fromUI = false, noIncognito = true } = options;
+
+  // Handle --import flag: skip OAuth and import from Kiro IDE directly
+  if (options.import && provider === 'kiro') {
+    const tokenDir = getProviderTokenDir(provider);
+    const success = await importKiroToken(verbose);
+    if (success) {
+      return registerAccountFromToken(provider, tokenDir, nickname);
+    }
+    return null;
+  }
+
   const callbackPort = OAUTH_PORTS[provider];
   const isCLI = !fromUI;
   const headless = options.headless ?? isHeadlessEnvironment();

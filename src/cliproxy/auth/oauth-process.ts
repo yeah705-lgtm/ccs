@@ -6,7 +6,8 @@
  */
 
 import { spawn, ChildProcess } from 'child_process';
-import { ok, fail, info } from '../../utils/ui';
+import { ok, fail, info, warn } from '../../utils/ui';
+import { tryKiroImport } from './kiro-import';
 import { CLIProxyProvider } from '../types';
 import { AccountInfo } from '../account-manager';
 import {
@@ -205,7 +206,35 @@ function displayUrlFromStderr(
 }
 
 /** Handle token not found after successful process exit */
-function handleTokenNotFound(provider: CLIProxyProvider, callbackPort: number | null): void {
+async function handleTokenNotFound(
+  provider: CLIProxyProvider,
+  callbackPort: number | null,
+  tokenDir: string,
+  nickname: string | undefined,
+  verbose: boolean
+): Promise<AccountInfo | null> {
+  // Kiro-specific: Try auto-import from Kiro IDE
+  if (provider === 'kiro') {
+    console.log('');
+    console.log(warn('Callback redirected to Kiro IDE. Attempting to import token...'));
+
+    const result = await tryKiroImport(tokenDir, verbose);
+
+    if (result.success) {
+      const providerInfo = result.provider ? ` (Provider: ${result.provider})` : '';
+      console.log(ok(`Imported Kiro token from IDE${providerInfo}`));
+      return registerAccountFromToken(provider, tokenDir, nickname);
+    }
+
+    console.log(fail(`Auto-import failed: ${result.error}`));
+    console.log('');
+    console.log('To manually import from Kiro IDE:');
+    console.log('  1. Ensure you are logged into Kiro IDE');
+    console.log('  2. Run: ccs kiro --import');
+    return null;
+  }
+
+  // Default behavior for other providers
   console.log('');
   console.log(fail('Token not found after authentication'));
   console.log('');
@@ -225,6 +254,7 @@ function handleTokenNotFound(provider: CLIProxyProvider, callbackPort: number | 
 
   console.log('');
   console.log(`Try: ccs ${provider} --auth --verbose`);
+  return null;
 }
 
 /** Handle process exit with error */
@@ -356,7 +386,7 @@ export function executeOAuthProcess(options: OAuthProcessOptions): Promise<Accou
       resolve(null);
     }, timeoutMs);
 
-    authProcess.on('exit', (code) => {
+    authProcess.on('exit', async (code) => {
       clearTimeout(timeout);
       // H5: Remove signal handlers to prevent memory leaks
       process.removeListener('SIGINT', cleanup);
@@ -383,8 +413,15 @@ export function executeOAuthProcess(options: OAuthProcessOptions): Promise<Accou
             });
           }
 
-          handleTokenNotFound(provider, callbackPort);
-          resolve(null);
+          // Try auto-import for Kiro, show error for others
+          const account = await handleTokenNotFound(
+            provider,
+            callbackPort,
+            tokenDir,
+            nickname,
+            verbose
+          );
+          resolve(account);
         }
       } else {
         // Emit device code failure event for UI

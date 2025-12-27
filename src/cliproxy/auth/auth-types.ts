@@ -173,4 +173,6 @@ export interface OAuthOptions {
   fromUI?: boolean;
   /** If true, use --no-incognito flag (Kiro only - use normal browser instead of incognito) */
   noIncognito?: boolean;
+  /** If true, skip OAuth and import token from Kiro IDE directly (Kiro only) */
+  import?: boolean;
 }

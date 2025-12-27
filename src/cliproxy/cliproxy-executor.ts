@@ -255,6 +255,8 @@ export async function execClaudeWithCLIProxy(
   const forceConfig = argsWithoutProxy.includes('--config');
   const addAccount = argsWithoutProxy.includes('--add');
   const showAccounts = argsWithoutProxy.includes('--accounts');
+  // Kiro-specific: --import to import token from Kiro IDE directly
+  const forceImport = argsWithoutProxy.includes('--import');
   // Kiro-specific: browser mode for OAuth
   // Default to normal browser (noIncognito=true) for reliability - incognito often fails on Linux
   // --incognito flag opts into incognito mode, --no-incognito is legacy (now default)
@@ -363,6 +365,38 @@ export async function execClaudeWithCLIProxy(
       console.log(ok(`Logged out from ${providerConfig.displayName}`));
     } else {
       console.log(info(`No authentication found for ${providerConfig.displayName}`));
+    }
+    process.exit(0);
+  }
+
+  // Handle --import: import token from Kiro IDE directly (Kiro only)
+  if (forceImport) {
+    if (provider !== 'kiro') {
+      console.error(fail('--import is only available for Kiro'));
+      console.error(`    Run "ccs ${provider} --auth" to authenticate`);
+      process.exit(1);
+    }
+    // Validate flag conflicts
+    if (forceAuth) {
+      console.error(fail('Cannot use --import with --auth'));
+      console.error('    --import: Import existing token from Kiro IDE');
+      console.error('    --auth: Trigger new OAuth flow in browser');
+      process.exit(1);
+    }
+    if (forceLogout) {
+      console.error(fail('Cannot use --import with --logout'));
+      process.exit(1);
+    }
+    const { triggerOAuth } = await import('./auth-handler');
+    const authSuccess = await triggerOAuth(provider, {
+      verbose,
+      import: true,
+      ...(setNickname ? { nickname: setNickname } : {}),
+    });
+    if (!authSuccess) {
+      console.error(fail('Failed to import Kiro token from IDE'));
+      console.error('    Make sure you are logged into Kiro IDE first');
+      process.exit(1);
     }
     process.exit(0);
   }
@@ -636,6 +670,7 @@ export async function execClaudeWithCLIProxy(
     '--nickname',
     '--incognito',
     '--no-incognito',
+    '--import',
     // Proxy flags are handled by resolveProxyConfig, but list for documentation
     ...PROXY_CLI_FLAGS,
   ];
