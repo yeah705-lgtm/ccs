@@ -88,6 +88,16 @@ router.put('/:name', (req: Request, res: Response): void => {
     return;
   }
 
+  // Validate required fields if provided (prevent setting to empty)
+  if (baseUrl !== undefined && !baseUrl.trim()) {
+    res.status(400).json({ error: 'baseUrl cannot be empty' });
+    return;
+  }
+  if (apiKey !== undefined && !apiKey.trim()) {
+    res.status(400).json({ error: 'apiKey cannot be empty' });
+    return;
+  }
+
   try {
     updateSettingsFile(name, { baseUrl, apiKey, model, opusModel, sonnetModel, haikuModel });
     res.json({ name, updated: true });

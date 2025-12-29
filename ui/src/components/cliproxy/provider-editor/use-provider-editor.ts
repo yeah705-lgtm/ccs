@@ -8,6 +8,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { SettingsResponse, UseProviderEditorReturn } from './types';
 
+/** Required env vars for CLIProxy providers (informational only - runtime fills defaults) */
+const REQUIRED_ENV_KEYS = ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN'] as const;
+
+/** Check settings for missing fields (for UI warnings) */
+function checkMissingFields(settings: { env?: Record<string, string> }): string[] {
+  const env = settings?.env || {};
+  return REQUIRED_ENV_KEYS.filter((key) => !env[key]?.trim());
+}
+
 export function useProviderEditor(provider: string): UseProviderEditorReturn {
   const [rawJsonEdits, setRawJsonEdits] = useState<string | null>(null);
   const [conflictDialog, setConflictDialog] = useState(false);
@@ -95,10 +104,14 @@ export function useProviderEditor(provider: string): UseProviderEditorReturn {
     return rawJsonEdits !== JSON.stringify(settings, null, 2);
   }, [rawJsonEdits, settings]);
 
-  // Save mutation
+  // Validation state for missing required fields (informational warning)
+  const missingFields = useMemo(() => checkMissingFields(currentSettings), [currentSettings]);
+
+  // Save mutation (no blocking validation - runtime uses defaults)
   const saveMutation = useMutation({
     mutationFn: async () => {
       const settingsToSave = JSON.parse(rawJsonContent);
+
       const res = await fetch(`/api/settings/${provider}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -112,10 +125,17 @@ export function useProviderEditor(provider: string): UseProviderEditorReturn {
       if (!res.ok) throw new Error('Failed to save');
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (responseData) => {
       queryClient.invalidateQueries({ queryKey: ['settings', provider] });
       setRawJsonEdits(null);
-      toast.success('Settings saved');
+      // Show warning if fields missing (runtime uses defaults)
+      if (responseData?.warning) {
+        toast.success('Settings saved', {
+          description: responseData.warning,
+        });
+      } else {
+        toast.success('Settings saved');
+      }
     },
     onError: (error: Error) => {
       if (error.message === 'CONFLICT') {
@@ -159,5 +179,7 @@ export function useProviderEditor(provider: string): UseProviderEditorReturn {
     conflictDialog,
     setConflictDialog,
     handleConflictResolve,
+    // Validation (informational)
+    missingRequiredFields: missingFields,
   };
 }

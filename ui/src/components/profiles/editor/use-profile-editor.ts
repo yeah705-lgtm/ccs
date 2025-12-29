@@ -8,6 +8,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { Settings, SettingsResponse } from './types';
 
+/** Required env vars for profiles to function (informational only - runtime fills defaults) */
+const REQUIRED_ENV_KEYS = ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN'] as const;
+
+/** Check settings for missing fields (for UI warnings) */
+function checkMissingFields(settings: Settings | undefined): string[] {
+  const env = settings?.env || {};
+  return REQUIRED_ENV_KEYS.filter((key) => !env[key]?.trim());
+}
+
 interface UseProfileEditorOptions {
   profileName: string;
   localEdits: Record<string, string>;
@@ -78,6 +87,9 @@ export function useProfileEditor({
     return Object.keys(localEdits).length > 0;
   }, [rawJsonEdits, localEdits, query.data?.settings]);
 
+  // Validation state for missing required fields (informational warning)
+  const missingFields = useMemo(() => checkMissingFields(currentSettings), [currentSettings]);
+
   // Save mutation
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -114,11 +126,18 @@ export function useProfileEditor({
 
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['settings', profileName] });
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
       onSuccess();
-      toast.success('Settings saved');
+      // Show warning if fields missing (runtime uses defaults)
+      if (data?.warning) {
+        toast.success('Settings saved', {
+          description: data.warning,
+        });
+      } else {
+        toast.success('Settings saved');
+      }
     },
     onError: (error: Error) => {
       if (error.message === 'CONFLICT') {
@@ -135,5 +154,7 @@ export function useProfileEditor({
     isRawJsonValid,
     hasChanges,
     saveMutation,
+    /** List of required env vars that are missing (empty if all present) - informational */
+    missingRequiredFields: missingFields,
   };
 }

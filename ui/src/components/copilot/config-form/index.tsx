@@ -50,6 +50,7 @@ export function CopilotConfigForm() {
     handleSave,
     handleConflictResolve,
     refetchRawSettings,
+    missingRequiredFields,
   } = useCopilotConfigForm();
 
   if (configLoading || rawSettingsLoading) {
@@ -146,6 +147,7 @@ export function CopilotConfigForm() {
             rawJsonEdits={rawJsonEdits}
             rawSettingsEnv={rawSettings?.settings?.env as Record<string, string> | undefined}
             onChange={handleRawJsonChange}
+            missingRequiredFields={missingRequiredFields}
           />
         </div>
       </div>

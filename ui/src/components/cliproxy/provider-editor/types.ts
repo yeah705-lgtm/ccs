@@ -67,6 +67,8 @@ export interface RawEditorSectionProps {
   rawJsonEdits: string | null;
   onRawJsonChange: (value: string) => void;
   profileEnv?: Record<string, string>;
+  /** List of required env vars that are missing (empty if all present) */
+  missingRequiredFields?: string[];
 }
 
 export interface ModelConfigSectionProps {
@@ -113,4 +115,6 @@ export interface UseProviderEditorReturn {
   conflictDialog: boolean;
   setConflictDialog: (open: boolean) => void;
   handleConflictResolve: (overwrite: boolean) => Promise<void>;
+  /** List of required env vars that are missing (empty if all present) */
+  missingRequiredFields: string[];
 }

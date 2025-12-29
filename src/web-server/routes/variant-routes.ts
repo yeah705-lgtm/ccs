@@ -63,8 +63,14 @@ router.post('/', (req: Request, res: Response): void => {
     return;
   }
 
+  // Require model for variant creation (prevents empty model causing issues)
+  if (!model || !model.trim()) {
+    res.status(400).json({ error: 'Missing required field: model' });
+    return;
+  }
+
   // Use variant-service for proper port allocation
-  const result = createVariant(name, provider as CLIProxyProvider, model || '', account);
+  const result = createVariant(name, provider as CLIProxyProvider, model, account);
 
   if (!result.success) {
     res.status(409).json({ error: result.error });

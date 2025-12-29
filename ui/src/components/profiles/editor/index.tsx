@@ -100,6 +100,13 @@ export function ProfileEditor({ profileName, onDelete, onHasChangesUpdate }: Pro
     return Object.keys(localEdits).length > 0;
   }, [rawJsonEdits, localEdits, settings]);
 
+  // Check for missing required fields (informational warning)
+  const missingRequiredFields = useMemo(() => {
+    const REQUIRED_ENV_KEYS = ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN'] as const;
+    const env = currentSettings?.env || {};
+    return REQUIRED_ENV_KEYS.filter((key) => !env[key]?.trim());
+  }, [currentSettings]);
+
   // Notify parent of hasChanges state
   useEffect(() => {
     onHasChangesUpdate?.(computedHasChanges);
@@ -208,6 +215,7 @@ export function ProfileEditor({ profileName, onDelete, onHasChangesUpdate }: Pro
               rawJsonEdits={rawJsonEdits}
               settings={settings}
               onChange={handleRawJsonChange}
+              missingRequiredFields={missingRequiredFields}
             />
           </div>
         </div>
