@@ -1,3 +1,23 @@
+## [7.10.0](https://github.com/kaitranntt/ccs/compare/v7.9.0...v7.10.0) (2025-12-29)
+
+### Features
+
+* **cliproxy:** add account quota display for Antigravity provider ([205b5ab](https://github.com/kaitranntt/ccs/commit/205b5ab71fe560cdc8eed046ae133d40343df156))
+* **error-logs:** extract model and quota reset info from error logs ([e3a71fc](https://github.com/kaitranntt/ccs/commit/e3a71fc89372e81af3c425c5bf8e42630b4c1b6b))
+* **quota:** add OAuth token refresh for independent quota fetching ([4be8e92](https://github.com/kaitranntt/ccs/commit/4be8e927a08bbdcca02d000a9780e8466f0fc1f0))
+* **quota:** implement proactive token refresh (5-min lead time) ([00597b3](https://github.com/kaitranntt/ccs/commit/00597b335887b9280b22d78d522146ee65e7037e))
+* **ui:** replace misleading token expiry with runtime-based status ([6ccf6c5](https://github.com/kaitranntt/ccs/commit/6ccf6c5e138f6fdc847d47ef885dde39bc7aeeb1))
+
+### Bug Fixes
+
+* **cliproxy:** resolve merge conflicts and add edge case fixes ([7861b63](https://github.com/kaitranntt/ccs/commit/7861b63a5d977921bb0d726e7954b5c10cf74c1f))
+* **error-logs:** fix endpoint regex for v1/messages URL format ([19550b2](https://github.com/kaitranntt/ccs/commit/19550b28f0087ec81925076d10205ce333c37799))
+* **quota,error-logs:** match CLIProxyAPI headers and enhance error log display ([ac6f382](https://github.com/kaitranntt/ccs/commit/ac6f382f6a6cd64aa3fa0727d11bcf498aae28fc))
+* **quota:** add unprovisioned account detection with actionable message ([ecfdcde](https://github.com/kaitranntt/ccs/commit/ecfdcdef782c429e2e125598d11ef7d974e68ae2))
+* **quota:** remove misleading token expiration check in quota fetcher ([739270a](https://github.com/kaitranntt/ccs/commit/739270aac40f23239bd85a07dab30c20a3fab80a))
+* **ui:** remove duplicate provider prop in ModelConfigTab ([3531991](https://github.com/kaitranntt/ccs/commit/3531991b5ddeb9678927c140383c1588a3898d16))
+* **ui:** replace misleading 'Expires' with 'Last used' in credential health ([4233415](https://github.com/kaitranntt/ccs/commit/4233415095d7a56ebd98cb0f76a95e37ce25ddea))
+
 ## [7.9.0](https://github.com/kaitranntt/ccs/compare/v7.8.0...v7.9.0) (2025-12-27)
 
 ### Features
