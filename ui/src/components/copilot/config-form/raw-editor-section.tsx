@@ -4,7 +4,7 @@
  */
 
 import { Suspense, lazy } from 'react';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, AlertTriangle } from 'lucide-react';
 import { GlobalEnvIndicator } from '@/components/shared/global-env-indicator';
 
 // Lazy load CodeEditor
@@ -18,6 +18,7 @@ interface RawEditorSectionProps {
   rawJsonEdits: string | null;
   rawSettingsEnv: Record<string, string> | undefined;
   onChange: (value: string) => void;
+  missingRequiredFields?: string[];
 }
 
 export function RawEditorSection({
@@ -26,7 +27,10 @@ export function RawEditorSection({
   rawJsonEdits,
   rawSettingsEnv,
   onChange,
+  missingRequiredFields = [],
 }: RawEditorSectionProps) {
+  const hasMissingFields = missingRequiredFields.length > 0;
+
   return (
     <Suspense
       fallback={
@@ -41,6 +45,22 @@ export function RawEditorSection({
           <div className="mb-2 px-3 py-2 bg-destructive/10 text-destructive text-sm rounded-md flex items-center gap-2 mx-6 mt-4 shrink-0">
             <X className="w-4 h-4" />
             Invalid JSON syntax
+          </div>
+        )}
+        {isRawJsonValid && hasMissingFields && (
+          <div className="mb-2 px-3 py-2 bg-warning/10 text-warning-foreground text-sm rounded-md flex items-start gap-2 mx-6 mt-4 shrink-0 border border-warning/20">
+            <AlertTriangle className="w-4 h-4 mt-0.5 text-amber-500 shrink-0" />
+            <div>
+              <span className="font-medium text-amber-600 dark:text-amber-400">
+                Missing required fields:
+              </span>{' '}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                {missingRequiredFields.join(', ')}
+              </code>
+              <p className="text-xs text-muted-foreground mt-1">
+                These fields will use default values at runtime.
+              </p>
+            </div>
           </div>
         )}
         <div className="flex-1 overflow-hidden px-6 pb-4 pt-4">

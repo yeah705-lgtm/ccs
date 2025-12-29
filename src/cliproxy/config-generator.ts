@@ -23,6 +23,42 @@ interface ProviderSettings {
   env: NodeJS.ProcessEnv;
 }
 
+/**
+ * Validate port is a valid positive integer (1-65535).
+ * Returns default port if invalid.
+ */
+function validatePort(port: number): number {
+  if (!Number.isFinite(port) || port < 1 || port > 65535 || !Number.isInteger(port)) {
+    return CLIPROXY_DEFAULT_PORT;
+  }
+  return port;
+}
+
+/**
+ * Ensure required CLIProxy env vars are present.
+ * Falls back to bundled defaults if missing from user settings.
+ * This prevents 404 errors when users forget to set BASE_URL/AUTH_TOKEN.
+ */
+function ensureRequiredEnvVars(
+  envVars: NodeJS.ProcessEnv,
+  provider: CLIProxyProvider,
+  port: number
+): NodeJS.ProcessEnv {
+  const validPort = validatePort(port);
+  const result = { ...envVars };
+  const defaults = getClaudeEnvVars(provider, validPort);
+
+  // Fill in missing required vars from defaults
+  if (!result.ANTHROPIC_BASE_URL?.trim()) {
+    result.ANTHROPIC_BASE_URL = defaults.ANTHROPIC_BASE_URL;
+  }
+  if (!result.ANTHROPIC_AUTH_TOKEN?.trim()) {
+    result.ANTHROPIC_AUTH_TOKEN = defaults.ANTHROPIC_AUTH_TOKEN;
+  }
+
+  return result;
+}
+
 /** Default CLIProxy port */
 export const CLIPROXY_DEFAULT_PORT = 8317;
 
@@ -563,6 +599,8 @@ export function getEffectiveEnvVars(
         if (settings.env && typeof settings.env === 'object') {
           // Custom variant settings found - merge with global env
           envVars = { ...globalEnv, ...settings.env };
+          // Ensure required vars are present (fall back to defaults if missing)
+          envVars = ensureRequiredEnvVars(envVars, provider, port);
           // Apply remote rewrite if configured
           if (remoteRewriteConfig) {
             envVars = rewriteLocalhostUrls(envVars, provider, remoteRewriteConfig);
@@ -590,6 +628,8 @@ export function getEffectiveEnvVars(
       if (settings.env && typeof settings.env === 'object') {
         // User override found - merge with global env
         envVars = { ...globalEnv, ...settings.env };
+        // Ensure required vars are present (fall back to defaults if missing)
+        envVars = ensureRequiredEnvVars(envVars, provider, port);
         // Apply remote rewrite if configured
         if (remoteRewriteConfig) {
           envVars = rewriteLocalhostUrls(envVars, provider, remoteRewriteConfig);

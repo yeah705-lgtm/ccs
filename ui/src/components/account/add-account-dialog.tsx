@@ -1,7 +1,7 @@
 /**
  * Add Account Dialog Component
  * Triggers OAuth flow server-side to add another account to a provider
- * Applies default preset when adding first account
+ * Always applies default preset to ensure required env vars are set
  * For Kiro: Also shows "Import from IDE" option as fallback
  */
 
@@ -26,7 +26,7 @@ interface AddAccountDialogProps {
   onClose: () => void;
   provider: string;
   displayName: string;
-  /** Whether this is the first account being added (triggers preset application) */
+  /** Whether this is the first account being added (shows different toast message) */
   isFirstAccount?: boolean;
 }
 
@@ -49,14 +49,17 @@ export function AddAccountDialog({
       { provider, nickname: nickname.trim() || undefined },
       {
         onSuccess: async () => {
-          // Apply default preset if this is the first account
-          if (isFirstAccount) {
-            const result = await applyDefaultPreset(provider);
-            if (result.success && result.presetName) {
+          // Always apply default preset to ensure BASE_URL and AUTH_TOKEN are set
+          const result = await applyDefaultPreset(provider);
+          if (result.success && result.presetName) {
+            if (isFirstAccount) {
               toast.success(`Applied "${result.presetName}" preset`);
-            } else if (!result.success) {
-              toast.warning('Account added, but failed to apply default preset');
             }
+            // Silent success for non-first accounts - preset ensures required vars exist
+          } else if (!result.success) {
+            toast.warning(
+              'Account added, but failed to apply default preset. You may need to configure settings manually.'
+            );
           }
           setNickname('');
           onClose();
@@ -68,12 +71,10 @@ export function AddAccountDialog({
   const handleKiroImport = () => {
     kiroImportMutation.mutate(undefined, {
       onSuccess: async () => {
-        // Apply default preset if this is the first account
-        if (isFirstAccount) {
-          const result = await applyDefaultPreset('kiro');
-          if (result.success && result.presetName) {
-            toast.success(`Applied "${result.presetName}" preset`);
-          }
+        // Always apply default preset for Kiro as well
+        const result = await applyDefaultPreset('kiro');
+        if (result.success && result.presetName && isFirstAccount) {
+          toast.success(`Applied "${result.presetName}" preset`);
         }
         setNickname('');
         onClose();

@@ -88,6 +88,7 @@ export function ProviderEditor({
     saveMutation,
     conflictDialog,
     handleConflictResolve,
+    missingRequiredFields,
   } = useProviderEditor(provider);
 
   const accounts = authStatus.accounts || [];
@@ -216,6 +217,7 @@ export function ProviderEditor({
               rawJsonEdits={rawJsonEdits}
               onRawJsonChange={handleRawJsonChange}
               profileEnv={data?.settings?.env}
+              missingRequiredFields={missingRequiredFields}
             />
           </div>
         </div>
