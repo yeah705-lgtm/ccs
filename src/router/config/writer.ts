@@ -14,17 +14,16 @@ export async function saveRouterProfile(name: string, profile: RouterProfile): P
     ? parseDocument(readFileSync(configPath, 'utf-8'))
     : parseDocument('');
 
-  // Ensure router.profiles section exists
+  // Ensure router.profiles section exists as proper YAML nodes
   if (!doc.has('router')) {
-    doc.set('router', { profiles: {} });
+    doc.set('router', doc.createNode({ profiles: {} }));
   }
-  const router = doc.get('router') as Record<string, unknown>;
-  if (!router.profiles) {
-    doc.setIn(['router', 'profiles'], {});
+  if (!doc.hasIn(['router', 'profiles'])) {
+    doc.setIn(['router', 'profiles'], doc.createNode({}));
   }
 
   // Add/update profile
-  doc.setIn(['router', 'profiles', name], profile);
+  doc.setIn(['router', 'profiles', name], doc.createNode(profile));
 
   // Write back (preserves comments)
   writeFileSync(configPath, doc.toString(), 'utf-8');
@@ -41,9 +40,8 @@ export async function deleteRouterProfile(name: string): Promise<boolean> {
   }
 
   const doc = parseDocument(readFileSync(configPath, 'utf-8'));
-  const profiles = doc.getIn(['router', 'profiles']) as Record<string, unknown> | undefined;
 
-  if (!profiles?.[name]) {
+  if (!doc.hasIn(['router', 'profiles', name])) {
     return false;
   }
 
@@ -66,11 +64,11 @@ export async function updateRouterDefaults(
     : parseDocument('');
 
   if (!doc.has('router')) {
-    doc.set('router', {});
+    doc.set('router', doc.createNode({}));
   }
 
   const existingDefaults = (doc.getIn(['router', 'defaults']) as Record<string, unknown>) ?? {};
-  doc.setIn(['router', 'defaults'], { ...existingDefaults, ...defaults });
+  doc.setIn(['router', 'defaults'], doc.createNode({ ...existingDefaults, ...defaults }));
 
   writeFileSync(configPath, doc.toString(), 'utf-8');
 }
