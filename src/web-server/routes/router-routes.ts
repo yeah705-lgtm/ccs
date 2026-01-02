@@ -32,6 +32,12 @@ router.get('/profiles', (_req: Request, res: Response): void => {
           name,
           description: profile.description,
           tiers: Object.keys(profile.tiers),
+          // Include tier configs for better card display
+          tierConfigs: {
+            opus: profile.tiers.opus,
+            sonnet: profile.tiers.sonnet,
+            haiku: profile.tiers.haiku,
+          },
         }))
       : [];
     res.json({ profiles });

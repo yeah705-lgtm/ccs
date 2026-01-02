@@ -31,6 +31,11 @@ export interface RouterProfileSummary {
   name: string;
   description?: string;
   tiers: string[]; // ['opus', 'sonnet', 'haiku']
+  tierConfigs?: {
+    opus: TierConfig;
+    sonnet: TierConfig;
+    haiku: TierConfig;
+  };
 }
 
 /**

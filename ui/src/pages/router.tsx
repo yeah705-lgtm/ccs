@@ -7,18 +7,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, Search, Route, Loader2 } from 'lucide-react';
-import { RouterProfileCard, RouterProfileEditor } from '@/components/router';
+import {
+  RouterProfileCard,
+  RouterProfileCreateDialog,
+  RouterProfileEditor,
+} from '@/components/router';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import {
   useRouterProfiles,
   useRouterProfile,
   useDeleteRouterProfile,
-  useCreateRouterProfile,
 } from '@/hooks/use-router-profiles';
-import type { CreateRouterProfile } from '@/lib/router-types';
-
-// Default tier config for new profiles
-const DEFAULT_TIER = { provider: '', model: '' };
 
 export function RouterPage() {
   const [selectedName, setSelectedName] = useState<string | null>(null);
@@ -26,10 +25,10 @@ export function RouterPage() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [editorHasChanges, setEditorHasChanges] = useState(false);
   const [pendingSwitch, setPendingSwitch] = useState<string | null>(null);
+  const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
 
   const { data, isLoading } = useRouterProfiles();
   const deleteMutation = useDeleteRouterProfile();
-  const createMutation = useCreateRouterProfile();
 
   // Fetch full profile when selected
   const { data: selectedProfile, isLoading: isProfileLoading } = useRouterProfile(
@@ -64,19 +63,9 @@ export function RouterPage() {
     }
   };
 
-  const handleCreate = () => {
-    const name = `profile-${Date.now()}`;
-    const newProfile: CreateRouterProfile = {
-      name,
-      tiers: {
-        opus: { ...DEFAULT_TIER },
-        sonnet: { ...DEFAULT_TIER },
-        haiku: { ...DEFAULT_TIER },
-      },
-    };
-    createMutation.mutate(newProfile, {
-      onSuccess: () => setSelectedName(name),
-    });
+  const handleCreateSuccess = (name: string) => {
+    setCreateDialogOpen(false);
+    setSelectedName(name);
   };
 
   const handleDelete = (name: string) => {
@@ -107,7 +96,7 @@ export function RouterPage() {
               <Route className="w-5 h-5 text-primary" />
               <h1 className="font-semibold">Router Profiles</h1>
             </div>
-            <Button size="sm" onClick={handleCreate} disabled={createMutation.isPending}>
+            <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
               <Plus className="w-4 h-4 mr-1" />
               New
             </Button>
@@ -169,7 +158,7 @@ export function RouterPage() {
             <p className="text-sm text-muted-foreground mb-4">
               Select a profile from the list or create a new one
             </p>
-            <Button onClick={handleCreate}>
+            <Button onClick={() => setCreateDialogOpen(true)}>
               <Plus className="w-4 h-4 mr-1" />
               Create Profile
             </Button>
@@ -197,6 +186,13 @@ export function RouterPage() {
         confirmText="Discard & Switch"
         variant="destructive"
         onConfirm={handleConfirmSwitch}
+      />
+
+      {/* Create Profile Dialog */}
+      <RouterProfileCreateDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={handleCreateSuccess}
       />
     </div>
   );
