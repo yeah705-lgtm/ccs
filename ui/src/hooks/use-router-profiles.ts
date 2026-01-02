@@ -105,3 +105,66 @@ export function useTestRouterProfile() {
     },
   });
 }
+
+// ==================== Router Settings Hooks ====================
+
+const SETTINGS_QUERY_KEY = ['router', 'settings'];
+
+/**
+ * Fetch router profile settings (generated or customized)
+ */
+export function useRouterProfileSettings(name: string) {
+  return useQuery({
+    queryKey: [...SETTINGS_QUERY_KEY, name],
+    queryFn: () => api.router.profiles.getSettings(name),
+    enabled: !!name,
+  });
+}
+
+/**
+ * Update router profile settings
+ */
+export function useUpdateRouterProfileSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      name,
+      settings,
+      expectedMtime,
+    }: {
+      name: string;
+      settings: { env: Record<string, string> };
+      expectedMtime?: number;
+    }) => api.router.profiles.updateSettings(name, settings, expectedMtime),
+    onSuccess: (_, { name }) => {
+      queryClient.invalidateQueries({ queryKey: [...SETTINGS_QUERY_KEY, name] });
+      toast.success('Settings saved');
+    },
+    onError: (error: Error) => {
+      if (error.message.includes('modified externally')) {
+        toast.error('File modified externally. Refresh and try again.');
+      } else {
+        toast.error(error.message);
+      }
+    },
+  });
+}
+
+/**
+ * Regenerate router profile settings from profile config
+ */
+export function useRegenerateRouterProfileSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (name: string) => api.router.profiles.regenerateSettings(name),
+    onSuccess: (_, name) => {
+      queryClient.invalidateQueries({ queryKey: [...SETTINGS_QUERY_KEY, name] });
+      toast.success('Settings regenerated from profile');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}

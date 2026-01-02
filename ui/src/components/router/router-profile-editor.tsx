@@ -1,17 +1,26 @@
 /**
  * Router Profile Editor - Edit profile details with tier configurations
- * 2-column layout with tier config on left and YAML preview on right
+ * 2-column layout with tier config on left and tabbed preview (YAML/Settings) on right
  */
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Save, TestTube2, Loader2, Code2, Terminal } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Save, TestTube2, Loader2, Code2, Terminal, FileJson, RefreshCw } from 'lucide-react';
 import { RouterTierConfig } from './router-tier-config';
 import { useRouterProviders } from '@/hooks/use-router-providers';
-import { useUpdateRouterProfile, useTestRouterProfile } from '@/hooks/use-router-profiles';
+import {
+  useUpdateRouterProfile,
+  useTestRouterProfile,
+  useRouterProfileSettings,
+  useUpdateRouterProfileSettings,
+  useRegenerateRouterProfileSettings,
+} from '@/hooks/use-router-profiles';
 import { CopyButton } from '@/components/ui/copy-button';
 import type { RouterProfile, TierConfig } from '@/lib/router-types';
 
@@ -28,36 +37,97 @@ interface RouterProfileEditorProps {
 export function RouterProfileEditor({ profile, onHasChanges }: RouterProfileEditorProps) {
   const [description, setDescription] = useState(profile.description ?? '');
   const [tiers, setTiers] = useState(profile.tiers);
+  const [settingsEdits, setSettingsEdits] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('yaml');
 
   const { data: providersData } = useRouterProviders();
   const updateMutation = useUpdateRouterProfile();
   const testMutation = useTestRouterProfile();
 
+  // Settings hooks
+  const { data: settingsData, isLoading: settingsLoading } = useRouterProfileSettings(profile.name);
+  const updateSettingsMutation = useUpdateRouterProfileSettings();
+  const regenerateSettingsMutation = useRegenerateRouterProfileSettings();
+
   const providers = providersData?.providers ?? [];
 
-  // Track changes
-  const hasChanges =
+  // Track profile config changes
+  const hasProfileChanges =
     description !== (profile.description ?? '') ||
     JSON.stringify(tiers) !== JSON.stringify(profile.tiers);
+
+  // Track settings changes
+  const hasSettingsChanges = useMemo(() => {
+    if (!settingsEdits || !settingsData) return false;
+    return settingsEdits !== JSON.stringify(settingsData.settings, null, 2);
+  }, [settingsEdits, settingsData]);
+
+  // Combined changes
+  const hasChanges = hasProfileChanges || hasSettingsChanges;
 
   useEffect(() => {
     onHasChanges?.(hasChanges);
   }, [hasChanges, onHasChanges]);
 
+  // Initialize settings edits when data loads
+  useEffect(() => {
+    if (settingsData && settingsEdits === null) {
+      setSettingsEdits(JSON.stringify(settingsData.settings, null, 2));
+    }
+  }, [settingsData, settingsEdits]);
+
+  // Reset settings edits when profile changes
+  useEffect(() => {
+    setSettingsEdits(null);
+  }, [profile.name]);
+
   const handleTierChange = useCallback((tier: 'opus' | 'sonnet' | 'haiku', config: TierConfig) => {
     setTiers((prev) => ({ ...prev, [tier]: config }));
   }, []);
 
-  const handleSave = () => {
+  const handleSaveProfile = () => {
     updateMutation.mutate({
       name: profile.name,
       data: { description: description || undefined, tiers },
     });
   };
 
+  const handleSaveSettings = () => {
+    if (!settingsEdits) return;
+    try {
+      const parsed = JSON.parse(settingsEdits);
+      updateSettingsMutation.mutate({
+        name: profile.name,
+        settings: parsed,
+        expectedMtime: settingsData?.mtime,
+      });
+    } catch {
+      // Invalid JSON - ignore
+    }
+  };
+
+  const handleRegenerateSettings = () => {
+    regenerateSettingsMutation.mutate(profile.name, {
+      onSuccess: (data) => {
+        setSettingsEdits(JSON.stringify(data.settings, null, 2));
+      },
+    });
+  };
+
   const handleTest = () => {
     testMutation.mutate(profile.name);
   };
+
+  // Check if settings JSON is valid
+  const isSettingsJsonValid = useMemo(() => {
+    if (!settingsEdits) return true;
+    try {
+      JSON.parse(settingsEdits);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [settingsEdits]);
 
   // Generate YAML preview for the config panel
   const yamlPreview = useMemo(() => {
@@ -125,13 +195,17 @@ ${tierToYaml(tiers.haiku)
             )}
             Test
           </Button>
-          <Button size="sm" onClick={handleSave} disabled={!hasChanges || updateMutation.isPending}>
+          <Button
+            size="sm"
+            onClick={handleSaveProfile}
+            disabled={!hasProfileChanges || updateMutation.isPending}
+          >
             {updateMutation.isPending ? (
               <Loader2 className="w-4 h-4 mr-1 animate-spin" />
             ) : (
               <Save className="w-4 h-4 mr-1" />
             )}
-            Save
+            Save Config
           </Button>
         </div>
       </div>
@@ -184,32 +258,128 @@ ${tierToYaml(tiers.haiku)
           </div>
         </ScrollArea>
 
-        {/* Right: YAML Preview */}
+        {/* Right: Tabbed Preview (YAML / Settings) */}
         <div className="flex flex-col overflow-hidden">
-          <div className="px-4 py-2 bg-muted/30 border-b flex items-center gap-2 shrink-0 h-[45px]">
-            <Code2 className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm font-medium text-muted-foreground">Configuration (YAML)</span>
-            <span className="text-xs text-muted-foreground ml-auto">Read-only</span>
-          </div>
-          <Suspense
-            fallback={
-              <div className="flex-1 flex items-center justify-center">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-              </div>
-            }
-          >
-            <div className="flex-1 overflow-hidden p-4">
-              <div className="h-full border rounded-md overflow-hidden bg-background">
-                <CodeEditor
-                  value={yamlPreview}
-                  onChange={() => {}}
-                  language="yaml"
-                  minHeight="100%"
-                  readonly
-                />
-              </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
+            <div className="px-4 py-2 bg-muted/30 border-b flex items-center gap-2 shrink-0">
+              <TabsList className="h-8">
+                <TabsTrigger value="yaml" className="text-xs px-3 py-1 h-6">
+                  <Code2 className="w-3 h-3 mr-1" />
+                  Config
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="text-xs px-3 py-1 h-6">
+                  <FileJson className="w-3 h-3 mr-1" />
+                  Settings
+                  {hasSettingsChanges && (
+                    <Badge variant="secondary" className="ml-1 px-1 py-0 text-[9px]">
+                      *
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              {activeTab === 'settings' && (
+                <div className="ml-auto flex items-center gap-2">
+                  {settingsData?.generated && (
+                    <Badge variant="outline" className="text-[10px]">
+                      Auto-generated
+                    </Badge>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2"
+                    onClick={handleRegenerateSettings}
+                    disabled={regenerateSettingsMutation.isPending}
+                    title="Regenerate from profile"
+                  >
+                    {regenerateSettingsMutation.isPending ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-3 h-3" />
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="h-6 px-2"
+                    onClick={handleSaveSettings}
+                    disabled={
+                      !hasSettingsChanges ||
+                      !isSettingsJsonValid ||
+                      updateSettingsMutation.isPending
+                    }
+                  >
+                    {updateSettingsMutation.isPending ? (
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    ) : (
+                      <Save className="w-3 h-3 mr-1" />
+                    )}
+                    Save
+                  </Button>
+                </div>
+              )}
+
+              {activeTab === 'yaml' && (
+                <span className="text-xs text-muted-foreground ml-auto">Read-only</span>
+              )}
             </div>
-          </Suspense>
+
+            <TabsContent value="yaml" className="flex-1 m-0 overflow-hidden">
+              <Suspense
+                fallback={
+                  <div className="flex-1 flex items-center justify-center h-full">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                }
+              >
+                <div className="h-full overflow-hidden p-4">
+                  <div className="h-full border rounded-md overflow-hidden bg-background">
+                    <CodeEditor
+                      value={yamlPreview}
+                      onChange={() => {}}
+                      language="yaml"
+                      minHeight="100%"
+                      readonly
+                    />
+                  </div>
+                </div>
+              </Suspense>
+            </TabsContent>
+
+            <TabsContent value="settings" className="flex-1 m-0 overflow-hidden">
+              {settingsLoading ? (
+                <div className="flex-1 flex items-center justify-center h-full">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <Suspense
+                  fallback={
+                    <div className="flex-1 flex items-center justify-center h-full">
+                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    </div>
+                  }
+                >
+                  <div className="h-full overflow-hidden p-4">
+                    <div className="h-full border rounded-md overflow-hidden bg-background">
+                      <CodeEditor
+                        value={settingsEdits ?? '{}'}
+                        onChange={setSettingsEdits}
+                        language="json"
+                        minHeight="100%"
+                      />
+                    </div>
+                    {!isSettingsJsonValid && (
+                      <div className="absolute bottom-6 left-6 right-6">
+                        <Badge variant="destructive" className="text-xs">
+                          Invalid JSON
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </Suspense>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

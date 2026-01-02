@@ -9,9 +9,13 @@
  */
 
 import { Router, Request, Response } from 'express';
+import { existsSync, statSync, readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { loadRouterConfig, getRouterProfile } from '../../router/config/loader';
 import { saveRouterProfile, deleteRouterProfile } from '../../router/config/writer';
 import { routerProfileSchema } from '../../router/config/schema';
+import { generateRouterSettings, getRouterSettingsPath } from '../../router/config/generator';
+import { getCcsDir } from '../../utils/config-manager';
 import {
   getAllProviders,
   checkAllProvidersHealth,
@@ -199,6 +203,143 @@ router.post('/profiles/:name/test', async (req: Request, res: Response): Promise
     }
 
     res.json({ profile: req.params.name, results });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// ==================== Router Settings ====================
+
+/**
+ * GET /api/router/profiles/:name/settings - Get router settings file
+ * Returns generated settings or file content if customized
+ */
+router.get('/profiles/:name/settings', (req: Request, res: Response): void => {
+  try {
+    const profile = getRouterProfile(req.params.name);
+    if (!profile) {
+      res.status(404).json({ error: `Profile '${req.params.name}' not found` });
+      return;
+    }
+
+    const ccsDir = getCcsDir();
+    const settingsPath = getRouterSettingsPath(ccsDir, req.params.name);
+
+    // If settings file exists, return it
+    if (existsSync(settingsPath)) {
+      const stat = statSync(settingsPath);
+      const content = readFileSync(settingsPath, 'utf-8');
+      const settings = JSON.parse(content);
+
+      res.json({
+        profile: req.params.name,
+        settings,
+        mtime: stat.mtime.getTime(),
+        path: settingsPath,
+        generated: false,
+      });
+      return;
+    }
+
+    // Otherwise generate settings from profile
+    const settings = generateRouterSettings(profile);
+    res.json({
+      profile: req.params.name,
+      settings,
+      path: settingsPath,
+      generated: true,
+    });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+/**
+ * PUT /api/router/profiles/:name/settings - Update router settings file
+ * Creates/updates the settings.json for customization
+ */
+router.put('/profiles/:name/settings', (req: Request, res: Response): void => {
+  try {
+    const profile = getRouterProfile(req.params.name);
+    if (!profile) {
+      res.status(404).json({ error: `Profile '${req.params.name}' not found` });
+      return;
+    }
+
+    const { settings, expectedMtime } = req.body;
+
+    if (!settings || typeof settings !== 'object') {
+      res.status(400).json({ error: 'settings object is required' });
+      return;
+    }
+
+    const ccsDir = getCcsDir();
+    const settingsPath = getRouterSettingsPath(ccsDir, req.params.name);
+    const fileExists = existsSync(settingsPath);
+
+    // Check for conflict if file exists and expectedMtime provided
+    if (fileExists && expectedMtime) {
+      const stat = statSync(settingsPath);
+      if (stat.mtime.getTime() !== expectedMtime) {
+        res.status(409).json({
+          error: 'File modified externally',
+          currentMtime: stat.mtime.getTime(),
+        });
+        return;
+      }
+    }
+
+    // Ensure directory exists
+    mkdirSync(dirname(settingsPath), { recursive: true });
+
+    // Write settings atomically
+    const tempPath = settingsPath + '.tmp';
+    writeFileSync(tempPath, JSON.stringify(settings, null, 2) + '\n');
+    renameSync(tempPath, settingsPath);
+
+    const newStat = statSync(settingsPath);
+    res.json({
+      success: true,
+      mtime: newStat.mtime.getTime(),
+      path: settingsPath,
+      created: !fileExists,
+    });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+/**
+ * POST /api/router/profiles/:name/settings/regenerate - Regenerate settings from profile
+ * Overwrites custom settings with freshly generated ones
+ */
+router.post('/profiles/:name/settings/regenerate', (req: Request, res: Response): void => {
+  try {
+    const profile = getRouterProfile(req.params.name);
+    if (!profile) {
+      res.status(404).json({ error: `Profile '${req.params.name}' not found` });
+      return;
+    }
+
+    const ccsDir = getCcsDir();
+    const settingsPath = getRouterSettingsPath(ccsDir, req.params.name);
+
+    // Generate fresh settings
+    const settings = generateRouterSettings(profile);
+
+    // Ensure directory exists
+    mkdirSync(dirname(settingsPath), { recursive: true });
+
+    // Write settings
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+
+    const stat = statSync(settingsPath);
+    res.json({
+      success: true,
+      settings,
+      mtime: stat.mtime.getTime(),
+      path: settingsPath,
+    });
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }

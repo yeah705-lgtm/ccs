@@ -545,6 +545,38 @@ export const api = {
         request<ProfileTestResult>(`/router/profiles/${encodeURIComponent(name)}/test`, {
           method: 'POST',
         }),
+      /** Get router profile settings (generated or customized) */
+      getSettings: (name: string) =>
+        request<{
+          profile: string;
+          settings: { env: Record<string, string> };
+          mtime?: number;
+          path: string;
+          generated: boolean;
+        }>(`/router/profiles/${encodeURIComponent(name)}/settings`),
+      /** Update router profile settings */
+      updateSettings: (
+        name: string,
+        settings: { env: Record<string, string> },
+        expectedMtime?: number
+      ) =>
+        request<{ success: boolean; mtime: number; path: string; created: boolean }>(
+          `/router/profiles/${encodeURIComponent(name)}/settings`,
+          {
+            method: 'PUT',
+            body: JSON.stringify({ settings, expectedMtime }),
+          }
+        ),
+      /** Regenerate settings from profile (overwrites customizations) */
+      regenerateSettings: (name: string) =>
+        request<{
+          success: boolean;
+          settings: { env: Record<string, string> };
+          mtime: number;
+          path: string;
+        }>(`/router/profiles/${encodeURIComponent(name)}/settings/regenerate`, {
+          method: 'POST',
+        }),
     },
     providers: {
       list: () => request<{ providers: RouterProvider[] }>('/router/providers'),
