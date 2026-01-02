@@ -99,11 +99,11 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     category: 'alternative',
   },
   {
-    id: 'minimax',
+    id: 'mm',
     name: 'Minimax',
     description: 'M2.1/M2.1-lightning/M2 - multilang coding (1M context)',
     baseUrl: 'https://api.minimax.io/anthropic',
-    defaultProfileName: 'minimax',
+    defaultProfileName: 'mm',
     defaultModel: 'MiniMax-M2.1',
     apiKeyPlaceholder: 'YOUR_MINIMAX_API_KEY',
     apiKeyHint: 'Get your API key at platform.minimax.io',

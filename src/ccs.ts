@@ -561,7 +561,7 @@ async function main(): Promise<void> {
         }
       }
 
-      if (profileInfo.name === 'minimax') {
+      if (profileInfo.name === 'mm') {
         const preflightSettingsPath = getSettingsPath(profileInfo.name);
         const preflightSettings = loadSettings(preflightSettingsPath);
         const apiKey = preflightSettings.env?.['ANTHROPIC_AUTH_TOKEN'];
@@ -580,7 +580,7 @@ async function main(): Promise<void> {
               console.error(validation.suggestion);
             }
             console.error('');
-            console.error(info('To skip validation: CCS_SKIP_PREFLIGHT=1 ccs minimax "prompt"'));
+            console.error(info('To skip validation: CCS_SKIP_PREFLIGHT=1 ccs mm "prompt"'));
             process.exit(1);
           }
         }

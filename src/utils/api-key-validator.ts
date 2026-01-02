@@ -153,7 +153,7 @@ export async function validateMiniMaxKey(
       valid: false,
       error: 'API key not configured',
       suggestion:
-        'Set ANTHROPIC_AUTH_TOKEN in ~/.ccs/minimax.settings.json\n' +
+        'Set ANTHROPIC_AUTH_TOKEN in ~/.ccs/mm.settings.json\n' +
         'Or run: ccs config -> API Profiles -> MiniMax',
     };
   }
