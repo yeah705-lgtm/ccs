@@ -423,6 +423,13 @@ async function main(): Promise<void> {
     return;
   }
 
+  // Special case: router command (multi-provider tier routing)
+  if (firstArg === 'router') {
+    const { handleRouterCommand } = await import('./router/cli');
+    await handleRouterCommand(args.slice(1));
+    return;
+  }
+
   // Special case: config command (web dashboard)
   if (firstArg === 'config') {
     const { handleConfigCommand } = await import('./commands/config-command');
@@ -516,6 +523,16 @@ async function main(): Promise<void> {
         customSettingsPath,
         port: variantPort,
       });
+    } else if (profileInfo.type === 'router') {
+      // ROUTER FLOW: Multi-provider tier routing
+      const { runRouterSession } = await import('./router/lifecycle');
+      const routerProfile = profileInfo.routerProfile;
+      if (!routerProfile) {
+        console.error(fail('Router profile configuration not found'));
+        process.exit(1);
+      }
+      const exitCode = await runRouterSession(profileInfo.name, remainingArgs);
+      process.exit(exitCode);
     } else if (profileInfo.type === 'copilot') {
       // COPILOT FLOW: GitHub Copilot subscription via copilot-api proxy
       const { executeCopilotProfile } = await import('./copilot');

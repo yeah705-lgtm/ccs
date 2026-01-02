@@ -16,8 +16,14 @@ import { findSimilarStrings, expandPath } from '../utils/helpers';
 import { Config, Settings, ProfileMetadata } from '../types';
 import { UnifiedConfig, CopilotConfig } from '../config/unified-config-types';
 import { loadUnifiedConfig, isUnifiedMode } from '../config/unified-config-loader';
+import {
+  isRouterProfile,
+  getRouterProfile,
+  listRouterProfiles,
+  type RouterProfile,
+} from '../router/config';
 
-export type ProfileType = 'settings' | 'account' | 'cliproxy' | 'copilot' | 'default';
+export type ProfileType = 'settings' | 'account' | 'cliproxy' | 'copilot' | 'router' | 'default';
 
 /** CLIProxy profile names (OAuth-based, zero config) */
 export const CLIPROXY_PROFILES = [
@@ -45,6 +51,8 @@ export interface ProfileDetectionResult {
   env?: Record<string, string>;
   /** For copilot profile: the copilot config */
   copilotConfig?: CopilotConfig;
+  /** For router profile: the router profile config */
+  routerProfile?: RouterProfile;
 }
 
 export interface AllProfiles {
@@ -184,6 +192,7 @@ class ProfileDetector {
    * Detect profile type and return routing information
    *
    * Priority order:
+   * -1. Router profiles (HIGHEST - multi-provider tier routing)
    * 0. Hardcoded CLIProxy profiles (gemini, codex, agy, qwen)
    * 0.5. Copilot profile (if enabled in config)
    * 1. Unified config profiles (if config.yaml exists or CCS_UNIFIED_CONFIG=1)
@@ -195,6 +204,16 @@ class ProfileDetector {
     // Special case: 'default' means use default profile
     if (profileName === 'default' || profileName === null || profileName === undefined) {
       return this.resolveDefaultProfile();
+    }
+
+    // Priority -1: Check router profiles FIRST (multi-provider tier routing)
+    if (isRouterProfile(profileName)) {
+      const profile = getRouterProfile(profileName);
+      return {
+        type: 'router',
+        name: profileName,
+        routerProfile: profile ?? undefined,
+      };
     }
 
     // Priority 0: Check CLIProxy profiles (gemini, codex, agy, qwen) - OAuth-based, zero config
@@ -281,6 +300,7 @@ class ProfileDetector {
     // Not found - generate suggestions
     const allProfiles = this.getAllProfiles();
     const allProfileNames = [
+      ...allProfiles.router,
       ...allProfiles.cliproxy,
       ...allProfiles.cliproxyVariants,
       ...allProfiles.settings,
@@ -352,6 +372,15 @@ class ProfileDetector {
    */
   private listAvailableProfiles(): string {
     const lines: string[] = [];
+
+    // Router profiles (multi-provider tier routing) - HIGHEST PRIORITY
+    const routerProfiles = listRouterProfiles();
+    if (routerProfiles.length > 0) {
+      lines.push('Router profiles (multi-provider tier routing):');
+      routerProfiles.forEach((name) => {
+        lines.push(`  - ${name}`);
+      });
+    }
 
     // CLIProxy profiles (OAuth-based, always available)
     lines.push('CLIProxy profiles (OAuth, zero config):');
@@ -455,11 +484,16 @@ class ProfileDetector {
   /**
    * Get all available profile names
    */
-  getAllProfiles(): AllProfiles & { cliproxy: string[]; cliproxyVariants: string[] } {
+  getAllProfiles(): AllProfiles & {
+    cliproxy: string[];
+    cliproxyVariants: string[];
+    router: string[];
+  } {
     // Check unified config first
     const unifiedConfig = this.readUnifiedConfig();
     if (unifiedConfig) {
       return {
+        router: listRouterProfiles(),
         settings: Object.keys(unifiedConfig.profiles || {}),
         accounts: Object.keys(unifiedConfig.accounts || {}),
         cliproxy: [...CLIPROXY_PROFILES],
@@ -473,6 +507,7 @@ class ProfileDetector {
     const profiles = this.readProfiles();
 
     return {
+      router: listRouterProfiles(),
       settings: Object.keys(config.profiles || {}),
       accounts: Object.keys(profiles.profiles || {}),
       cliproxy: [...CLIPROXY_PROFILES],
