@@ -57,6 +57,25 @@ const DEFAULT_REGISTRY: AccountsRegistry = {
 };
 
 /**
+ * Extract unique account ID from token filename when email is unavailable
+ * For Kiro/GHCP OAuth, filenames are: <provider>-<oauth>-<profile_id>.json
+ * Extracts: <oauth>-<profile_id> as unique identifier
+ * @example kiro-github-ABC123.json → github-ABC123
+ * @example ghcp-amazon-XYZ789.json → amazon-XYZ789
+ * @example kiro-nomail.json → default (no OAuth structure)
+ */
+export function extractAccountIdFromTokenFile(filename: string, email?: string): string {
+  if (email) return email;
+
+  // Pattern: <provider>-<oauth>-<profile_id>.json → extract <oauth>-<profile_id>
+  // Requires at least 2 hyphens to distinguish from simple filenames like "kiro-nomail.json"
+  const match = filename.match(/^[^-]+-([^-]+-[^.]+)\.json$/);
+  if (match) return match[1];
+
+  return 'default';
+}
+
+/**
  * Generate nickname from email
  * Takes prefix before @ symbol, sanitizes whitespace
  * Validation: 1-50 chars, any non-whitespace (permissive per user preference)
@@ -260,8 +279,8 @@ export function registerAccount(
     throw new Error('Failed to initialize provider accounts');
   }
 
-  // Determine account ID
-  const accountId = email || 'default';
+  // Determine account ID - use email if available, otherwise extract from filename
+  const accountId = extractAccountIdFromTokenFile(tokenFile, email);
   const isFirstAccount = Object.keys(providerAccounts.accounts).length === 0;
 
   // Generate nickname if not provided
@@ -448,7 +467,7 @@ export function discoverExistingAccounts(): void {
         continue;
       }
 
-      // Extract email if available, fallback to filename
+      // Extract email if available, fallback to filename-based ID
       let email = data.email || undefined;
 
       // Fallback: extract email from filename (e.g., "kiro-google-user@example.com.json")
@@ -459,7 +478,8 @@ export function discoverExistingAccounts(): void {
         }
       }
 
-      const accountId = email || 'default';
+      // Use unified ID extraction: email or filename-based unique ID
+      const accountId = extractAccountIdFromTokenFile(file, email);
 
       // Initialize provider section if needed
       if (!registry.providers[provider]) {
