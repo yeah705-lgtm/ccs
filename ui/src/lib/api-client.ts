@@ -193,6 +193,8 @@ export interface ProxyRemoteConfig {
   port?: number;
   protocol: 'http' | 'https';
   auth_token: string;
+  /** Management key for /v0/management/* endpoints (optional, falls back to auth_token) */
+  management_key?: string;
 }
 
 /** Fallback configuration */
@@ -278,7 +280,9 @@ export const api = {
   cliproxy: {
     list: () => request<{ variants: Variant[] }>('/cliproxy'),
     getAuthStatus: () =>
-      request<{ authStatus: AuthStatus[]; source?: 'remote' | 'local' }>('/cliproxy/auth'),
+      request<{ authStatus: AuthStatus[]; source?: 'remote' | 'local'; error?: string }>(
+        '/cliproxy/auth'
+      ),
     create: (data: CreateVariant) =>
       request('/cliproxy', {
         method: 'POST',

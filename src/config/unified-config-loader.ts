@@ -194,6 +194,8 @@ function mergeWithDefaults(partial: Partial<UnifiedConfig>): UnifiedConfig {
         auth_token:
           partial.cliproxy_server?.remote?.auth_token ??
           DEFAULT_CLIPROXY_SERVER_CONFIG.remote.auth_token,
+        // management_key is optional - falls back to auth_token when not set
+        management_key: partial.cliproxy_server?.remote?.management_key,
       },
       fallback: {
         enabled:

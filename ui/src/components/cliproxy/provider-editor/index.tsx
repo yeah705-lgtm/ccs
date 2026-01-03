@@ -5,6 +5,7 @@
 
 /* eslint-disable react-refresh/only-export-components */
 import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Loader2, Code2 } from 'lucide-react';
@@ -93,11 +94,23 @@ export function ProviderEditor({
 
   const accounts = authStatus.accounts || [];
 
+  // Fetch effective API key for presets (uses configured value, not hardcoded)
+  const { data: authTokens } = useQuery<{ apiKey: { value: string } }>({
+    queryKey: ['auth-tokens-raw'],
+    queryFn: async () => {
+      const response = await fetch('/api/settings/auth/tokens/raw');
+      if (!response.ok) return { apiKey: { value: 'ccs-internal-managed' } };
+      return response.json();
+    },
+    staleTime: 60000, // Cache for 1 minute
+  });
+  const effectiveApiKey = authTokens?.apiKey?.value ?? 'ccs-internal-managed';
+
   const handleApplyPreset = (updates: Record<string, string>) => {
     const effectivePort = port ?? CLIPROXY_PORT;
     updateEnvValues({
       ANTHROPIC_BASE_URL: `http://127.0.0.1:${effectivePort}/api/provider/${provider}`,
-      ANTHROPIC_AUTH_TOKEN: 'ccs-internal-managed',
+      ANTHROPIC_AUTH_TOKEN: effectiveApiKey,
       ...updates,
     });
     toast.success(`Applied "${updates.ANTHROPIC_MODEL?.split('/').pop() || 'preset'}" preset`);
@@ -107,7 +120,7 @@ export function ProviderEditor({
     const effectivePort = port ?? CLIPROXY_PORT;
     updateEnvValues({
       ANTHROPIC_BASE_URL: `http://127.0.0.1:${effectivePort}/api/provider/${provider}`,
-      ANTHROPIC_AUTH_TOKEN: 'ccs-internal-managed',
+      ANTHROPIC_AUTH_TOKEN: effectiveApiKey,
       ANTHROPIC_MODEL: values.default,
       ANTHROPIC_DEFAULT_OPUS_MODEL: values.opus,
       ANTHROPIC_DEFAULT_SONNET_MODEL: values.sonnet,
@@ -189,6 +202,7 @@ export function ProviderEditor({
                     onRemoveAccount={onRemoveAccount}
                     isRemovingAccount={isRemovingAccount}
                     privacyMode={privacyMode}
+                    isRemoteMode={isRemoteMode}
                   />
                 </TabsContent>
                 <TabsContent

@@ -38,6 +38,8 @@ interface ModelConfigTabProps {
   onRemoveAccount: (accountId: string) => void;
   isRemovingAccount?: boolean;
   privacyMode?: boolean;
+  /** True if connected to remote CLIProxy (quota not available) */
+  isRemoteMode?: boolean;
 }
 
 export function ModelConfigTab({
@@ -60,6 +62,7 @@ export function ModelConfigTab({
   onRemoveAccount,
   isRemovingAccount,
   privacyMode,
+  isRemoteMode,
 }: ModelConfigTabProps) {
   // Kiro-specific: no-incognito setting (defaults to true = normal browser)
   const isKiro = provider === 'kiro';
@@ -133,7 +136,7 @@ export function ModelConfigTab({
           onRemoveAccount={onRemoveAccount}
           isRemovingAccount={isRemovingAccount}
           privacyMode={privacyMode}
-          showQuota={provider === 'agy'}
+          showQuota={provider === 'agy' && !isRemoteMode}
           isKiro={isKiro}
           kiroNoIncognito={kiroNoIncognito}
           onKiroNoIncognitoChange={saveKiroNoIncognito}

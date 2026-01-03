@@ -225,8 +225,15 @@ export interface ProxyRemoteConfig {
   port?: number;
   /** Protocol for remote connection */
   protocol: 'http' | 'https';
-  /** Auth token for remote proxy (optional, sent as header) */
+  /** Auth token for remote proxy API endpoints (optional, sent as header) */
   auth_token: string;
+  /**
+   * Management key for remote proxy management API endpoints.
+   * CLIProxyAPI uses separate authentication for management endpoints
+   * (/v0/management/*) via 'secret-key' config.
+   * If not set, falls back to auth_token for backwards compatibility.
+   */
+  management_key?: string;
   /** Connection timeout in milliseconds (default: 2000) */
   timeout?: number;
 }
