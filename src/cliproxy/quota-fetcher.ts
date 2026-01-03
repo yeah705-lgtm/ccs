@@ -9,6 +9,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getAuthDir } from './config-generator';
 import { CLIProxyProvider } from './types';
+import { getProviderAccounts, type AccountInfo } from './account-manager';
 
 /** Individual model quota info */
 export interface ModelQuota {
@@ -40,6 +41,10 @@ export interface QuotaResult {
   expiresAt?: string;
   /** True if account hasn't been activated in official Antigravity app */
   isUnprovisioned?: boolean;
+  /** Account ID (email) this quota belongs to */
+  accountId?: string;
+  /** GCP project ID for this account */
+  projectId?: string;
 }
 
 /** Google Cloud Code API endpoints */
@@ -522,4 +527,121 @@ export async function fetchAccountQuota(
   }
 
   return result;
+}
+
+/**
+ * Read project ID directly from auth file without making API call
+ * Used for quick project ID comparison in doctor command
+ */
+export function readProjectIdFromAuthFile(
+  provider: CLIProxyProvider,
+  accountId: string
+): string | null {
+  const authData = readAuthData(provider, accountId);
+  return authData?.projectId || null;
+}
+
+/** Result for all accounts of a provider */
+export interface AllAccountsQuotaResult {
+  /** Provider name */
+  provider: CLIProxyProvider;
+  /** Results per account */
+  accounts: Array<{
+    account: AccountInfo;
+    quota: QuotaResult;
+  }>;
+  /** Accounts grouped by project ID (for detecting shared projects) */
+  projectGroups: Record<string, string[]>;
+  /** Timestamp of fetch */
+  lastUpdated: number;
+}
+
+/**
+ * Fetch quota for all accounts of a provider
+ * Also detects accounts sharing same GCP project (failover won't help)
+ *
+ * @param provider - Provider name (only 'agy' supported for quota)
+ * @returns Results for all accounts with project grouping
+ */
+export async function fetchAllProviderQuotas(
+  provider: CLIProxyProvider
+): Promise<AllAccountsQuotaResult> {
+  const accounts = getProviderAccounts(provider);
+  const results: AllAccountsQuotaResult = {
+    provider,
+    accounts: [],
+    projectGroups: {},
+    lastUpdated: Date.now(),
+  };
+
+  if (accounts.length === 0) {
+    return results;
+  }
+
+  // Fetch quota for each account in parallel
+  const quotaPromises = accounts.map(async (account) => {
+    const quota = await fetchAccountQuota(provider, account.id);
+
+    // Read project ID from auth file if not in quota result
+    let projectId = quota.projectId;
+    if (!projectId) {
+      projectId = readProjectIdFromAuthFile(provider, account.id) || undefined;
+    }
+
+    return {
+      account,
+      quota: { ...quota, accountId: account.id, projectId },
+    };
+  });
+
+  const quotaResults = await Promise.all(quotaPromises);
+
+  // Build project groups for detecting shared projects
+  for (const { account, quota } of quotaResults) {
+    results.accounts.push({ account, quota });
+
+    if (quota.projectId) {
+      if (!results.projectGroups[quota.projectId]) {
+        results.projectGroups[quota.projectId] = [];
+      }
+      results.projectGroups[quota.projectId].push(account.id);
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Find available account with remaining quota
+ * Used by preflight check for auto-switching
+ *
+ * @param provider - Provider name
+ * @param excludeAccountId - Account to exclude (current exhausted account)
+ * @returns Account with available quota, or null if none available
+ */
+export async function findAvailableAccount(
+  provider: CLIProxyProvider,
+  excludeAccountId?: string
+): Promise<{ account: AccountInfo; quota: QuotaResult } | null> {
+  const allQuotas = await fetchAllProviderQuotas(provider);
+
+  for (const { account, quota } of allQuotas.accounts) {
+    // Skip excluded account
+    if (excludeAccountId && account.id === excludeAccountId) {
+      continue;
+    }
+
+    // Skip failed quota fetches
+    if (!quota.success) {
+      continue;
+    }
+
+    // Check if any model has remaining quota (> 5% to avoid edge cases)
+    const hasQuota = quota.models.some((m) => m.percentage > 5);
+    if (hasQuota) {
+      return { account, quota };
+    }
+  }
+
+  return null;
 }
