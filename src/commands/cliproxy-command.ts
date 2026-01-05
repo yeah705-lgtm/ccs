@@ -609,7 +609,7 @@ async function handleDoctor(): Promise<void> {
 
   // Display per-account quota status
   for (const { account, quota } of quotaResult.accounts) {
-    const accountLabel = account.email || account.id;
+    const accountLabel = account.email || account.id || 'Unknown Account';
     const defaultBadge = account.isDefault ? color(' (default)', 'info') : '';
 
     if (!quota.success) {
@@ -624,8 +624,11 @@ async function handleDoctor(): Promise<void> {
       continue;
     }
 
-    // Calculate overall quota health
-    const avgQuota = quota.models.reduce((sum, m) => sum + m.percentage, 0) / quota.models.length;
+    // Calculate overall quota health (guard against empty models array)
+    const avgQuota =
+      quota.models.length > 0
+        ? quota.models.reduce((sum, m) => sum + m.percentage, 0) / quota.models.length
+        : 0;
     const statusIcon = avgQuota > 50 ? ok('') : avgQuota > 10 ? warn('') : fail('');
 
     console.log(`  ${statusIcon}${accountLabel}${defaultBadge}`);
@@ -681,9 +684,10 @@ async function handleDoctor(): Promise<void> {
 
 function formatQuotaBar(percentage: number): string {
   const width = 20;
-  const filled = Math.round((percentage / 100) * width);
+  const clampedPct = Math.max(0, Math.min(100, percentage));
+  const filled = Math.round((clampedPct / 100) * width);
   const empty = width - filled;
-  const filledChar = percentage > 50 ? '█' : percentage > 10 ? '▓' : '░';
+  const filledChar = clampedPct > 50 ? '█' : clampedPct > 10 ? '▓' : '░';
   return `[${filledChar.repeat(filled)}${' '.repeat(empty)}]`;
 }
 

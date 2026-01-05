@@ -625,6 +625,10 @@ export async function findAvailableAccount(
 ): Promise<{ account: AccountInfo; quota: QuotaResult } | null> {
   const allQuotas = await fetchAllProviderQuotas(provider);
 
+  // Get excluded account's project ID to avoid switching to same-project accounts
+  const excludedProjectId = allQuotas.accounts.find((a) => a.account.id === excludeAccountId)?.quota
+    .projectId;
+
   for (const { account, quota } of allQuotas.accounts) {
     // Skip excluded account
     if (excludeAccountId && account.id === excludeAccountId) {
@@ -633,6 +637,11 @@ export async function findAvailableAccount(
 
     // Skip failed quota fetches
     if (!quota.success) {
+      continue;
+    }
+
+    // Skip accounts sharing same GCP project (quota is pooled)
+    if (excludedProjectId && quota.projectId === excludedProjectId) {
       continue;
     }
 
