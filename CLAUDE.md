@@ -268,7 +268,9 @@ bun run test:unit         # Unit tests
 ### Local Development
 ```bash
 bun run dev               # Build + start config server (http://localhost:3000)
-./scripts/dev-install.sh  # Build, pack, install globally
+bun run dev:symlink       # Symlink global 'ccs' → dev dist/ccs.js (fast iteration)
+bun run dev:unlink        # Restore original global ccs
+./scripts/dev-install.sh  # Build, pack, install globally (full install)
 rm -rf ~/.ccs             # Clean environment
 ```
 

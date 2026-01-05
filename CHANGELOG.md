@@ -1,3 +1,13 @@
+## [7.13.1](https://github.com/kaitranntt/ccs/compare/v7.13.0...v7.13.1) (2026-01-05)
+
+### Bug Fixes
+
+* **cliproxy:** add management_key support for remote proxy auth separation ([0e58d0e](https://github.com/kaitranntt/ccs/commit/0e58d0e8b7fd07004990e99fbdc6a080380c0304))
+* **cliproxy:** add missing kiro/ghcp provider mappings in remote-auth-fetcher ([dea0e87](https://github.com/kaitranntt/ccs/commit/dea0e872bd529b2c6f825dc1d9e901d0896b7f41))
+* **cliproxy:** extract unique accountId from token filename for Kiro/GHCP ([7bb7ccc](https://github.com/kaitranntt/ccs/commit/7bb7ccc27fe0d9885c4dd7f23de664e2c8b4866f)), closes [#258](https://github.com/kaitranntt/ccs/issues/258)
+* **cliproxy:** proactive token refresh to prevent UND_ERR_SOCKET ([a6a653f](https://github.com/kaitranntt/ccs/commit/a6a653f14580888bcdccbf6b83b90d41b6b52136)), closes [#256](https://github.com/kaitranntt/ccs/issues/256)
+* **validation:** add Windows reserved name validation and version format edge cases ([ae1847d](https://github.com/kaitranntt/ccs/commit/ae1847d9011c8bff9caff206cf1d7082c61faf40))
+
 ## [7.13.0](https://github.com/kaitranntt/ccs/compare/v7.12.2...v7.13.0) (2026-01-03)
 
 ### Features

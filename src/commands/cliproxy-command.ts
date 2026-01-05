@@ -732,13 +732,15 @@ export async function handleCliproxyCommand(args: string[]): Promise<void> {
 
   const installIdx = args.indexOf('--install');
   if (installIdx !== -1) {
-    const version = args[installIdx + 1];
+    let version = args[installIdx + 1];
     if (!version || version.startsWith('-')) {
       console.error(fail('Missing version argument for --install'));
       console.error('    Usage: ccs cliproxy --install <version>');
-      console.error('    Example: ccs cliproxy --install 6.5.53');
+      console.error('    Example: ccs cliproxy --install 6.6.80-0');
       process.exit(1);
     }
+    // Strip leading 'v' prefix and whitespace (user may type " v6.6.80-0 ")
+    version = version.trim().replace(/^v/, '');
     await handleInstallVersion(version, verbose);
     return;
   }
