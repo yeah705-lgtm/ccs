@@ -285,14 +285,16 @@ function readAuthData(provider: CLIProxyProvider, accountId: string): AuthData |
 
 /**
  * Map API tier string to AccountTier type
- * API returns: "FREE", "PRO", "ULTRA" (or variants like "pro", "ultra")
+ * API returns tier IDs like: "standard-tier" (free), "pro-tier" (pro), "ultra-tier" (ultra)
+ * Also handles legacy formats: "FREE", "PRO", "ULTRA"
  */
 function mapTierString(tierStr: string | undefined): AccountTier {
   if (!tierStr) return 'unknown';
   const normalized = tierStr.toLowerCase();
   if (normalized.includes('ultra')) return 'ultra';
   if (normalized.includes('pro')) return 'pro';
-  if (normalized.includes('free')) return 'free';
+  // "standard-tier" or "free" both map to free
+  if (normalized.includes('standard') || normalized.includes('free')) return 'free';
   return 'unknown';
 }
 
