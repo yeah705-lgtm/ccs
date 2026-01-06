@@ -347,6 +347,21 @@ export function executeOAuthProcess(options: OAuthProcessOptions): Promise<Accou
 
     const startTime = Date.now();
 
+    // H7: Stdin keepalive for Authorization Code flows
+    // CLIProxyAPIPlus has a 15-second timer that prompts for manual URL paste.
+    // If the user completes browser auth after this timer fires but before the
+    // non-blocking check, the prompt blocks forever on stdin.
+    // Workaround: Send newline every 16s to skip the manual prompt and continue polling.
+    let stdinKeepalive: ReturnType<typeof setInterval> | null = null;
+    if (!isDeviceCodeFlow && stdinMode === 'pipe') {
+      stdinKeepalive = setInterval(() => {
+        if (authProcess.stdin && !authProcess.stdin.destroyed) {
+          authProcess.stdin.write('\n');
+          log('Sent stdin keepalive (skip manual URL prompt)');
+        }
+      }, 16000);
+    }
+
     authProcess.stdout?.on('data', async (data: Buffer) => {
       await handleStdout(data.toString(), state, options, authProcess, log);
     });
@@ -393,6 +408,8 @@ export function executeOAuthProcess(options: OAuthProcessOptions): Promise<Accou
     // Timeout handling
     const timeoutMs = headless ? 300000 : 120000;
     const timeout = setTimeout(() => {
+      // H7: Clear stdin keepalive interval
+      if (stdinKeepalive) clearInterval(stdinKeepalive);
       // H5: Remove signal handlers before killing process
       process.removeListener('SIGINT', cleanup);
       process.removeListener('SIGTERM', cleanup);
@@ -409,6 +426,8 @@ export function executeOAuthProcess(options: OAuthProcessOptions): Promise<Accou
 
     authProcess.on('exit', async (code) => {
       clearTimeout(timeout);
+      // H7: Clear stdin keepalive interval
+      if (stdinKeepalive) clearInterval(stdinKeepalive);
       // H5: Remove signal handlers to prevent memory leaks
       process.removeListener('SIGINT', cleanup);
       process.removeListener('SIGTERM', cleanup);
@@ -462,6 +481,8 @@ export function executeOAuthProcess(options: OAuthProcessOptions): Promise<Accou
 
     authProcess.on('error', (error) => {
       clearTimeout(timeout);
+      // H7: Clear stdin keepalive interval
+      if (stdinKeepalive) clearInterval(stdinKeepalive);
       // H5: Remove signal handlers to prevent memory leaks
       process.removeListener('SIGINT', cleanup);
       process.removeListener('SIGTERM', cleanup);
