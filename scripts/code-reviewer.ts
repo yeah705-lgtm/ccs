@@ -2,11 +2,12 @@
 /**
  * AI Code Reviewer for CCS CLI
  *
- * Fetches PR diff, calls Claude via CLIProxyAPI, posts review to GitHub.
+ * Fetches PR diff, calls Claude via CLIProxyAPI, posts review as comment.
  * Runs on self-hosted runner with localhost access to CLIProxyAPI:8317.
+ * Posts as ccs-agy-reviewer[bot] via GitHub App token.
  *
  * Usage: bun run scripts/code-reviewer.ts <PR_NUMBER>
- * Env: CLIPROXY_API_KEY, GITHUB_REPOSITORY (optional)
+ * Env: CLIPROXY_API_KEY, GITHUB_REPOSITORY, GH_TOKEN
  */
 
 import { $ } from 'bun';
@@ -22,64 +23,52 @@ interface PRContext {
   diff: string;
 }
 
-interface ReviewComment {
-  path: string;
-  line: number;
-  body: string;
-  severity: 'critical' | 'warning' | 'suggestion' | 'nitpick';
-}
-
-interface ReviewResult {
-  summary: string;
-  approvalStatus: 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT';
-  comments: ReviewComment[];
-  securityIssues: string[];
-  suggestions: string[];
-}
-
-// System prompt for code review
-const CODE_REVIEWER_SYSTEM_PROMPT = `You are an expert code reviewer for the CCS CLI project, a TypeScript/Node.js tool for managing Claude Code accounts.
-
-## Your Role
-Review pull requests thoroughly for:
-1. **Bugs & Logic Errors** - Race conditions, off-by-one, null handling
-2. **Security Issues** - Injection, secrets exposure, auth bypass
-3. **Code Quality** - YAGNI, KISS, DRY violations; readability
-4. **TypeScript Best Practices** - Proper typing, no \`any\`, null safety
-5. **CCS Conventions** - ASCII only (no emojis), conventional commits
-
-## Output Format
-Respond with ONLY valid JSON matching this schema:
-
-\`\`\`json
-{
-  "summary": "2-3 sentence overall assessment",
-  "approvalStatus": "APPROVE" | "REQUEST_CHANGES" | "COMMENT",
-  "comments": [
-    {
-      "path": "relative/path/to/file.ts",
-      "line": 42,
-      "body": "Specific feedback for this line",
-      "severity": "critical" | "warning" | "suggestion" | "nitpick"
-    }
-  ],
-  "securityIssues": ["List of security concerns if any"],
-  "suggestions": ["General improvement suggestions"]
-}
-\`\`\`
-
-## Guidelines
-- Be constructive, not harsh
-- Prioritize critical issues over nitpicks
-- Reference specific lines and provide fix suggestions
-- If no issues: approvalStatus = "APPROVE", comments = []
-- Max 10 inline comments (focus on most important)`;
-
 // Config
 const MAX_DIFF_LINES = 10000;
-const MAX_INLINE_COMMENTS = 10;
 const CLIPROXY_URL = process.env.CLIPROXY_URL || 'http://localhost:8317';
 const MODEL = process.env.REVIEW_MODEL || 'gemini-claude-opus-4-5-thinking';
+
+// System prompt for code review - new style
+const CODE_REVIEWER_SYSTEM_PROMPT = `You are the CCS AGY Code Reviewer, an expert AI assistant reviewing pull requests for the CCS CLI project.
+
+## Review Guidelines
+- Focus ONLY on changes in this PR - don't suggest unrelated improvements
+- Be concise - no fluff, no excessive praise
+- Provide specific file:line references for issues
+- Verify claims before making them (check if patterns exist, check actual code)
+- Avoid over-engineering suggestions for simple fixes
+
+## Check For
+1. **Bugs**: Logic errors, edge cases, null handling, race conditions
+2. **Security**: Injection, auth bypass, secrets exposure, data leaks
+3. **Performance**: N+1 queries, missing indexes, inefficient algorithms
+4. **TypeScript**: Proper typing, no \`any\`, null safety
+5. **Consistency**: Similar patterns exist elsewhere that need same fix?
+
+## Output Format
+Structure your response EXACTLY like this (no code fences, render as markdown):
+
+## 🔍 Code Review
+
+**Verdict**: [✅ Approve | ✅ Approve with suggestions | ⚠️ Request changes]
+
+### Summary
+[1-2 sentences on what the PR does and if it's correct]
+
+### ✅ What's Good
+- [Bullet points, 2-4 items max]
+
+### ⚠️ Issues Found
+| File:Line | Issue | Severity |
+|-----------|-------|----------|
+| \`file.ts:123\` | Description | 🔴 High / 🟡 Medium / 🟢 Low |
+
+(If no issues, write "None - LGTM")
+
+### 💡 Suggestions (Optional)
+- [Only if truly valuable, max 2 items]
+
+IMPORTANT: Output ONLY the markdown review. No JSON, no code blocks wrapping the review.`;
 
 // Fetch PR context
 async function getPRContext(prNumber: number, repo: string): Promise<PRContext> {
@@ -111,11 +100,14 @@ async function getPRContext(prNumber: number, repo: string): Promise<PRContext> 
 }
 
 // Call Claude via CLIProxyAPI
-async function callClaude(context: PRContext): Promise<ReviewResult> {
+async function callClaude(context: PRContext, repo: string): Promise<string> {
   const apiKey = process.env.CLIPROXY_API_KEY;
   if (!apiKey) throw new Error('CLIPROXY_API_KEY not set');
 
-  const userMessage = `## Pull Request: ${context.title}
+  const userMessage = `REPO: ${repo}
+PR NUMBER: ${context.number}
+
+## Pull Request: ${context.title}
 
 ### Description
 ${context.body || '(No description provided)'}
@@ -128,7 +120,7 @@ ${context.files.map((f) => `- ${f.path} (+${f.additions}/-${f.deletions})`).join
 ${context.diff}
 \`\`\`
 
-Please review this pull request and provide your assessment in the specified JSON format.`;
+Review this PR following the guidelines. Refer to the project's CLAUDE.md and docs/ folder for conventions.`;
 
   const response = await fetch(`${CLIPROXY_URL}/v1/messages`, {
     method: 'POST',
@@ -139,7 +131,7 @@ Please review this pull request and provide your assessment in the specified JSO
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 8192,
+      max_tokens: 4096,
       system: CODE_REVIEWER_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMessage }],
     }),
@@ -157,103 +149,21 @@ Please review this pull request and provide your assessment in the specified JSO
     throw new Error('Empty response from Claude');
   }
 
-  // Parse JSON from response (may be wrapped in markdown code block)
-  const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/);
-  const jsonStr = jsonMatch ? jsonMatch[1].trim() : content.trim();
-
-  try {
-    return JSON.parse(jsonStr) as ReviewResult;
-  } catch {
-    // Fallback: create basic review from raw text
-    console.warn('[!] Failed to parse JSON, using fallback');
-    return {
-      summary: content.slice(0, 500),
-      approvalStatus: 'COMMENT',
-      comments: [],
-      securityIssues: [],
-      suggestions: [],
-    };
-  }
+  return content;
 }
 
-// Format inline comment with severity badge
-function formatComment(comment: ReviewComment): string {
-  const badge: Record<string, string> = {
-    critical: '[!] **Critical**',
-    warning: '[~] **Warning**',
-    suggestion: '[i] **Suggestion**',
-    nitpick: '[ ] Nitpick',
-  };
-  return `${badge[comment.severity] || '[i]'}\n\n${comment.body}`;
-}
-
-// Post review to GitHub
-async function postReview(prNumber: number, repo: string, review: ReviewResult): Promise<void> {
-  // Build review body
-  let body = `## AI Code Review\n\n${review.summary}\n`;
-
-  if (review.securityIssues.length > 0) {
-    body += `\n### Security Issues\n${review.securityIssues.map((i) => `- ${i}`).join('\n')}\n`;
-  }
-
-  if (review.suggestions.length > 0) {
-    body += `\n### Suggestions\n${review.suggestions.map((s) => `- ${s}`).join('\n')}\n`;
-  }
-
-  if (review.comments.length > 0) {
-    body += `\n### Inline Comments\n${review.comments.length} comment(s) posted on specific lines.\n`;
-  }
-
-  body += '\n---\n*Automated review by CCS AGY Code Reviewer*';
-
-  // Map approval status to gh flag
-  const eventFlag: Record<string, string> = {
-    APPROVE: '--approve',
-    REQUEST_CHANGES: '--request-changes',
-    COMMENT: '--comment',
-  };
-
-  // Post main review (try APPROVE/REQUEST_CHANGES, fallback to COMMENT if self-PR)
-  const flag = eventFlag[review.approvalStatus] || '--comment';
-  const reviewResult = await $`gh pr review ${prNumber} --repo ${repo} ${flag} --body ${body}`.nothrow();
-
-  if (reviewResult.exitCode !== 0) {
-    const stderr = reviewResult.stderr.toString();
-    // GitHub doesn't allow self-approval or self-request-changes - fallback to comment
-    if (stderr.includes('your own pull request')) {
-      console.log('[i] Self-PR detected, falling back to COMMENT');
-      await $`gh pr review ${prNumber} --repo ${repo} --comment --body ${body}`;
-    } else {
-      throw new Error(`Failed to post review: ${stderr}`);
-    }
-  }
-
-  // Post inline comments via REST API
-  for (const comment of review.comments.slice(0, MAX_INLINE_COMMENTS)) {
-    try {
-      const commentBody = formatComment(comment);
-      // Get the PR head SHA for the comment
-      const prInfo = await $`gh pr view ${prNumber} --repo ${repo} --json headRefOid --jq .headRefOid`.text();
-      const commitId = prInfo.trim();
-
-      await $`gh api repos/${repo}/pulls/${prNumber}/comments --method POST \
-        -f body=${commentBody} \
-        -f path=${comment.path} \
-        -F line=${comment.line} \
-        -f side=RIGHT \
-        -f commit_id=${commitId}`;
-    } catch (err) {
-      console.error(`[!] Failed to post inline comment on ${comment.path}:${comment.line}`, err);
-    }
-  }
+// Post review as PR comment
+async function postReview(prNumber: number, repo: string, reviewContent: string): Promise<void> {
+  // Use gh pr comment to post the review
+  await $`gh pr comment ${prNumber} --repo ${repo} --body ${reviewContent}`;
 }
 
 // Check if already reviewed this PR (avoid spam)
 async function hasRecentReview(prNumber: number, repo: string): Promise<boolean> {
   try {
-    const reviews =
-      await $`gh api repos/${repo}/pulls/${prNumber}/reviews --jq '[.[] | select(.body | contains("AI Code Review"))] | length'`.text();
-    return parseInt(reviews.trim(), 10) > 0;
+    const comments =
+      await $`gh api repos/${repo}/issues/${prNumber}/comments --jq '[.[] | select(.body | contains("🔍 Code Review"))] | length'`.text();
+    return parseInt(comments.trim(), 10) > 0;
   } catch {
     return false;
   }
@@ -291,13 +201,12 @@ async function main() {
 
     // 2. Call Claude
     console.log(`[i] Calling Claude (${MODEL}) for review...`);
-    const review = await callClaude(context);
-    console.log(`[i] Review complete: ${review.approvalStatus}`);
-    console.log(`[i] Comments: ${review.comments.length}, Security issues: ${review.securityIssues.length}`);
+    const reviewContent = await callClaude(context, repo);
+    console.log('[i] Review generated');
 
-    // 3. Post review
+    // 3. Post review as comment
     console.log('[i] Posting review to PR...');
-    await postReview(prNumber, repo, review);
+    await postReview(prNumber, repo, reviewContent);
     console.log('[OK] Review posted successfully');
   } catch (error) {
     console.error('[X] Review failed:', error);

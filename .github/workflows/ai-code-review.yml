@@ -1,5 +1,6 @@
 # AI Code Review Workflow
 # Runs on self-hosted runner with access to CLIProxyAPI for Claude-powered reviews
+# Posts as ccs-agy-reviewer[bot] via GitHub App
 #
 # Triggers:
 # - Automatically on PR open/update
@@ -34,6 +35,13 @@ jobs:
        contains(github.event.comment.body, '/review'))
 
     steps:
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.CCS_REVIEWER_APP_ID }}
+          private-key: ${{ secrets.CCS_REVIEWER_PRIVATE_KEY }}
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -57,14 +65,14 @@ jobs:
           gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
             --method POST -f content=eyes
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Run AI Code Review
         env:
           CLIPROXY_API_KEY: ${{ secrets.CLIPROXY_API_KEY }}
           CLIPROXY_URL: http://localhost:8317
           REVIEW_MODEL: gemini-claude-opus-4-5-thinking
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           # Check if CLIProxyAPI is accessible
@@ -82,7 +90,7 @@ jobs:
           gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
             --method POST -f content=rocket
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Add failure reaction
         if: failure() && github.event_name == 'issue_comment'
@@ -90,4 +98,4 @@ jobs:
           gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
             --method POST -f content=confused
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
