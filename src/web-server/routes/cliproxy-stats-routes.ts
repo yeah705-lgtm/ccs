@@ -26,8 +26,15 @@ import {
   getInstalledCliproxyVersion,
   installCliproxyVersion,
 } from '../../cliproxy/binary-manager';
-import { fetchAllVersions, isNewerVersion } from '../../cliproxy/binary/version-checker';
-import { CLIPROXY_MAX_STABLE_VERSION } from '../../cliproxy/platform-detector';
+import {
+  fetchAllVersions,
+  isNewerVersion,
+  isVersionFaulty,
+} from '../../cliproxy/binary/version-checker';
+import {
+  CLIPROXY_MAX_STABLE_VERSION,
+  CLIPROXY_FAULTY_RANGE,
+} from '../../cliproxy/platform-detector';
 
 const router = Router();
 
@@ -549,6 +556,7 @@ router.get('/versions', async (_req: Request, res: Response): Promise<void> => {
       ...result,
       currentVersion,
       maxStableVersion: CLIPROXY_MAX_STABLE_VERSION,
+      faultyRange: CLIPROXY_FAULTY_RANGE,
     });
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
@@ -575,14 +583,24 @@ router.post('/install', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check if version is unstable
-    const isUnstable = isNewerVersion(version, CLIPROXY_MAX_STABLE_VERSION);
+    // Check if version is faulty (v81-85) or experimental (above max stable)
+    const isFaulty = isVersionFaulty(version);
+    const isExperimental = isNewerVersion(version, CLIPROXY_MAX_STABLE_VERSION);
 
-    if (isUnstable && !force) {
+    if (isFaulty && !force) {
       res.json({
         success: false,
         requiresConfirmation: true,
-        message: `Version ${version} is unstable (above max stable ${CLIPROXY_MAX_STABLE_VERSION}). Set force=true to proceed.`,
+        message: `Version ${version} has known bugs (v${CLIPROXY_FAULTY_RANGE.min.replace(/-\d+$/, '')}-${CLIPROXY_FAULTY_RANGE.max.replace(/-\d+$/, '')}). Set force=true to proceed.`,
+      });
+      return;
+    }
+
+    if (isExperimental && !force) {
+      res.json({
+        success: false,
+        requiresConfirmation: true,
+        message: `Version ${version} is experimental (above stable ${CLIPROXY_MAX_STABLE_VERSION.replace(/-\d+$/, '')}). Set force=true to proceed.`,
       });
       return;
     }
@@ -599,7 +617,8 @@ router.post('/install', async (req: Request, res: Response): Promise<void> => {
     res.json({
       success: true,
       version,
-      isUnstable,
+      isFaulty,
+      isExperimental,
       message: `Successfully installed CLIProxy Plus v${version}`,
     });
   } catch (error) {

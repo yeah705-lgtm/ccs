@@ -5,12 +5,17 @@
 
 import * as fs from 'fs';
 import { BinaryManagerConfig } from '../types';
-import { checkForUpdates, fetchLatestVersion, isNewerVersion } from './version-checker';
+import {
+  checkForUpdates,
+  fetchLatestVersion,
+  isNewerVersion,
+  isVersionFaulty,
+} from './version-checker';
 import { downloadAndInstall, deleteBinary, getBinaryPath } from './installer';
 import { info, warn } from '../../utils/ui';
 import { isCliproxyRunning } from '../stats-fetcher';
 import { CLIPROXY_DEFAULT_PORT } from '../config-generator';
-import { CLIPROXY_MAX_STABLE_VERSION } from '../platform-detector';
+import { CLIPROXY_MAX_STABLE_VERSION, CLIPROXY_FAULTY_RANGE } from '../platform-detector';
 
 /** Log helper */
 function log(message: string, verbose: boolean): void {
@@ -46,15 +51,26 @@ async function handleAutoUpdate(config: BinaryManagerConfig, verbose: boolean): 
   const currentVersion = updateResult.currentVersion;
   const latestVersion = updateResult.latestVersion;
 
-  // Check if user is on known unstable version - inform but don't force downgrade
-  if (isAboveMaxStable(currentVersion)) {
+  // Check if user is on known faulty version - recommend upgrade
+  if (isVersionFaulty(currentVersion)) {
     console.log(
       warn(
-        `CLIProxy Plus v${currentVersion} has known stability issues. ` +
-          `Stable version: v${CLIPROXY_MAX_STABLE_VERSION}`
+        `CLIProxy Plus v${currentVersion} has known bugs (v${CLIPROXY_FAULTY_RANGE.min.replace(/-\d+$/, '')}-${CLIPROXY_FAULTY_RANGE.max.replace(/-\d+$/, '')}). ` +
+          `Upgrade to v${CLIPROXY_MAX_STABLE_VERSION.replace(/-\d+$/, '')} recommended.`
       )
     );
-    console.log(info('Run "ccs cliproxy install 80" to downgrade, or wait for upstream fix'));
+    console.log(
+      info(
+        `Run "ccs cliproxy install ${CLIPROXY_MAX_STABLE_VERSION.replace(/-\d+$/, '')}" to upgrade`
+      )
+    );
+  } else if (isAboveMaxStable(currentVersion)) {
+    // Version newer than max stable (experimental)
+    console.log(
+      warn(
+        `CLIProxy Plus v${currentVersion} is experimental (above stable v${CLIPROXY_MAX_STABLE_VERSION.replace(/-\d+$/, '')})`
+      )
+    );
   }
 
   if (!updateResult.hasUpdate) return;

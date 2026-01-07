@@ -17,7 +17,7 @@ import {
   GITHUB_API_ALL_RELEASES,
   VersionListResult,
 } from './types';
-import { CLIPROXY_MAX_STABLE_VERSION } from '../platform-detector';
+import { CLIPROXY_MAX_STABLE_VERSION, CLIPROXY_FAULTY_RANGE } from '../platform-detector';
 
 /**
  * Compare semver versions (true if latest > current)
@@ -41,6 +41,17 @@ export function isNewerVersion(latest: string, current: string): boolean {
   }
 
   return false; // Equal versions
+}
+
+/**
+ * Check if version is within the faulty range (v81-85)
+ * @returns true if version has known critical bugs
+ */
+export function isVersionFaulty(version: string): boolean {
+  const { min, max } = CLIPROXY_FAULTY_RANGE;
+  const atOrAboveMin = !isNewerVersion(min, version); // version >= min
+  const atOrBelowMax = !isNewerVersion(version, max); // version <= max
+  return atOrAboveMin && atOrBelowMax;
 }
 
 /**
@@ -123,9 +134,9 @@ export async function fetchAllVersions(verbose = false): Promise<VersionListResu
 
   const latest = versions[0] || '';
 
-  // Find latest stable (not newer than max stable)
+  // Find latest stable (not newer than max stable AND not in faulty range)
   const latestStable =
-    versions.find((v) => !isNewerVersion(v, CLIPROXY_MAX_STABLE_VERSION)) ||
+    versions.find((v) => !isNewerVersion(v, CLIPROXY_MAX_STABLE_VERSION) && !isVersionFaulty(v)) ||
     CLIPROXY_MAX_STABLE_VERSION;
 
   const result: VersionListResult = {
