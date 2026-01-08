@@ -153,11 +153,13 @@ export function getProviderCatalog(provider: CLIProxyProvider): ProviderCatalog 
 
 /**
  * Find model entry by ID
+ * Note: Model IDs are normalized to lowercase for case-insensitive comparison
  */
 export function findModel(provider: CLIProxyProvider, modelId: string): ModelEntry | undefined {
   const catalog = MODEL_CATALOG[provider];
   if (!catalog) return undefined;
-  return catalog.models.find((m) => m.id === modelId);
+  const normalizedId = modelId.toLowerCase();
+  return catalog.models.find((m) => m.id.toLowerCase() === normalizedId);
 }
 
 /**
