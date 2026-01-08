@@ -264,6 +264,14 @@ router.put('/thinking', (req: Request, res: Response): void => {
 
     // Validate override if provided (budget or level)
     if (updates.override !== undefined) {
+      // C3: Reject objects/arrays - only number or string allowed
+      if (typeof updates.override !== 'number' && typeof updates.override !== 'string') {
+        res.status(400).json({
+          error: 'Invalid override: must be a number or string, not object/array',
+        });
+        return;
+      }
+
       if (typeof updates.override === 'number') {
         if (
           !Number.isFinite(updates.override) ||
@@ -298,6 +306,33 @@ router.put('/thinking', (req: Request, res: Response): void => {
         if (!validLevels.includes(level)) {
           res.status(400).json({
             error: `Invalid level for ${tier}: must be one of ${validLevels.join(', ')}`,
+          });
+          return;
+        }
+      }
+    }
+
+    // C4: Validate provider_overrides if provided
+    if (updates.provider_overrides !== undefined) {
+      if (
+        typeof updates.provider_overrides !== 'object' ||
+        updates.provider_overrides === null ||
+        Array.isArray(updates.provider_overrides)
+      ) {
+        res.status(400).json({ error: 'Invalid provider_overrides: must be an object' });
+        return;
+      }
+      const validLevels = [...VALID_THINKING_LEVELS] as string[];
+      for (const [provider, level] of Object.entries(updates.provider_overrides)) {
+        if (typeof provider !== 'string' || provider.trim() === '') {
+          res
+            .status(400)
+            .json({ error: 'Invalid provider_overrides: keys must be non-empty strings' });
+          return;
+        }
+        if (typeof level !== 'string' || !validLevels.includes(level)) {
+          res.status(400).json({
+            error: `Invalid level for provider ${provider}: must be one of ${validLevels.join(', ')}`,
           });
           return;
         }
