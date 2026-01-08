@@ -1,0 +1,373 @@
+import * as http from 'http';
+import { URL } from 'url';
+
+export type CodexReasoningEffort = 'medium' | 'high' | 'xhigh';
+
+export interface CodexReasoningModelMap {
+  opusModel?: string;
+  sonnetModel?: string;
+  haikuModel?: string;
+  defaultModel?: string;
+}
+
+export interface CodexReasoningProxyConfig {
+  upstreamBaseUrl: string;
+  verbose?: boolean;
+  timeoutMs?: number;
+  modelMap: CodexReasoningModelMap;
+  defaultEffort?: CodexReasoningEffort;
+  traceFilePath?: string;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function parseModelEffortSuffix(
+  model: string
+): { upstreamModel: string; effort: CodexReasoningEffort } | null {
+  const match = model.match(/^(.*)-(xhigh|high|medium)$/);
+  if (!match) return null;
+  const upstreamModel = match[1]?.trim();
+  const effort = match[2] as CodexReasoningEffort;
+  if (!upstreamModel) return null;
+  return { upstreamModel, effort };
+}
+
+const EFFORT_RANK: Record<CodexReasoningEffort, number> = {
+  medium: 1,
+  high: 2,
+  xhigh: 3,
+};
+
+function minEffort(a: CodexReasoningEffort, b: CodexReasoningEffort): CodexReasoningEffort {
+  return EFFORT_RANK[a] <= EFFORT_RANK[b] ? a : b;
+}
+
+export function buildCodexModelEffortMap(
+  models: CodexReasoningModelMap,
+  defaultEffort: CodexReasoningEffort = 'medium'
+): Map<string, CodexReasoningEffort> {
+  const map = new Map<string, CodexReasoningEffort>();
+
+  const upsertMin = (model: string | undefined, effort: CodexReasoningEffort) => {
+    if (!isNonEmptyString(model)) return;
+    const existing = map.get(model);
+    map.set(model, existing ? minEffort(existing, effort) : effort);
+  };
+
+  upsertMin(models.defaultModel, 'xhigh');
+  upsertMin(models.opusModel, 'xhigh');
+  upsertMin(models.sonnetModel, 'high');
+  upsertMin(models.haikuModel, 'medium');
+
+  if (map.size === 0 && isNonEmptyString(models.defaultModel)) {
+    map.set(models.defaultModel, defaultEffort);
+  }
+
+  return map;
+}
+
+export function getEffortForModel(
+  model: string | null,
+  modelEffort: Map<string, CodexReasoningEffort>,
+  defaultEffort: CodexReasoningEffort
+): CodexReasoningEffort {
+  if (!model) return defaultEffort;
+  return modelEffort.get(model) ?? defaultEffort;
+}
+
+export function injectReasoningEffortIntoBody(
+  body: unknown,
+  effort: CodexReasoningEffort
+): unknown {
+  if (!isRecord(body)) return body;
+
+  // OpenAI Responses API knob: reasoning: { effort: "..." }
+  // Always override effort (user expectation).
+  const existingReasoning = isRecord(body.reasoning) ? body.reasoning : {};
+  return {
+    ...body,
+    reasoning: {
+      ...existingReasoning,
+      effort,
+    },
+  };
+}
+
+export class CodexReasoningProxy {
+  private server: http.Server | null = null;
+  private port: number | null = null;
+  private readonly config: Required<
+    Pick<
+      CodexReasoningProxyConfig,
+      'upstreamBaseUrl' | 'verbose' | 'timeoutMs' | 'defaultEffort' | 'traceFilePath'
+    >
+  > &
+    Pick<CodexReasoningProxyConfig, 'modelMap'>;
+  private readonly modelEffort: Map<string, CodexReasoningEffort>;
+  private readonly recent: Array<{
+    at: string;
+    model: string | null;
+    upstreamModel: string | null;
+    effort: CodexReasoningEffort;
+    path: string;
+  }> = [];
+  private readonly counts: Record<CodexReasoningEffort, number> = { medium: 0, high: 0, xhigh: 0 };
+
+  constructor(config: CodexReasoningProxyConfig) {
+    this.config = {
+      upstreamBaseUrl: config.upstreamBaseUrl,
+      verbose: config.verbose ?? false,
+      timeoutMs: config.timeoutMs ?? 120000,
+      modelMap: config.modelMap,
+      defaultEffort: config.defaultEffort ?? 'medium',
+      traceFilePath: config.traceFilePath ?? '',
+    };
+    this.modelEffort = buildCodexModelEffortMap(this.config.modelMap, this.config.defaultEffort);
+  }
+
+  private log(message: string): void {
+    if (this.config.verbose) {
+      console.error(`[codex-reasoning-proxy] ${message}`);
+    }
+  }
+
+  private trace(line: string): void {
+    if (!this.config.traceFilePath) return;
+    try {
+      // Intentionally best-effort: tracing must never break requests.
+
+      const fs = require('fs') as typeof import('fs');
+
+      const path = require('path') as typeof import('path');
+      const dir = path.dirname(this.config.traceFilePath);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.appendFileSync(this.config.traceFilePath, line + '\n');
+    } catch {
+      // ignore
+    }
+  }
+
+  private record(
+    model: string | null,
+    upstreamModel: string | null,
+    effort: CodexReasoningEffort,
+    path: string
+  ): void {
+    this.counts[effort] += 1;
+    this.recent.push({ at: new Date().toISOString(), model, upstreamModel, effort, path });
+    if (this.recent.length > 50) this.recent.shift();
+  }
+
+  async start(): Promise<number> {
+    if (this.server) return this.port ?? 0;
+
+    return new Promise((resolve, reject) => {
+      this.server = http.createServer((req, res) => {
+        void this.handleRequest(req, res);
+      });
+
+      this.server.listen(0, '127.0.0.1', () => {
+        const address = this.server?.address();
+        this.port = typeof address === 'object' && address ? address.port : 0;
+        resolve(this.port);
+      });
+
+      this.server.on('error', (err) => reject(err));
+    });
+  }
+
+  stop(): void {
+    if (!this.server) return;
+    this.server.close();
+    this.server = null;
+    this.port = null;
+  }
+
+  private readBody(req: http.IncomingMessage): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      let total = 0;
+
+      req.on('data', (chunk: Buffer) => {
+        total += chunk.length;
+        if (total > maxSize) {
+          reject(new Error('Request body too large (max 10MB)'));
+          return;
+        }
+        chunks.push(chunk);
+      });
+
+      req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+      req.on('error', reject);
+    });
+  }
+
+  private async handleRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+    const method = req.method || 'GET';
+    const requestPath = req.url || '/';
+    const upstreamBase = new URL(this.config.upstreamBaseUrl);
+    const fullUpstreamUrl = new URL(requestPath, upstreamBase);
+
+    this.log(`${method} ${requestPath} → ${fullUpstreamUrl.href}`);
+
+    // Debug/status endpoint (no upstream call). Does not expose prompt content.
+    if (method.toUpperCase() === 'GET' && requestPath === '/__ccs/reasoning') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          counts: this.counts,
+          recent: this.recent,
+          modelMap: this.config.modelMap,
+          defaultEffort: this.config.defaultEffort,
+        })
+      );
+      return;
+    }
+
+    // Only buffer+rewrite JSON bodies; otherwise just proxy as-is.
+    const contentType = String(req.headers['content-type'] || '');
+    const isJson = contentType.includes('application/json');
+    const shouldRewrite = isJson && ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase());
+
+    try {
+      if (!shouldRewrite) {
+        await this.forwardRaw(req, res, fullUpstreamUrl);
+        return;
+      }
+
+      const rawBody = await this.readBody(req);
+      let parsed: unknown;
+      try {
+        parsed = rawBody.length ? JSON.parse(rawBody) : {};
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON in request body' }));
+        return;
+      }
+
+      const originalModel =
+        isRecord(parsed) && typeof parsed.model === 'string' ? parsed.model : null;
+
+      // Support "model aliases" like `gpt-5.2-codex-xhigh` by translating to:
+      // - upstream model: `gpt-5.2-codex`
+      // - reasoning.effort: `xhigh`
+      //
+      // This allows tier→effort mapping without inventing upstream model IDs.
+      const suffixParsed = originalModel ? parseModelEffortSuffix(originalModel) : null;
+      const upstreamModel = suffixParsed?.upstreamModel ?? originalModel;
+      const effort =
+        suffixParsed?.effort ??
+        getEffortForModel(originalModel, this.modelEffort, this.config.defaultEffort);
+
+      const withUpstreamModel =
+        upstreamModel && isRecord(parsed) ? { ...parsed, model: upstreamModel } : parsed;
+      const rewritten = injectReasoningEffortIntoBody(withUpstreamModel, effort);
+
+      this.record(originalModel, upstreamModel, effort, requestPath);
+      this.trace(
+        `[${new Date().toISOString()}] model=${originalModel ?? 'null'} upstreamModel=${
+          upstreamModel ?? 'null'
+        } effort=${effort} path=${requestPath}`
+      );
+
+      await this.forwardJson(req, res, fullUpstreamUrl, rewritten);
+    } catch (error) {
+      const err = error as Error;
+      if (!res.headersSent) {
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+      }
+      res.end(JSON.stringify({ error: err.message }));
+    }
+  }
+
+  private buildForwardHeaders(
+    originalHeaders: http.IncomingHttpHeaders,
+    bodyString?: string
+  ): http.OutgoingHttpHeaders {
+    const headers: http.OutgoingHttpHeaders = {};
+
+    for (const [key, value] of Object.entries(originalHeaders)) {
+      if (!value) continue;
+      const lower = key.toLowerCase();
+      if (lower === 'host' || lower === 'content-length') continue;
+      headers[key] = value;
+    }
+
+    if (bodyString !== undefined) {
+      headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+      headers['Content-Length'] = Buffer.byteLength(bodyString);
+    }
+
+    return headers;
+  }
+
+  private forwardRaw(
+    originalReq: http.IncomingMessage,
+    clientRes: http.ServerResponse,
+    upstreamUrl: URL
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const upstreamReq = http.request(
+        {
+          protocol: upstreamUrl.protocol,
+          hostname: upstreamUrl.hostname,
+          port: upstreamUrl.port,
+          path: upstreamUrl.pathname + upstreamUrl.search,
+          method: originalReq.method,
+          timeout: this.config.timeoutMs,
+          headers: this.buildForwardHeaders(originalReq.headers),
+        },
+        (upstreamRes) => {
+          clientRes.writeHead(upstreamRes.statusCode || 200, upstreamRes.headers);
+          upstreamRes.pipe(clientRes);
+          upstreamRes.on('end', () => resolve());
+          upstreamRes.on('error', reject);
+        }
+      );
+
+      upstreamReq.on('timeout', () => upstreamReq.destroy(new Error('Upstream request timeout')));
+      upstreamReq.on('error', reject);
+      originalReq.pipe(upstreamReq);
+    });
+  }
+
+  private forwardJson(
+    originalReq: http.IncomingMessage,
+    clientRes: http.ServerResponse,
+    upstreamUrl: URL,
+    body: unknown
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const bodyString = JSON.stringify(body);
+      const upstreamReq = http.request(
+        {
+          protocol: upstreamUrl.protocol,
+          hostname: upstreamUrl.hostname,
+          port: upstreamUrl.port,
+          path: upstreamUrl.pathname + upstreamUrl.search,
+          method: originalReq.method,
+          timeout: this.config.timeoutMs,
+          headers: this.buildForwardHeaders(originalReq.headers, bodyString),
+        },
+        (upstreamRes) => {
+          clientRes.writeHead(upstreamRes.statusCode || 200, upstreamRes.headers);
+          upstreamRes.pipe(clientRes);
+          upstreamRes.on('end', () => resolve());
+          upstreamRes.on('error', reject);
+        }
+      );
+
+      upstreamReq.on('timeout', () => upstreamReq.destroy(new Error('Upstream request timeout')));
+      upstreamReq.on('error', reject);
+      upstreamReq.write(bodyString);
+      upstreamReq.end();
+    });
+  }
+}

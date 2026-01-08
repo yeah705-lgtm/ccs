@@ -35,6 +35,7 @@ import { configureProviderModel, getCurrentModel } from './model-config';
 import { resolveProxyConfig, PROXY_CLI_FLAGS } from './proxy-config-resolver';
 import { getWebSearchHookEnv } from '../utils/websearch-manager';
 import { supportsModelConfig, isModelBroken, getModelIssueUrl, findModel } from './model-catalog';
+import { CodexReasoningProxy } from './codex-reasoning-proxy';
 import {
   findAccountByQuery,
   getProviderAccounts,
@@ -702,21 +703,74 @@ export async function execClaudeWithCLIProxy(
         cfg.customSettingsPath
       )
     : getEffectiveEnvVars(provider, cfg.port, cfg.customSettingsPath, remoteRewriteConfig);
+
+  // Codex-only: inject OpenAI reasoning effort based on tier model mapping.
+  // Maps by request.model:
+  // - OPUS/default model → xhigh
+  // - SONNET model → high
+  // - HAIKU model → medium
+  // - Unknown → medium
+  let codexReasoningProxy: CodexReasoningProxy | null = null;
+  let codexReasoningPort: number | null = null;
+  if (provider === 'codex' && envVars.ANTHROPIC_BASE_URL) {
+    try {
+      const traceEnabled =
+        process.env.CCS_CODEX_REASONING_TRACE === '1' ||
+        process.env.CCS_CODEX_REASONING_TRACE === 'true';
+      codexReasoningProxy = new CodexReasoningProxy({
+        upstreamBaseUrl: envVars.ANTHROPIC_BASE_URL,
+        verbose,
+        defaultEffort: 'medium',
+        traceFilePath: traceEnabled
+          ? `${process.env.HOME || ''}/.ccs/codex-reasoning-proxy.log`
+          : '',
+        modelMap: {
+          defaultModel: envVars.ANTHROPIC_MODEL,
+          opusModel: envVars.ANTHROPIC_DEFAULT_OPUS_MODEL,
+          sonnetModel: envVars.ANTHROPIC_DEFAULT_SONNET_MODEL,
+          haikuModel: envVars.ANTHROPIC_DEFAULT_HAIKU_MODEL,
+        },
+      });
+      codexReasoningPort = await codexReasoningProxy.start();
+      log(
+        `Codex reasoning proxy active: http://127.0.0.1:${codexReasoningPort}/api/provider/codex`
+      );
+    } catch (error) {
+      const err = error as Error;
+      codexReasoningProxy = null;
+      codexReasoningPort = null;
+      if (verbose) {
+        console.error(warn(`Codex reasoning proxy disabled: ${err.message}`));
+      }
+    }
+  }
+
+  const effectiveEnvVars =
+    codexReasoningProxy && codexReasoningPort
+      ? {
+          ...envVars,
+          ANTHROPIC_BASE_URL: `http://127.0.0.1:${codexReasoningPort}/api/provider/codex`,
+        }
+      : envVars;
   const webSearchEnv = getWebSearchHookEnv();
   const env = {
     ...process.env,
-    ...envVars,
+    ...effectiveEnvVars,
     ...webSearchEnv,
     CCS_PROFILE_TYPE: 'cliproxy', // Signal to WebSearch hook this is a third-party provider
   };
 
-  log(`Claude env: ANTHROPIC_BASE_URL=${envVars.ANTHROPIC_BASE_URL}`);
-  log(`Claude env: ANTHROPIC_MODEL=${envVars.ANTHROPIC_MODEL}`);
+  log(`Claude env: ANTHROPIC_BASE_URL=${effectiveEnvVars.ANTHROPIC_BASE_URL}`);
+  log(`Claude env: ANTHROPIC_MODEL=${effectiveEnvVars.ANTHROPIC_MODEL}`);
   if (Object.keys(webSearchEnv).length > 0) {
     log(`Claude env: WebSearch config=${JSON.stringify(webSearchEnv)}`);
   }
   // Log global env vars for visibility
-  if (envVars.DISABLE_TELEMETRY || envVars.DISABLE_ERROR_REPORTING || envVars.DISABLE_BUG_COMMAND) {
+  if (
+    effectiveEnvVars.DISABLE_TELEMETRY ||
+    effectiveEnvVars.DISABLE_ERROR_REPORTING ||
+    effectiveEnvVars.DISABLE_BUG_COMMAND
+  ) {
     log(`Claude env: Global env applied (telemetry/reporting disabled)`);
   }
 
@@ -773,6 +827,10 @@ export async function execClaudeWithCLIProxy(
   claude.on('exit', (code, signal) => {
     log(`Claude exited: code=${code}, signal=${signal}`);
 
+    if (codexReasoningProxy) {
+      codexReasoningProxy.stop();
+    }
+
     // Unregister this session (proxy keeps running for persistence) - only for local mode
     if (sessionId) {
       unregisterSession(sessionId, sessionPort);
@@ -789,6 +847,10 @@ export async function execClaudeWithCLIProxy(
   claude.on('error', (error) => {
     console.error(fail(`Claude CLI error: ${error}`));
 
+    if (codexReasoningProxy) {
+      codexReasoningProxy.stop();
+    }
+
     // Unregister session, proxy keeps running (local mode only)
     if (sessionId) {
       unregisterSession(sessionId, sessionPort);
@@ -799,6 +861,10 @@ export async function execClaudeWithCLIProxy(
   // Handle parent process termination (SIGTERM, SIGINT)
   const cleanup = () => {
     log('Parent signal received, cleaning up');
+
+    if (codexReasoningProxy) {
+      codexReasoningProxy.stop();
+    }
 
     // Unregister session, proxy keeps running (local mode only)
     if (sessionId) {
