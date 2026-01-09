@@ -193,16 +193,9 @@ export class DelegationChecker implements IHealthChecker {
       return;
     }
 
-    // Check profile validity using DelegationValidator
+    // Check profile validity using DelegationValidator (dynamic discovery)
     const { DelegationValidator } = require('../../utils/delegation-validator');
-    const readyProfiles: string[] = [];
-
-    for (const profile of ['glm', 'kimi']) {
-      const validation = DelegationValidator.validate(profile);
-      if (validation.valid) {
-        readyProfiles.push(profile);
-      }
-    }
+    const readyProfiles = DelegationValidator.getReadyProfiles();
 
     if (readyProfiles.length === 0) {
       spinner.warn();
