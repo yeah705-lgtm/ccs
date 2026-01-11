@@ -127,6 +127,13 @@ jobs:
             End your review with:
             > 🤖 Reviewed by `${{ env.REVIEW_MODEL }}`
 
+            ## IMPORTANT: Posting the Review
+            After completing your analysis, you MUST post the review as a PR comment using:
+            ```
+            gh pr comment ${{ github.event.pull_request.number || github.event.issue.number || github.event.inputs.pr_number }} --body "<your review>"
+            ```
+            Use a heredoc for the body to handle multi-line content properly.
+
           claude_args: |
             --model ${{ env.REVIEW_MODEL }}
             --allowedTools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Glob,Grep"

@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
   Key,
@@ -85,6 +85,7 @@ const navGroups = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { state } = useSidebar();
 
   // Helper to check if a route is active (exact match)
@@ -118,8 +119,13 @@ export function AppSidebar() {
                         className="group/collapsible"
                       >
                         <SidebarMenuItem>
+                          {/* Click navigates to overview AND opens submenu */}
                           <CollapsibleTrigger asChild>
-                            <SidebarMenuButton tooltip={item.label}>
+                            <SidebarMenuButton
+                              tooltip={item.label}
+                              isActive={isParentActive(item.children)}
+                              onClick={() => navigate(item.path)}
+                            >
                               {item.icon && <item.icon className="w-4 h-4" />}
                               <span className="group-data-[collapsible=icon]:hidden">
                                 {item.label}
