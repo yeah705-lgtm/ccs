@@ -24,10 +24,26 @@ on:
         required: true
         type: string
 
-# Simple concurrency: one review per PR at a time
-# With track_progress disabled, no bot comments are posted during review
+# Smart concurrency: Prevents self-cancellation when bot posts review comment
+#
+# Problem: When the bot posts a review comment, GitHub fires an issue_comment event.
+# This new workflow run joins the same concurrency group and cancels the in-progress
+# run BEFORE job `if` conditions are evaluated - causing "operation was canceled" error.
+#
+# Solution: Non-actionable triggers (bot comments, comments without /review) get a
+# unique per-run group, while legitimate triggers share the PR-based group for proper
+# cancellation of outdated reviews.
 concurrency:
-  group: ai-review-${{ github.event.pull_request.number || github.event.issue.number || github.event.inputs.pr_number }}
+  group: >-
+    ai-review-${{
+      github.event_name == 'issue_comment' && (
+        github.event.comment.user.type == 'Bot' ||
+        !contains(github.event.comment.body, '/review')
+      ) && format('skip-{0}', github.run_id) ||
+      github.event.pull_request.number ||
+      github.event.issue.number ||
+      github.event.inputs.pr_number
+    }}
   cancel-in-progress: true
 
 jobs:
