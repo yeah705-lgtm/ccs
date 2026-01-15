@@ -6,6 +6,7 @@
  *
  * Account storage: ~/.ccs/cliproxy/accounts.json
  * Token storage: ~/.ccs/cliproxy/auth/ (flat structure, CLIProxyAPI discovers by type field)
+ * Paused tokens: ~/.ccs/cliproxy/auth-paused/ (sibling dir, outside CLIProxyAPI scan path)
  */
 
 import * as fs from 'fs';
@@ -138,9 +139,14 @@ export function getAccountsRegistryPath(): string {
 /**
  * Get path to paused tokens directory
  * Paused tokens are moved here so CLIProxyAPI won't discover them
+ *
+ * Uses sibling directory (auth-paused/) instead of subdirectory (auth/paused/)
+ * because CLIProxyAPI's watcher uses filepath.Walk() which recursively scans
+ * all subdirectories of auth/. A sibling directory is completely outside
+ * CLIProxyAPI's scan path, preventing token refresh loops.
  */
 export function getPausedDir(): string {
-  return path.join(getAuthDir(), 'paused');
+  return path.join(getCliproxyDir(), 'auth-paused');
 }
 
 /**
