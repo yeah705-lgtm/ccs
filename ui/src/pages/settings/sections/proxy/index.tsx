@@ -18,6 +18,7 @@ import {
   Box,
   AlertTriangle,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useProxyConfig, useRawConfig } from '../../hooks';
 import { LocalProxyCard } from './local-proxy-card';
 import { RemoteProxyCard } from './remote-proxy-card';
@@ -110,7 +111,7 @@ export default function ProxySection() {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save backend';
       // Check if error is due to proxy running (409 conflict)
       if (errorMessage.includes('Proxy is running')) {
-        console.warn('[Proxy] Backend change blocked: proxy is running');
+        toast.error('Stop the proxy first to change backend');
       }
       console.error('[Proxy] Failed to save backend:', err);
       setBackend(previousValue);

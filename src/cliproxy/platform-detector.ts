@@ -5,10 +5,13 @@
  * Supports 6 platforms: darwin/linux/windows x amd64/arm64
  */
 
-import { PlatformInfo, SupportedOS, SupportedArch, ArchiveExtension } from './types';
-
-// Phase 1 will add CLIProxyBackend type - using string literal temporarily
-type CLIProxyBackend = 'original' | 'plus';
+import {
+  PlatformInfo,
+  SupportedOS,
+  SupportedArch,
+  ArchiveExtension,
+  CLIProxyBackend,
+} from './types';
 
 /** Backend configuration */
 export const BACKEND_CONFIG = {

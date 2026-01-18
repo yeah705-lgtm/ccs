@@ -68,6 +68,7 @@ router.put('/', async (req: Request, res: Response) => {
 
 /**
  * GET /api/cliproxy-server/backend - Get CLIProxy backend setting
+ * @returns {{ backend: 'original' | 'plus' }} Current backend configuration
  */
 router.get('/backend', async (_req: Request, res: Response) => {
   try {
@@ -81,6 +82,12 @@ router.get('/backend', async (_req: Request, res: Response) => {
 
 /**
  * PUT /api/cliproxy-server/backend - Update CLIProxy backend setting
+ * @param {Object} req.body - Request body
+ * @param {'original' | 'plus'} req.body.backend - Backend to switch to
+ * @param {boolean} [req.body.force=false] - Force change even if proxy is running
+ * @returns {{ backend: 'original' | 'plus' }} Updated backend configuration
+ * @throws {400} Invalid backend value
+ * @throws {409} Proxy is running (unless force=true)
  */
 router.put('/backend', async (req: Request, res: Response) => {
   try {

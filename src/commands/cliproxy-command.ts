@@ -29,7 +29,7 @@ import {
 } from '../cliproxy/account-manager';
 import { fetchAllProviderQuotas } from '../cliproxy/quota-fetcher';
 import { isOnCooldown } from '../cliproxy/quota-manager';
-import { DEFAULT_BACKEND, CLIPROXY_FALLBACK_VERSION } from '../cliproxy/platform-detector';
+import { DEFAULT_BACKEND, getFallbackVersion, BACKEND_CONFIG } from '../cliproxy/platform-detector';
 import { CLIPROXY_PROFILES, CLIProxyProfileName } from '../auth/profile-detector';
 import { supportsModelConfig, getProviderCatalog, ModelEntry } from '../cliproxy/model-catalog';
 import { CLIProxyProvider, CLIProxyBackend } from '../cliproxy/types';
@@ -83,6 +83,7 @@ function parseBackendArg(args: string[]): {
     if (backendEqualsIdx !== -1) {
       const value = args[backendEqualsIdx].split('=')[1] as CLIProxyBackend;
       if (value !== 'original' && value !== 'plus') {
+        warn(`Invalid backend '${value}'. Valid options: original, plus`);
         return { backend: undefined, remainingArgs: args };
       }
       const remainingArgs = [...args];
@@ -93,6 +94,7 @@ function parseBackendArg(args: string[]): {
   }
   const value = args[backendIdx + 1];
   if (value !== 'original' && value !== 'plus') {
+    warn(`Invalid backend '${value}'. Valid options: original, plus`);
     return { backend: undefined, remainingArgs: args };
   }
   const remainingArgs = [...args];
@@ -642,9 +644,9 @@ async function showHelp(): Promise<void> {
   console.log(dim('  Note: CLIProxy now persists by default. Use "stop" to terminate.'));
   console.log('');
   console.log(subheader('Notes:'));
-  console.log(`  Default fallback version: ${color(CLIPROXY_FALLBACK_VERSION, 'info')}`);
+  console.log(`  Default fallback version: ${color(getFallbackVersion(), 'info')}`);
   console.log(
-    `  Releases: ${color('https://github.com/router-for-me/CLIProxyAPIPlus/releases', 'path')}`
+    `  Releases: ${color(`https://github.com/${BACKEND_CONFIG[DEFAULT_BACKEND].repo}/releases`, 'path')}`
   );
   console.log('');
 }
