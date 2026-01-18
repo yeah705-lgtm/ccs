@@ -1,3 +1,5 @@
+# CCS Dashboard Docker Compose
+# See docker/README.md for documentation
 services:
   ccs-dashboard:
     image: ccs-dashboard:latest
@@ -26,13 +28,26 @@ services:
       - ccs_home:/home/node/.ccs
       - claude_home:/home/node/.claude
       - opencode_home:/home/node/.opencode
+      - grok_home:/home/node/.grok-cli
+    # Healthcheck uses internal ports (3000/8317) which are fixed
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS --max-time 2 http://localhost:3000/ >/dev/null && curl -sS --max-time 2 http://127.0.0.1:8317/ >/dev/null"]
       interval: 10s
       timeout: 3s
       retries: 12
+      start_period: 30s
+    # Resource limits (adjust based on workload)
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
 
 volumes:
   ccs_home:
   claude_home:
   opencode_home:
+  grok_home:

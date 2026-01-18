@@ -93,7 +93,83 @@ docker-compose -f docker/docker-compose.yml down
 
 - CCS stores data in `/home/node/.ccs` inside the container.
 - The examples use a named volume (`ccs_home`) to persist that data.
-- Compose also persists `/home/node/.claude` and `/home/node/.opencode` via named volumes.
+- Compose also persists `/home/node/.claude`, `/home/node/.opencode`, and `/home/node/.grok-cli` via named volumes.
+
+## Resource Limits
+
+For production deployments, limit container resources:
+
+```bash
+docker run -d \
+  --name ccs-dashboard \
+  --restart unless-stopped \
+  --memory=1g \
+  --cpus=2 \
+  -p 3000:3000 \
+  -p 8317:8317 \
+  -v ccs_home:/home/node/.ccs \
+  ccs-dashboard:latest
+```
+
+Docker Compose includes default limits (1GB RAM, 2 CPUs). Adjust in `docker-compose.yml` under `deploy.resources`.
+
+## Graceful Shutdown
+
+CCS handles `SIGTERM` gracefully. When stopping the container:
+
+```bash
+docker stop ccs-dashboard        # Sends SIGTERM, waits 10s, then SIGKILL
+docker stop -t 30 ccs-dashboard  # Wait 30s for graceful shutdown
+```
+
+The `init: true` in docker-compose.yml ensures proper signal forwarding.
+
+## Troubleshooting
+
+### Permission Errors (EACCES)
+
+If you see permission errors on startup:
+
+```bash
+# Check volume permissions
+docker exec ccs-dashboard ls -la /home/node/.ccs
+
+# Fix by recreating volumes
+docker-compose down -v
+docker-compose up -d
+```
+
+### Port Already in Use
+
+```bash
+# Check what's using the port
+lsof -i :3000
+lsof -i :8317
+
+# Use different ports
+docker run -p 4000:3000 -p 9317:8317 ...
+
+# Or with compose
+CCS_DASHBOARD_PORT=4000 CCS_CLIPROXY_PORT=9317 docker-compose up -d
+```
+
+### Container Keeps Restarting
+
+```bash
+# Check logs for errors
+docker logs ccs-dashboard --tail 50
+
+# Check container health
+docker inspect ccs-dashboard --format='{{.State.Health.Status}}'
+```
+
+### Debug Mode
+
+Enable verbose logging:
+
+```bash
+docker run -e CCS_DEBUG=1 ...
+```
 
 ## Examples: Claude + Gemini inside Docker
 
@@ -121,3 +197,9 @@ If you need to configure credentials, do it according to each CLI's docs:
 docker exec -it ccs-dashboard claude --help
 docker exec -it ccs-dashboard gemini --help
 ```
+
+## Security Notes
+
+- **Secrets**: For sensitive values like `CCS_PROXY_AUTH_TOKEN`, consider using Docker secrets or a `.env` file (not committed to git).
+- **Network**: The container exposes ports 3000 and 8317. In production, use a reverse proxy (nginx, traefik) with TLS.
+- **Updates**: Regularly rebuild the image to get security patches: `docker-compose build --pull`
