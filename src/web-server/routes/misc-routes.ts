@@ -19,6 +19,7 @@ import {
   THINKING_BUDGET_MIN,
   THINKING_BUDGET_MAX,
   VALID_THINKING_LEVELS,
+  VALID_THINKING_TIERS,
   THINKING_OFF_VALUES,
 } from '../../cliproxy';
 import { validateFilePath } from './route-helpers';
@@ -326,9 +327,17 @@ router.put('/thinking', (req: Request, res: Response): void => {
 
     // Validate tier_defaults if provided
     if (updates.tier_defaults !== undefined) {
+      if (
+        typeof updates.tier_defaults !== 'object' ||
+        updates.tier_defaults === null ||
+        Array.isArray(updates.tier_defaults)
+      ) {
+        res.status(400).json({ error: 'Invalid tier_defaults: must be an object' });
+        return;
+      }
       const validLevels = [...VALID_THINKING_LEVELS] as string[];
       for (const [tier, level] of Object.entries(updates.tier_defaults)) {
-        if (!['opus', 'sonnet', 'haiku'].includes(tier)) {
+        if (!(VALID_THINKING_TIERS as readonly string[]).includes(tier)) {
           res.status(400).json({ error: `Invalid tier: ${tier}` });
           return;
         }
@@ -352,7 +361,7 @@ router.put('/thinking', (req: Request, res: Response): void => {
         return;
       }
       const validLevels = [...VALID_THINKING_LEVELS] as string[];
-      const validTiers = ['opus', 'sonnet', 'haiku'];
+      const validTiers = [...VALID_THINKING_TIERS] as string[];
       for (const [provider, tierOverrides] of Object.entries(updates.provider_overrides)) {
         if (typeof provider !== 'string' || provider.trim() === '') {
           res

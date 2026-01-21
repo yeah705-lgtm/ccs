@@ -58,6 +58,12 @@ export const VALID_THINKING_LEVELS = ['minimal', 'low', 'medium', 'high', 'xhigh
 export type ThinkingLevel = (typeof VALID_THINKING_LEVELS)[number];
 
 /**
+ * Valid tier names for tier_defaults configuration
+ */
+export const VALID_THINKING_TIERS = ['opus', 'sonnet', 'haiku'] as const;
+export type ThinkingTier = (typeof VALID_THINKING_TIERS)[number];
+
+/**
  * Cap a level at the model's maximum supported level.
  * Returns the capped level and whether capping occurred.
  */
