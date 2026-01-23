@@ -32,7 +32,7 @@ export class ResponseBuilder {
           type: 'message',
           role: accumulator.getRole(),
           content: [],
-          model: accumulator.getModel() || 'glm-4.6',
+          model: accumulator.getModel() || 'glm-4.7',
           stop_reason: null,
           usage: {
             input_tokens: accumulator.getInputTokens(),

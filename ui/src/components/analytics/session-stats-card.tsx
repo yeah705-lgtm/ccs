@@ -13,6 +13,7 @@ import type { PaginatedSessions } from '@/hooks/use-usage';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { usePrivacy, PRIVACY_BLUR_CLASS } from '@/contexts/privacy-context';
+import { getProjectDisplayName } from './project-name-utils';
 
 interface SessionStatsCardProps {
   data: PaginatedSessions | undefined;
@@ -131,7 +132,7 @@ export function SessionStatsCard({ data, isLoading, className }: SessionStatsCar
               >
                 <div className="flex flex-col min-w-0 flex-1">
                   <span className="font-medium truncate" title={session.projectPath}>
-                    {session.projectPath.split('/').pop()}
+                    {getProjectDisplayName(session.projectPath)}
                   </span>
                   <span className="text-[10px] text-muted-foreground">
                     {formatDistanceToNow(new Date(session.lastActivity), { addSuffix: true })}

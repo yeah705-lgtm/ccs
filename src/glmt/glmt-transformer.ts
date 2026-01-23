@@ -113,7 +113,7 @@ export class GlmtTransformer {
         type: 'message',
         role: 'assistant',
         content,
-        model: openaiResponse.model || 'glm-4.6',
+        model: openaiResponse.model || 'glm-4.7',
         stop_reason: this.responseBuilder.mapStopReason(choice.finish_reason || 'stop'),
         usage: {
           input_tokens: openaiResponse.usage?.prompt_tokens || 0,
@@ -131,7 +131,7 @@ export class GlmtTransformer {
         type: 'message',
         role: 'assistant',
         content: [{ type: 'text', text: '[Transformation Error] ' + err.message }],
-        model: 'glm-4.6',
+        model: 'glm-4.7',
         stop_reason: 'end_turn',
         usage: { input_tokens: 0, output_tokens: 0 },
       };

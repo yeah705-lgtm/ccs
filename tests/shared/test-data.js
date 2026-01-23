@@ -35,10 +35,10 @@ module.exports = {
     env: {
       ANTHROPIC_BASE_URL: "https://api.z.ai/api/anthropic",
       ANTHROPIC_AUTH_TOKEN: "your_api_key_here",
-      ANTHROPIC_MODEL: "glm-4.6",
-      ANTHROPIC_DEFAULT_OPUS_MODEL: "glm-4.6",
-      ANTHROPIC_DEFAULT_SONNET_MODEL: "glm-4.6",
-      ANTHROPIC_DEFAULT_HAIKU_MODEL: "glm-4.6"
+      ANTHROPIC_MODEL: "glm-4.7",
+      ANTHROPIC_DEFAULT_OPUS_MODEL: "glm-4.7",
+      ANTHROPIC_DEFAULT_SONNET_MODEL: "glm-4.7",
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: "glm-4.7"
     }
   },
 
