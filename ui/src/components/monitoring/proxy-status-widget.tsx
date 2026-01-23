@@ -46,7 +46,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useIsMutating } from '@tanstack/react-query';
 import { api, type CliproxyServerConfig } from '@/lib/api-client';
 import {
   useProxyStatus,
@@ -167,6 +167,9 @@ export function ProxyStatusWidget() {
     staleTime: 30000, // 30 seconds
   });
 
+  // Detect if backend switch is in progress (prevents race condition)
+  const isBackendSwitching = useIsMutating({ mutationKey: ['update-backend'] }) > 0;
+
   // Determine if remote mode is enabled
   const remoteConfig = cliproxyConfig?.remote;
   const isRemoteMode = remoteConfig?.enabled && remoteConfig?.host;
@@ -176,7 +179,8 @@ export function ProxyStatusWidget() {
     startProxy.isPending ||
     stopProxy.isPending ||
     restartProxy.isPending ||
-    installVersion.isPending;
+    installVersion.isPending ||
+    isBackendSwitching;
   const hasUpdate = updateCheck?.hasUpdate ?? false;
   const isUnstable = updateCheck?.isStable === false;
   const currentVersion = updateCheck?.currentVersion;

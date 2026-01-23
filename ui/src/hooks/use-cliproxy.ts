@@ -349,6 +349,7 @@ export function useUpdateBackend() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: ['update-backend'], // Used by ProxyStatusWidget to detect backend switching
     mutationFn: ({ backend, force = false }: { backend: 'original' | 'plus'; force?: boolean }) =>
       api.cliproxyServer.updateBackend(backend, force),
     onSuccess: () => {
@@ -378,8 +379,8 @@ export function useCliproxyVersions() {
   return useQuery({
     queryKey: ['cliproxy-versions'],
     queryFn: () => api.cliproxy.versions(),
-    staleTime: 60 * 60 * 1000, // 1 hour (matches backend cache)
-    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes (reduced for faster backend switch response)
+    refetchOnWindowFocus: true, // Refetch on focus to catch backend changes
   });
 }
 
