@@ -323,7 +323,7 @@ export default function ProxySection() {
               <Alert className="py-2 border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-900/20">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-700 dark:text-amber-400">
-                  Stop the running proxy above to switch backend binary.
+                  Stop the running proxy in Instance Status to switch backend.
                 </AlertDescription>
               </Alert>
             )}
