@@ -724,12 +724,13 @@ export async function execClaudeWithCLIProxy(
         await waitForProxyReady(cfg.port, cfg.timeout, cfg.pollInterval);
         readySpinner.succeed(`CLIProxy ready on port ${cfg.port}`);
       } catch (error) {
-        readySpinner.fail('CLIProxy Plus startup failed');
+        const backendLabel = backend === 'plus' ? 'CLIProxy Plus' : 'CLIProxy';
+        readySpinner.fail(`${backendLabel} startup failed`);
         proxy.kill('SIGTERM');
 
         const err = error as Error;
         console.error('');
-        console.error(fail('CLIProxy Plus failed to start'));
+        console.error(fail(`${backendLabel} failed to start`));
         console.error('');
         console.error('Possible causes:');
         console.error(`  1. Port ${cfg.port} already in use`);

@@ -281,11 +281,18 @@ export async function ensureCliproxyService(
         proxyProcess = null;
       }
 
+      // Get backend label for error message
+      const { loadOrCreateUnifiedConfig } = await import('../config/unified-config-loader');
+      const { DEFAULT_BACKEND } = await import('./platform-detector');
+      const config = loadOrCreateUnifiedConfig();
+      const backendLabel =
+        (config.cliproxy?.backend ?? DEFAULT_BACKEND) === 'plus' ? 'CLIProxy Plus' : 'CLIProxy';
+
       return {
         started: false,
         alreadyRunning: false,
         port,
-        error: `CLIProxy Plus failed to start within 5s on port ${port}`,
+        error: `${backendLabel} failed to start within 5s on port ${port}`,
       };
     }
 
