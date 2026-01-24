@@ -6,8 +6,6 @@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,10 +23,10 @@ import {
   CheckCircle2,
   HelpCircle,
   Pause,
+  Play,
   AlertCircle,
   AlertTriangle,
   FolderCode,
-  Radio,
 } from 'lucide-react';
 import {
   cn,
@@ -95,15 +93,10 @@ export function AccountItem({
   onSetDefault,
   onRemove,
   onPauseToggle,
-  onSoloMode,
   isRemoving,
   isPausingAccount,
-  isSoloingAccount,
   privacyMode,
   showQuota,
-  selectable,
-  selected,
-  onSelectChange,
 }: AccountItemProps) {
   // Fetch runtime stats to get actual lastUsedAt (more accurate than file state)
   const { data: stats } = useCliproxyStats(showQuota);
@@ -131,18 +124,37 @@ export function AccountItem({
       className={cn(
         'flex flex-col gap-2 p-3 rounded-lg border transition-colors',
         account.isDefault ? 'border-primary/30 bg-primary/5' : 'border-border hover:bg-muted/30',
-        account.paused && 'opacity-50 border-muted'
+        account.paused && 'opacity-75'
       )}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {/* Multi-select checkbox */}
-          {selectable && (
-            <Checkbox
-              checked={selected}
-              onCheckedChange={(checked) => onSelectChange?.(!!checked)}
-              aria-label={`Select ${account.email || account.id}`}
-            />
+          {/* Pause/Resume toggle button - visible left of avatar */}
+          {onPauseToggle && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0"
+                    onClick={() => onPauseToggle(!account.paused)}
+                    disabled={isPausingAccount}
+                  >
+                    {isPausingAccount ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : account.paused ? (
+                      <Play className="w-4 h-4 text-emerald-500" />
+                    ) : (
+                      <Pause className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  {account.paused ? 'Resume account' : 'Pause account'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
           <div
             className={cn(
@@ -242,80 +254,47 @@ export function AccountItem({
           </div>
         </div>
 
-        {/* Inline controls: Solo button + Toggle switch */}
-        <div className="flex items-center gap-1.5">
-          {/* Solo mode button */}
-          {onSoloMode && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={onSoloMode}
-                    disabled={isSoloingAccount || account.paused}
-                    aria-label="Activate only this account"
-                  >
-                    {isSoloingAccount ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Radio className="h-3.5 w-3.5" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Activate only this account</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-
-          {/* Pause/Resume toggle switch */}
-          {onPauseToggle && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>
-                    <Switch
-                      checked={!account.paused}
-                      onCheckedChange={(checked) => onPauseToggle(!checked)}
-                      disabled={isPausingAccount}
-                      aria-label={account.paused ? 'Resume account' : 'Pause account'}
-                      className="scale-90"
-                    />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {account.paused ? 'Resume account' : 'Pause account'}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-
-          {/* Dropdown menu for other actions */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7">
-                <MoreHorizontal className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {!account.isDefault && (
-                <DropdownMenuItem onClick={onSetDefault}>
-                  <Star className="w-4 h-4 mr-2" />
-                  Set as default
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={onRemove}
-                disabled={isRemoving}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                {isRemoving ? 'Removing...' : 'Remove account'}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7">
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {!account.isDefault && (
+              <DropdownMenuItem onClick={onSetDefault}>
+                <Star className="w-4 h-4 mr-2" />
+                Set as default
               </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+            )}
+            {onPauseToggle && (
+              <DropdownMenuItem
+                onClick={() => onPauseToggle(!account.paused)}
+                disabled={isPausingAccount}
+              >
+                {account.paused ? (
+                  <>
+                    <Play className="w-4 h-4 mr-2" />
+                    {isPausingAccount ? 'Resuming...' : 'Resume account'}
+                  </>
+                ) : (
+                  <>
+                    <Pause className="w-4 h-4 mr-2" />
+                    {isPausingAccount ? 'Pausing...' : 'Pause account'}
+                  </>
+                )}
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={onRemove}
+              disabled={isRemoving}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              {isRemoving ? 'Removing...' : 'Remove account'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Quota bar - supports all providers with quota API */}
