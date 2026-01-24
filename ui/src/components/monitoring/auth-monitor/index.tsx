@@ -9,6 +9,7 @@ import { STATUS_COLORS } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AccountFlowViz } from '@/components/account-flow-viz';
 import { usePrivacy } from '@/contexts/privacy-context';
+import { usePauseAccount, useResumeAccount, useSoloAccount } from '@/hooks/use-cliproxy';
 import { Activity, CheckCircle2, XCircle, Radio } from 'lucide-react';
 
 import { useAuthMonitorData } from './hooks';
@@ -33,10 +34,29 @@ export function AuthMonitor() {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [hoveredProvider, setHoveredProvider] = useState<string | null>(null);
 
+  // Account control mutations
+  const pauseMutation = usePauseAccount();
+  const resumeMutation = useResumeAccount();
+  const soloMutation = useSoloAccount();
+
   // Get selected provider data for detail view
   const selectedProviderData = selectedProvider
     ? providerStats.find((ps) => ps.provider === selectedProvider)
     : null;
+
+  const handlePauseToggle = (provider: string, accountId: string, paused: boolean) => {
+    if (pauseMutation.isPending || resumeMutation.isPending) return;
+    if (paused) {
+      pauseMutation.mutate({ provider, accountId });
+    } else {
+      resumeMutation.mutate({ provider, accountId });
+    }
+  };
+
+  const handleSoloMode = (provider: string, accountId: string) => {
+    if (soloMutation.isPending) return;
+    soloMutation.mutate({ provider, accountId });
+  };
 
   if (isLoading) {
     return (
@@ -137,6 +157,12 @@ export function AuthMonitor() {
                   onSelect={() => setSelectedProvider(ps.provider)}
                   onMouseEnter={() => setHoveredProvider(ps.provider)}
                   onMouseLeave={() => setHoveredProvider(null)}
+                  onPauseToggle={(accountId, paused) =>
+                    handlePauseToggle(ps.provider, accountId, paused)
+                  }
+                  onSoloMode={(accountId) => handleSoloMode(ps.provider, accountId)}
+                  isPausingAccount={pauseMutation.isPending || resumeMutation.isPending}
+                  isSoloingAccount={soloMutation.isPending}
                 />
               ))}
             </div>

@@ -14,6 +14,8 @@ export interface AccountRow {
   color: string;
   /** GCP Project ID (Antigravity only) - read-only */
   projectId?: string;
+  /** Whether account is paused (skipped in quota rotation) */
+  paused?: boolean;
 }
 
 export interface ProviderStats {

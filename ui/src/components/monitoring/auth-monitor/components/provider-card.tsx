@@ -1,9 +1,11 @@
 /**
- * ProviderCard - Provider status card with account color dots and stats
+ * ProviderCard - Provider status card with expandable account controls
+ * Click to expand and show individual account toggle/solo buttons
  */
 
 import type React from 'react';
-import { ChevronRight, AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronRight, ChevronDown, AlertTriangle } from 'lucide-react';
 import { cn, STATUS_COLORS } from '@/lib/utils';
 import { PROVIDER_COLORS } from '@/lib/provider-config';
 import { ProviderIcon } from '@/components/shared/provider-icon';
@@ -11,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { ProviderStats } from '../types';
 import { getSuccessRate, cleanEmail } from '../utils';
 import { InlineStatsBadge } from './inline-stats-badge';
+import { ExpandableAccountList } from './expandable-account-list';
 
 interface ProviderCardProps {
   stats: ProviderStats;
@@ -19,6 +22,10 @@ interface ProviderCardProps {
   onSelect: () => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
+  onPauseToggle?: (accountId: string, paused: boolean) => void;
+  onSoloMode?: (accountId: string) => void;
+  isPausingAccount?: boolean;
+  isSoloingAccount?: boolean;
 }
 
 export function ProviderCard({
@@ -28,15 +35,32 @@ export function ProviderCard({
   onSelect,
   onMouseEnter,
   onMouseLeave,
+  onPauseToggle,
+  onSoloMode,
+  isPausingAccount,
+  isSoloingAccount,
 }: ProviderCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const successRate = getSuccessRate(stats.successCount, stats.failureCount);
   const providerColor = PROVIDER_COLORS[stats.provider.toLowerCase()] || '#6b7280';
 
+  // Only expandable if account control callbacks are provided
+  const isExpandable = !!(onPauseToggle && onSoloMode);
+
+  const handleClick = () => {
+    if (isExpandable) {
+      setIsExpanded(!isExpanded);
+    } else {
+      onSelect();
+    }
+  };
+
   return (
     <button
-      onClick={onSelect}
+      onClick={handleClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      aria-expanded={isExpandable ? isExpanded : undefined}
       className={cn(
         'group relative rounded-xl p-4 text-left transition-all duration-300',
         'bg-muted/30 dark:bg-zinc-900/60 backdrop-blur-sm',
@@ -61,12 +85,25 @@ export function ProviderCard({
             {stats.accountCount} account{stats.accountCount !== 1 ? 's' : ''}
           </p>
         </div>
-        <ChevronRight
-          className={cn(
-            'w-4 h-4 ml-auto text-muted-foreground transition-all',
-            isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'
-          )}
-        />
+        {isExpandable ? (
+          isExpanded ? (
+            <ChevronDown className="w-4 h-4 ml-auto text-muted-foreground" />
+          ) : (
+            <ChevronRight
+              className={cn(
+                'w-4 h-4 ml-auto text-muted-foreground transition-all',
+                isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'
+              )}
+            />
+          )
+        ) : (
+          <ChevronRight
+            className={cn(
+              'w-4 h-4 ml-auto text-muted-foreground transition-all',
+              isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'
+            )}
+          />
+        )}
       </div>
 
       <div className="space-y-2">
@@ -104,40 +141,61 @@ export function ProviderCard({
       </div>
 
       {/* Account color dots with warning for agy accounts missing projectId */}
-      <div className="flex gap-1 mt-3 items-center">
-        {stats.accounts.slice(0, 5).map((acc) => {
-          const isMissingProjectId = stats.provider === 'agy' && !acc.projectId;
-          return (
-            <div key={acc.id} className="relative">
-              <div
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: acc.color }}
-                title={privacyMode ? '••••••' : cleanEmail(acc.email)}
-              />
-              {isMissingProjectId && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <AlertTriangle
-                        className="absolute -top-1 -right-1 w-2.5 h-2.5 text-amber-500"
-                        aria-label="Missing Project ID"
-                      />
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-xs">
-                      Missing Project ID - re-add account to fix
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
-          );
-        })}
-        {stats.accounts.length > 5 && (
-          <span className="text-[10px] text-muted-foreground ml-1">
-            +{stats.accounts.length - 5}
-          </span>
-        )}
-      </div>
+      {!isExpanded && (
+        <div className="flex gap-1 mt-3 items-center">
+          {stats.accounts.slice(0, 5).map((acc) => {
+            const isMissingProjectId = stats.provider === 'agy' && !acc.projectId;
+            return (
+              <div key={acc.id} className="relative">
+                <div
+                  className={cn('w-2 h-2 rounded-full', acc.paused && 'opacity-50')}
+                  style={{ backgroundColor: acc.color }}
+                  title={privacyMode ? '••••••' : cleanEmail(acc.email)}
+                />
+                {isMissingProjectId && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <AlertTriangle
+                          className="absolute -top-1 -right-1 w-2.5 h-2.5 text-amber-500"
+                          aria-label="Missing Project ID"
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs">
+                        Missing Project ID - re-add account to fix
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
+            );
+          })}
+          {stats.accounts.length > 5 && (
+            <span className="text-[10px] text-muted-foreground ml-1">
+              +{stats.accounts.length - 5}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Expandable account list */}
+      {isExpandable && (
+        <div
+          className={cn(
+            'overflow-hidden transition-all duration-200',
+            isExpanded ? 'max-h-96' : 'max-h-0'
+          )}
+        >
+          <ExpandableAccountList
+            accounts={stats.accounts}
+            privacyMode={privacyMode}
+            onPauseToggle={onPauseToggle}
+            onSoloMode={onSoloMode}
+            isPausingAccount={isPausingAccount}
+            isSoloingAccount={isSoloingAccount}
+          />
+        </div>
+      )}
     </button>
   );
 }
