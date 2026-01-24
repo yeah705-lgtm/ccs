@@ -31,9 +31,21 @@ export interface ProviderEditorProps {
   onSetDefault: (accountId: string) => void;
   onRemoveAccount: (accountId: string) => void;
   onPauseToggle?: (accountId: string, paused: boolean) => void;
+  /** Solo mode: activate one account, pause all others */
+  onSoloMode?: (accountId: string) => void;
+  /** Bulk pause multiple accounts */
+  onBulkPause?: (accountIds: string[]) => void;
+  /** Bulk resume multiple accounts */
+  onBulkResume?: (accountIds: string[]) => void;
   isRemovingAccount?: boolean;
   /** Pause/resume mutation in progress */
   isPausingAccount?: boolean;
+  /** Solo mode mutation in progress */
+  isSoloingAccount?: boolean;
+  /** Bulk pause mutation in progress */
+  isBulkPausing?: boolean;
+  /** Bulk resume mutation in progress */
+  isBulkResuming?: boolean;
 }
 
 export interface AccountItemProps {
@@ -41,12 +53,22 @@ export interface AccountItemProps {
   onSetDefault: () => void;
   onRemove: () => void;
   onPauseToggle?: (paused: boolean) => void;
+  /** Solo mode: activate this account, pause all others */
+  onSoloMode?: () => void;
   isRemoving?: boolean;
   /** Pause/resume mutation in progress */
   isPausingAccount?: boolean;
+  /** Solo mode mutation in progress */
+  isSoloingAccount?: boolean;
   privacyMode?: boolean;
   /** Show quota bar (only for 'agy' provider) */
   showQuota?: boolean;
+  /** Enable checkbox for multi-select */
+  selectable?: boolean;
+  /** Whether this account is currently selected */
+  selected?: boolean;
+  /** Called when checkbox is toggled */
+  onSelectChange?: (selected: boolean) => void;
 }
 
 export interface ModelMappingValues {

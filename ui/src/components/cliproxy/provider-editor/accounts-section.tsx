@@ -1,13 +1,16 @@
 /**
  * Accounts Section Component
- * Manages connected OAuth accounts for a provider
+ * Manages connected OAuth accounts for a provider with multi-select bulk actions
  */
 
+import { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { User, Plus, Globe } from 'lucide-react';
 import { AccountItem } from './account-item';
+import { BulkActionBar } from './bulk-action-bar';
 import type { OAuthAccount } from '@/lib/api-client';
 
 interface AccountsSectionProps {
@@ -16,9 +19,21 @@ interface AccountsSectionProps {
   onSetDefault: (accountId: string) => void;
   onRemoveAccount: (accountId: string) => void;
   onPauseToggle?: (accountId: string, paused: boolean) => void;
+  /** Solo mode: activate one account, pause all others */
+  onSoloMode?: (accountId: string) => void;
+  /** Bulk pause multiple accounts */
+  onBulkPause?: (accountIds: string[]) => void;
+  /** Bulk resume multiple accounts */
+  onBulkResume?: (accountIds: string[]) => void;
   isRemovingAccount?: boolean;
   /** Pause/resume mutation in progress */
   isPausingAccount?: boolean;
+  /** Solo mode mutation in progress */
+  isSoloingAccount?: boolean;
+  /** Bulk pause mutation in progress */
+  isBulkPausing?: boolean;
+  /** Bulk resume mutation in progress */
+  isBulkResuming?: boolean;
   privacyMode?: boolean;
   /** Show quota bars for accounts (only applicable for 'agy' provider) */
   showQuota?: boolean;
@@ -35,8 +50,14 @@ export function AccountsSection({
   onSetDefault,
   onRemoveAccount,
   onPauseToggle,
+  onSoloMode,
+  onBulkPause,
+  onBulkResume,
   isRemovingAccount,
   isPausingAccount,
+  isSoloingAccount,
+  isBulkPausing,
+  isBulkResuming,
   privacyMode,
   showQuota,
   isKiro,
@@ -44,10 +65,80 @@ export function AccountsSection({
   onKiroNoIncognitoChange,
   kiroSettingsLoading,
 }: AccountsSectionProps) {
+  // Multi-select state - raw selection (may contain stale IDs)
+  const [rawSelectedIds, setRawSelectedIds] = useState<Set<string>>(new Set());
+
+  // Derive valid selections by filtering out stale IDs
+  const accountIds = useMemo(() => new Set(accounts.map((a) => a.id)), [accounts]);
+  const selectedIds = useMemo(
+    () => new Set([...rawSelectedIds].filter((id) => accountIds.has(id))),
+    [rawSelectedIds, accountIds]
+  );
+
+  // Enable multi-select when bulk actions are available
+  const isSelectable = !!(onBulkPause && onBulkResume);
+
+  // Computed selection state
+  const selectedCount = selectedIds.size;
+  const allSelected = accounts.length > 0 && selectedIds.size === accounts.length;
+  const someSelected = selectedIds.size > 0 && selectedIds.size < accounts.length;
+
+  // Selection handlers
+  const toggleSelect = useCallback((id: string) => {
+    setRawSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    setRawSelectedIds(new Set(accounts.map((a) => a.id)));
+  }, [accounts]);
+
+  const deselectAll = useCallback(() => {
+    setRawSelectedIds(new Set());
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (allSelected) {
+      deselectAll();
+    } else {
+      selectAll();
+    }
+  }, [allSelected, selectAll, deselectAll]);
+
+  // Bulk action handlers
+  const handleBulkPause = useCallback(() => {
+    if (onBulkPause && selectedIds.size > 0) {
+      onBulkPause(Array.from(selectedIds));
+      // Clear selection after action (will be invalidated by mutation success)
+      setRawSelectedIds(new Set());
+    }
+  }, [onBulkPause, selectedIds]);
+
+  const handleBulkResume = useCallback(() => {
+    if (onBulkResume && selectedIds.size > 0) {
+      onBulkResume(Array.from(selectedIds));
+      setRawSelectedIds(new Set());
+    }
+  }, [onBulkResume, selectedIds]);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-medium flex items-center gap-2">
+          {/* Select All checkbox */}
+          {isSelectable && accounts.length > 0 && (
+            <Checkbox
+              checked={allSelected}
+              onCheckedChange={toggleSelectAll}
+              aria-label="Select all accounts"
+              className={someSelected ? 'data-[state=checked]:bg-primary/50' : ''}
+              {...(someSelected ? { 'data-state': 'indeterminate' } : {})}
+            />
+          )}
           <User className="w-4 h-4" />
           Accounts
           {accounts.length > 0 && (
@@ -73,10 +164,15 @@ export function AccountsSection({
               onPauseToggle={
                 onPauseToggle ? (paused) => onPauseToggle(account.id, paused) : undefined
               }
+              onSoloMode={onSoloMode ? () => onSoloMode(account.id) : undefined}
               isRemoving={isRemovingAccount}
               isPausingAccount={isPausingAccount}
+              isSoloingAccount={isSoloingAccount}
               privacyMode={privacyMode}
               showQuota={showQuota}
+              selectable={isSelectable}
+              selected={selectedIds.has(account.id)}
+              onSelectChange={() => toggleSelect(account.id)}
             />
           ))}
         </div>
@@ -86,6 +182,18 @@ export function AccountsSection({
           <p className="text-sm">No accounts connected</p>
           <p className="text-xs opacity-70">Add an account to get started</p>
         </div>
+      )}
+
+      {/* Bulk Action Bar - shows when accounts selected */}
+      {isSelectable && (
+        <BulkActionBar
+          selectedCount={selectedCount}
+          onPauseSelected={handleBulkPause}
+          onResumeSelected={handleBulkResume}
+          onClearSelection={deselectAll}
+          isPausing={!!isBulkPausing}
+          isResuming={!!isBulkResuming}
+        />
       )}
 
       {/* Kiro-specific: Incognito browser setting - users complain "it keeps opening incognito" */}

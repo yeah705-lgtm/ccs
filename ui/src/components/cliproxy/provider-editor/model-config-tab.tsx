@@ -37,9 +37,21 @@ interface ModelConfigTabProps {
   onSetDefault: (accountId: string) => void;
   onRemoveAccount: (accountId: string) => void;
   onPauseToggle?: (accountId: string, paused: boolean) => void;
+  /** Solo mode: activate one account, pause all others */
+  onSoloMode?: (accountId: string) => void;
   isRemovingAccount?: boolean;
   /** Pause/resume mutation in progress */
   isPausingAccount?: boolean;
+  /** Solo mode mutation in progress */
+  isSoloingAccount?: boolean;
+  /** Bulk pause multiple accounts */
+  onBulkPause?: (accountIds: string[]) => void;
+  /** Bulk resume multiple accounts */
+  onBulkResume?: (accountIds: string[]) => void;
+  /** Bulk pause mutation in progress */
+  isBulkPausing?: boolean;
+  /** Bulk resume mutation in progress */
+  isBulkResuming?: boolean;
   privacyMode?: boolean;
   /** True if connected to remote CLIProxy (quota not available) */
   isRemoteMode?: boolean;
@@ -64,8 +76,14 @@ export function ModelConfigTab({
   onSetDefault,
   onRemoveAccount,
   onPauseToggle,
+  onSoloMode,
+  onBulkPause,
+  onBulkResume,
   isRemovingAccount,
   isPausingAccount,
+  isSoloingAccount,
+  isBulkPausing,
+  isBulkResuming,
   privacyMode,
   isRemoteMode,
 }: ModelConfigTabProps) {
@@ -140,8 +158,14 @@ export function ModelConfigTab({
           onSetDefault={onSetDefault}
           onRemoveAccount={onRemoveAccount}
           onPauseToggle={onPauseToggle}
+          onSoloMode={onSoloMode}
+          onBulkPause={onBulkPause}
+          onBulkResume={onBulkResume}
           isRemovingAccount={isRemovingAccount}
           isPausingAccount={isPausingAccount}
+          isSoloingAccount={isSoloingAccount}
+          isBulkPausing={isBulkPausing}
+          isBulkResuming={isBulkResuming}
           privacyMode={privacyMode}
           showQuota={provider === 'agy' && !isRemoteMode}
           isKiro={isKiro}
