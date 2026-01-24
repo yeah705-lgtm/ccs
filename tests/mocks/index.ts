@@ -19,7 +19,6 @@ export type {
   HttpMethod,
   MockResponse,
   MockResponseBody,
-  MockRoute,
   MockHttpServerConfig,
   MockFetchHandler,
   CapturedRequest,

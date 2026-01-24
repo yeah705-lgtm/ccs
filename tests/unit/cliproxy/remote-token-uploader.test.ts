@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { mockFetch, restoreFetch, getCapturedFetchRequests, UPLOAD_SUCCESS, UNAUTHORIZED } from '../../mocks';
+import { mockFetch, restoreFetch, getCapturedFetchRequests } from '../../mocks';
 
 describe('remote-token-uploader', () => {
   let tempDir: string;
