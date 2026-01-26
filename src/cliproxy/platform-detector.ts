@@ -19,13 +19,13 @@ export const BACKEND_CONFIG = {
     repo: 'router-for-me/CLIProxyAPI',
     binaryPrefix: 'CLIProxyAPI',
     executable: 'cli-proxy-api',
-    fallbackVersion: '6.7.8',
+    fallbackVersion: '6.7.25',
   },
   plus: {
     repo: 'router-for-me/CLIProxyAPIPlus',
     binaryPrefix: 'CLIProxyAPIPlus',
     executable: 'cli-proxy-api-plus',
-    fallbackVersion: '6.7.8-0',
+    fallbackVersion: '6.7.25-0',
   },
 } as const;
 

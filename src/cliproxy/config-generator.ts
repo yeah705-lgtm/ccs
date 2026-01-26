@@ -286,8 +286,9 @@ export function getCliproxyWritablePath(): string {
  * v2: Full-featured config with dashboard, quota mgmt, simplified key
  * v3: Logging disabled by default (user opt-in via ~/.ccs/config.yaml)
  * v4: Added Kiro (AWS) and GitHub Copilot providers
+ * v5: Added disable-cooling: true for stability
  */
-export const CLIPROXY_CONFIG_VERSION = 4;
+export const CLIPROXY_CONFIG_VERSION = 5;
 
 /** Provider display names (static metadata) */
 const PROVIDER_DISPLAY_NAMES: Record<CLIProxyProvider, string> = {
@@ -470,6 +471,9 @@ remote-management:
 # =============================================================================
 # Reliability & Quota Management
 # =============================================================================
+
+# Disable quota cooldown scheduling for stability
+disable-cooling: true
 
 # Auto-retry on transient errors (403, 408, 500, 502, 503, 504)
 request-retry: 0
