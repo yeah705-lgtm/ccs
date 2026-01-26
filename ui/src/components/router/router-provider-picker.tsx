@@ -1,6 +1,6 @@
 /**
  * Router Provider Picker - Select provider + model with health status
- * Shows "provider:model" format clearly per validation requirements
+ * Shows dropdown for both provider and model selection
  */
 
 import { useMemo } from 'react';
@@ -11,10 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import type { RouterProvider } from '@/lib/router-types';
+import { MODEL_CATALOGS } from '@/lib/model-catalogs';
 
 interface RouterProviderPickerProps {
   providers: RouterProvider[];
@@ -28,13 +28,25 @@ export function RouterProviderPicker({ providers, value, onChange }: RouterProvi
     [providers, value.provider]
   );
 
-  // Display format: "provider:model" for clarity
-  const displayValue = value.provider && value.model ? `${value.provider}:${value.model}` : '';
+  // Get models for selected provider from catalog
+  const providerModels = useMemo(() => {
+    if (!value.provider) return [];
+    const catalog = MODEL_CATALOGS[value.provider];
+    return catalog?.models ?? [];
+  }, [value.provider]);
+
+  // Handle provider change - auto-select default model
+  const handleProviderChange = (provider: string) => {
+    const catalog = MODEL_CATALOGS[provider];
+    const defaultModel = catalog?.defaultModel ?? '';
+    onChange({ provider, model: defaultModel });
+  };
 
   return (
     <div className="flex gap-2">
-      <Select value={value.provider} onValueChange={(provider) => onChange({ ...value, provider })}>
-        <SelectTrigger className="w-[180px]">
+      {/* Provider dropdown */}
+      <Select value={value.provider} onValueChange={handleProviderChange}>
+        <SelectTrigger className="w-[140px]">
           <SelectValue placeholder="Select provider" />
         </SelectTrigger>
         <SelectContent>
@@ -47,7 +59,7 @@ export function RouterProviderPicker({ providers, value, onChange }: RouterProvi
                   <XCircle className="w-3 h-3 text-red-500" />
                 )}
                 <span>{p.name}</span>
-                {p.latency && (
+                {p.latency !== undefined && p.latency > 0 && (
                   <Badge variant="outline" className="text-xs ml-auto">
                     {p.latency}ms
                   </Badge>
@@ -58,24 +70,32 @@ export function RouterProviderPicker({ providers, value, onChange }: RouterProvi
         </SelectContent>
       </Select>
 
-      <Input
-        type="text"
+      {/* Model dropdown - shows models from catalog */}
+      <Select
         value={value.model}
-        onChange={(e) => onChange({ ...value, model: e.target.value })}
-        placeholder="Model ID"
-        className="flex-1"
-      />
-
-      {/* Show combined provider:model preview */}
-      {displayValue && (
-        <Badge variant="secondary" className="text-xs self-center whitespace-nowrap">
-          {displayValue}
-        </Badge>
-      )}
+        onValueChange={(model) => onChange({ ...value, model })}
+        disabled={!value.provider}
+      >
+        <SelectTrigger className="flex-1 min-w-[200px]">
+          <SelectValue placeholder={value.provider ? 'Select model' : 'Select provider first'} />
+        </SelectTrigger>
+        <SelectContent>
+          {providerModels.map((m) => (
+            <SelectItem key={m.id} value={m.id}>
+              <div className="flex flex-col">
+                <span>{m.name}</span>
+                {m.description && (
+                  <span className="text-xs text-muted-foreground">{m.description}</span>
+                )}
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       {/* Show health error if provider unhealthy */}
       {selectedProvider && !selectedProvider.healthy && selectedProvider.error && (
-        <span className="text-xs text-destructive self-center truncate max-w-[150px]">
+        <span className="text-xs text-destructive self-center truncate max-w-[120px]">
           {selectedProvider.error}
         </span>
       )}
