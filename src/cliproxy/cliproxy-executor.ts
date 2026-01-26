@@ -498,7 +498,16 @@ export async function execClaudeWithCLIProxy(
   }
 
   // 3. Ensure OAuth completed (if provider requires it)
-  if (providerConfig.requiresOAuth) {
+  // Skip local OAuth check when using remote proxy with auth token
+  // The remote proxy has its own OAuth sessions and handles authentication
+  // Note: Trim authToken to reject whitespace-only values
+  const remoteAuthToken = proxyConfig.authToken?.trim();
+  const skipLocalAuth = useRemoteProxy && !!remoteAuthToken;
+  if (skipLocalAuth) {
+    log(`Using remote proxy authentication (skipping local OAuth)`);
+  }
+
+  if (providerConfig.requiresOAuth && !skipLocalAuth) {
     log(`Checking authentication for ${provider}`);
 
     if (forceAuth || !isAuthenticated(provider)) {
@@ -549,7 +558,8 @@ export async function execClaudeWithCLIProxy(
 
   // 3b. Preflight quota check - auto-switch to account with quota before launch
   // Uses quota-manager for caching, tier priority, and cooldown support
-  if (provider === 'agy') {
+  // Skip for remote proxy - quota is managed on the remote server
+  if (provider === 'agy' && !skipLocalAuth) {
     const preflight = await preflightCheck(provider);
 
     if (!preflight.proceed) {
@@ -571,11 +581,13 @@ export async function execClaudeWithCLIProxy(
   // 4. First-run model configuration (interactive)
   // For supported providers, prompt user to select model on first run
   // Pass customSettingsPath for CLIProxy variants
-  if (supportsModelConfig(provider)) {
+  // Skip for remote proxy - model is configured on the remote server
+  if (supportsModelConfig(provider) && !skipLocalAuth) {
     await configureProviderModel(provider, false, cfg.customSettingsPath); // false = only if not configured
   }
 
   // 5. Check for known broken models and warn user
+  // Show warning for both local and remote modes - user should be aware of model issues
   const currentModel = getCurrentModel(provider, cfg.customSettingsPath);
   if (currentModel && isModelBroken(provider, currentModel)) {
     const modelEntry = findModel(provider, currentModel);
@@ -586,7 +598,11 @@ export async function execClaudeWithCLIProxy(
     if (issueUrl) {
       console.error(`    Tracking: ${issueUrl}`);
     }
-    console.error(`    Run "ccs ${provider} --config" to change model.`);
+    if (skipLocalAuth) {
+      console.error('    Note: Model may be overridden by remote proxy configuration.');
+    } else {
+      console.error(`    Run "ccs ${provider} --config" to change model.`);
+    }
     console.error('');
   }
 
