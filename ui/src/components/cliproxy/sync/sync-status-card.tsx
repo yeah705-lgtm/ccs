@@ -1,13 +1,13 @@
 /**
  * Sync Status Card Component
- * Shows remote CLIProxy connection status and sync controls
+ * Shows local CLIProxy config sync status and controls
  */
 
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, RefreshCw, Upload, Wifi, WifiOff, AlertCircle } from 'lucide-react';
+import { Loader2, RefreshCw, FileDown, Check, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SyncDialog } from './sync-dialog';
 import { useSyncStatus, useExecuteSync } from '@/hooks/use-cliproxy-sync';
@@ -30,8 +30,8 @@ export function SyncStatusCard() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Upload className="w-4 h-4" />
-            Remote Sync
+            <FileDown className="w-4 h-4" />
+            Profile Sync
           </CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-6">
@@ -41,7 +41,6 @@ export function SyncStatusCard() {
     );
   }
 
-  const isConnected = status?.connected ?? false;
   const isConfigured = status?.configured ?? false;
 
   return (
@@ -50,50 +49,38 @@ export function SyncStatusCard() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Upload className="w-4 h-4" />
-              Remote Sync
+              <FileDown className="w-4 h-4" />
+              Profile Sync
             </CardTitle>
             <Badge
-              variant={isConnected ? 'default' : 'secondary'}
+              variant={isConfigured ? 'default' : 'secondary'}
               className={cn(
                 'gap-1.5',
-                isConnected
+                isConfigured
                   ? 'bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30'
-                  : !isConfigured
-                    ? 'bg-muted text-muted-foreground'
-                    : 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30'
+                  : 'bg-muted text-muted-foreground'
               )}
             >
-              {isConnected ? (
-                <Wifi className="w-3 h-3" />
-              ) : !isConfigured ? (
-                <WifiOff className="w-3 h-3" />
-              ) : (
-                <AlertCircle className="w-3 h-3" />
-              )}
-              {isConnected ? 'Connected' : !isConfigured ? 'Not Configured' : 'Disconnected'}
+              {isConfigured ? <Check className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+              {isConfigured ? 'Ready' : 'No Config'}
             </Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isConnected && status?.remoteUrl && (
+          {isConfigured && (
             <div className="text-xs text-muted-foreground">
-              <span className="font-medium">Remote:</span> {status.remoteUrl}
-              {status.latencyMs !== undefined && (
-                <span className="ml-2">({status.latencyMs}ms)</span>
-              )}
+              Syncs API profiles to local CLIProxy config
             </div>
           )}
 
           {!isConfigured && (
             <p className="text-xs text-muted-foreground">
-              Configure remote proxy in Settings to enable profile sync.
+              Run <code className="bg-muted px-1 rounded">ccs doctor --fix</code> to generate
+              config.
             </p>
           )}
 
-          {isConfigured && !isConnected && status?.error && (
-            <p className="text-xs text-red-500">{status.error}</p>
-          )}
+          {status?.error && <p className="text-xs text-red-500">{status.error}</p>}
 
           <div className="flex gap-2">
             <Button
@@ -101,16 +88,15 @@ export function SyncStatusCard() {
               size="sm"
               className="flex-1"
               onClick={() => setDialogOpen(true)}
-              disabled={!isConfigured}
             >
-              Configure
+              Aliases
             </Button>
             <Button
               variant="default"
               size="sm"
               className="flex-1 gap-2"
               onClick={handleQuickSync}
-              disabled={!isConnected || isSyncing}
+              disabled={!isConfigured || isSyncing}
             >
               {isSyncing ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
