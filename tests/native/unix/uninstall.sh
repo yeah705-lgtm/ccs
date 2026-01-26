@@ -282,6 +282,84 @@ test_case "Edge case: Missing parent directories" "Handles missing .claude direc
 "
 
 # ============================================================================
+# TEST SECTION 7: SETTINGS.JSON HOOK CLEANUP
+# ============================================================================
+
+echo ""
+echo "========================================"
+echo "SECTION 7: SETTINGS.JSON HOOK CLEANUP"
+echo "========================================"
+
+test_case "Hook cleanup: Removes CCS WebSearch hook from settings.json" "Hook removed" bash -c "
+    # Setup: Create settings.json with CCS hook
+    mkdir -p '$TEST_CLAUDE_DIR'
+    cat > '$TEST_CLAUDE_DIR/settings.json' << 'EOFINNER'
+{
+  \"hooks\": {
+    \"PreToolUse\": [
+      { \"matcher\": \"WebSearch\", \"hooks\": [{ \"command\": \"node ~/.ccs/hooks/websearch-transformer.cjs\" }] }
+    ]
+  }
+}
+EOFINNER
+    # Install then uninstall
+    HOME='$TEST_HOME' '$CCS_PATH' --install > /dev/null 2>&1
+    HOME='$TEST_HOME' '$CCS_PATH' --uninstall > /dev/null 2>&1
+    # Check hook removed
+    ! grep -q 'websearch-transformer' '$TEST_CLAUDE_DIR/settings.json'
+"
+
+test_case "Hook cleanup: Preserves user-defined WebSearch hooks" "User hooks kept" bash -c "
+    # Setup: Create settings.json with user hook
+    mkdir -p '$TEST_CLAUDE_DIR'
+    cat > '$TEST_CLAUDE_DIR/settings.json' << 'EOFINNER'
+{
+  \"hooks\": {
+    \"PreToolUse\": [
+      { \"matcher\": \"WebSearch\", \"hooks\": [{ \"command\": \"my-custom-hook.sh\" }] }
+    ]
+  }
+}
+EOFINNER
+    # Uninstall
+    HOME='$TEST_HOME' '$CCS_PATH' --uninstall > /dev/null 2>&1
+    # Check user hook preserved
+    grep -q 'my-custom-hook' '$TEST_CLAUDE_DIR/settings.json'
+"
+
+test_case "Hook cleanup: Handles mixed CCS and user hooks" "Only CCS hook removed" bash -c "
+    # Setup: Create settings.json with both CCS and user hooks
+    mkdir -p '$TEST_CLAUDE_DIR'
+    cat > '$TEST_CLAUDE_DIR/settings.json' << 'EOFINNER'
+{
+  \"hooks\": {
+    \"PreToolUse\": [
+      { \"matcher\": \"WebSearch\", \"hooks\": [{ \"command\": \"node ~/.ccs/hooks/websearch-transformer.cjs\" }] },
+      { \"matcher\": \"WebSearch\", \"hooks\": [{ \"command\": \"my-custom-hook.sh\" }] },
+      { \"matcher\": \"Bash\", \"hooks\": [{ \"command\": \"bash-hook.sh\" }] }
+    ]
+  }
+}
+EOFINNER
+    # Uninstall
+    HOME='$TEST_HOME' '$CCS_PATH' --uninstall > /dev/null 2>&1
+    # Check CCS hook removed
+    ! grep -q 'websearch-transformer' '$TEST_CLAUDE_DIR/settings.json' &&
+    # Check user WebSearch hook preserved
+    grep -q 'my-custom-hook' '$TEST_CLAUDE_DIR/settings.json' &&
+    # Check other hooks preserved
+    grep -q 'bash-hook' '$TEST_CLAUDE_DIR/settings.json'
+"
+
+test_case "Hook cleanup: Handles missing settings.json" "No error when settings.json missing" bash -c "
+    # Ensure settings.json doesn't exist
+    rm -f '$TEST_CLAUDE_DIR/settings.json'
+    HOME='$TEST_HOME' '$CCS_PATH' --uninstall > /dev/null 2>&1
+    exit_code=\$?
+    [[ \$exit_code -eq 0 ]]
+"
+
+# ============================================================================
 # SUMMARY
 # ============================================================================
 

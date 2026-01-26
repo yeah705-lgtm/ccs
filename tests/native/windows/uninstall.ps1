@@ -426,6 +426,114 @@ Test-Case "Edge case: Missing parent directories" "Handles missing .claude direc
 }
 
 # ============================================================================
+# TEST SECTION 7: SETTINGS.JSON HOOK CLEANUP
+# ============================================================================
+
+Write-Host ""
+Write-ColorOutput "========================================" "Yellow"
+Write-ColorOutput "SECTION 7: SETTINGS.JSON HOOK CLEANUP" "Yellow"
+Write-ColorOutput "========================================" "Yellow"
+
+Test-Case "Hook cleanup: Removes CCS WebSearch hook from settings.json" "Hook removed" {
+    # Setup: Create settings.json with CCS hook
+    New-Item -ItemType Directory -Path $TestClaudeDir -Force | Out-Null
+    $settingsPath = Join-Path $TestClaudeDir "settings.json"
+    $settingsContent = @'
+{
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "WebSearch", "hooks": [{ "command": "node ~/.ccs/hooks/websearch-transformer.cjs" }] }
+    ]
+  }
+}
+'@
+    Set-Content -Path $settingsPath -Value $settingsContent
+
+    # Install then uninstall
+    $env:HOME = $TestHome
+    try {
+        & $CcsPath --install | Out-Null
+        & $CcsPath --uninstall | Out-Null
+    } catch { }
+
+    # Check hook removed
+    $content = Get-Content -Path $settingsPath -Raw
+    -not ($content -match "websearch-transformer")
+}
+
+Test-Case "Hook cleanup: Preserves user-defined WebSearch hooks" "User hooks kept" {
+    # Setup: Create settings.json with user hook
+    New-Item -ItemType Directory -Path $TestClaudeDir -Force | Out-Null
+    $settingsPath = Join-Path $TestClaudeDir "settings.json"
+    $settingsContent = @'
+{
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "WebSearch", "hooks": [{ "command": "my-custom-hook.sh" }] }
+    ]
+  }
+}
+'@
+    Set-Content -Path $settingsPath -Value $settingsContent
+
+    # Uninstall
+    $env:HOME = $TestHome
+    try {
+        & $CcsPath --uninstall | Out-Null
+    } catch { }
+
+    # Check user hook preserved
+    $content = Get-Content -Path $settingsPath -Raw
+    $content -match "my-custom-hook"
+}
+
+Test-Case "Hook cleanup: Handles mixed CCS and user hooks" "Only CCS hook removed" {
+    # Setup: Create settings.json with both CCS and user hooks
+    New-Item -ItemType Directory -Path $TestClaudeDir -Force | Out-Null
+    $settingsPath = Join-Path $TestClaudeDir "settings.json"
+    $settingsContent = @'
+{
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "WebSearch", "hooks": [{ "command": "node ~/.ccs/hooks/websearch-transformer.cjs" }] },
+      { "matcher": "WebSearch", "hooks": [{ "command": "my-custom-hook.sh" }] },
+      { "matcher": "Bash", "hooks": [{ "command": "bash-hook.sh" }] }
+    ]
+  }
+}
+'@
+    Set-Content -Path $settingsPath -Value $settingsContent
+
+    # Uninstall
+    $env:HOME = $TestHome
+    try {
+        & $CcsPath --uninstall | Out-Null
+    } catch { }
+
+    # Check CCS hook removed, user hooks preserved
+    $content = Get-Content -Path $settingsPath -Raw
+    (-not ($content -match "websearch-transformer")) -and
+    ($content -match "my-custom-hook") -and
+    ($content -match "bash-hook")
+}
+
+Test-Case "Hook cleanup: Handles missing settings.json" "No error when settings.json missing" {
+    # Ensure settings.json doesn't exist
+    $settingsPath = Join-Path $TestClaudeDir "settings.json"
+    if (Test-Path $settingsPath) {
+        Remove-Item $settingsPath -Force
+    }
+
+    $env:HOME = $TestHome
+    try {
+        & $CcsPath --uninstall | Out-Null
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+# ============================================================================
 # SUMMARY
 # ============================================================================
 
