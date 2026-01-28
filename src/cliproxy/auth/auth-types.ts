@@ -27,6 +27,7 @@ export const OAUTH_CALLBACK_PORTS: Partial<Record<CLIProxyProvider, number>> = {
   codex: 1455,
   agy: 51121,
   iflow: 11451,
+  claude: 54545,
   // qwen: Device Code Flow - no callback port
   // ghcp: Device Code Flow - no callback port
 };
@@ -121,6 +122,13 @@ export const OAUTH_CONFIGS: Record<CLIProxyProvider, ProviderOAuthConfig> = {
     scopes: ['copilot'],
     authFlag: '--github-copilot-login',
   },
+  claude: {
+    provider: 'claude',
+    displayName: 'Claude (Anthropic)',
+    authUrl: 'https://console.anthropic.com/oauth/authorize',
+    scopes: ['user:inference', 'user:profile'],
+    authFlag: '--anthropic-login',
+  },
 };
 
 /**
@@ -136,6 +144,7 @@ export const PROVIDER_AUTH_PREFIXES: Record<CLIProxyProvider, string[]> = {
   iflow: ['iflow-'],
   kiro: ['kiro-', 'aws-', 'codewhisperer-'],
   ghcp: ['github-copilot-', 'copilot-', 'gh-'],
+  claude: ['claude-', 'anthropic-'],
 };
 
 /**
@@ -150,6 +159,7 @@ export const PROVIDER_TYPE_VALUES: Record<CLIProxyProvider, string[]> = {
   iflow: ['iflow'],
   kiro: ['kiro', 'codewhisperer'],
   ghcp: ['github-copilot', 'copilot'],
+  claude: ['claude', 'anthropic'],
 };
 
 /**

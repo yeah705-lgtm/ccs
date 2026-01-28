@@ -20,6 +20,7 @@ const PROVIDER_IMAGES: Record<string, string> = {
   iflow: '/assets/providers/iflow.png',
   kiro: '/assets/providers/kiro.png',
   ghcp: '/assets/providers/copilot.svg',
+  claude: '/assets/providers/claude.svg',
 };
 
 /** Provider color configuration (for fallback only - no background for image logos) */

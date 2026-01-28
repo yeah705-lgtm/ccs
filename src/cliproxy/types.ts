@@ -118,8 +118,17 @@ export interface DownloadResult {
  * - iflow: iFlow via OAuth
  * - kiro: Kiro (AWS CodeWhisperer) via OAuth
  * - ghcp: GitHub Copilot via Device Code (OAuth through CLIProxyAPIPlus)
+ * - claude: Claude (Anthropic) via OAuth
  */
-export type CLIProxyProvider = 'gemini' | 'codex' | 'agy' | 'qwen' | 'iflow' | 'kiro' | 'ghcp';
+export type CLIProxyProvider =
+  | 'gemini'
+  | 'codex'
+  | 'agy'
+  | 'qwen'
+  | 'iflow'
+  | 'kiro'
+  | 'ghcp'
+  | 'claude';
 
 /**
  * CLIProxy backend selection

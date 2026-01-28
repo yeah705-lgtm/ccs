@@ -34,6 +34,7 @@ export const OAUTH_CALLBACK_PORTS: Record<CLIProxyProvider, number | null> = {
   iflow: 11451, // Authorization Code Flow
   kiro: 9876, // Authorization Code Flow
   ghcp: null, // Device Code Flow - no callback port
+  claude: 54545, // Authorization Code Flow (Anthropic OAuth)
 };
 
 /**
@@ -52,6 +53,7 @@ export const OAUTH_FLOW_TYPES: Record<CLIProxyProvider, OAuthFlowType> = {
   iflow: 'authorization_code',
   kiro: 'authorization_code',
   ghcp: 'device_code',
+  claude: 'authorization_code',
 };
 
 /**
@@ -138,7 +140,16 @@ export async function checkOAuthPort(provider: CLIProxyProvider): Promise<OAuthP
  * Check OAuth ports for all providers
  */
 export async function checkAllOAuthPorts(): Promise<OAuthPortDiagnostic[]> {
-  const providers: CLIProxyProvider[] = ['gemini', 'codex', 'agy', 'qwen', 'iflow', 'kiro', 'ghcp'];
+  const providers: CLIProxyProvider[] = [
+    'gemini',
+    'codex',
+    'agy',
+    'qwen',
+    'iflow',
+    'kiro',
+    'ghcp',
+    'claude',
+  ];
   const results: OAuthPortDiagnostic[] = [];
 
   for (const provider of providers) {
@@ -153,7 +164,7 @@ export async function checkAllOAuthPorts(): Promise<OAuthPortDiagnostic[]> {
  * Check OAuth ports for providers that use Authorization Code flow only
  */
 export async function checkAuthCodePorts(): Promise<OAuthPortDiagnostic[]> {
-  const providers: CLIProxyProvider[] = ['gemini', 'codex', 'agy', 'kiro'];
+  const providers: CLIProxyProvider[] = ['gemini', 'codex', 'agy', 'iflow', 'kiro', 'claude'];
   const results: OAuthPortDiagnostic[] = [];
 
   for (const provider of providers) {

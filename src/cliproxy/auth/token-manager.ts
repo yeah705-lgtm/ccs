@@ -145,7 +145,16 @@ export function getAuthStatus(provider: CLIProxyProvider): AuthStatus {
  * Get auth status for all providers
  */
 export function getAllAuthStatus(): AuthStatus[] {
-  const providers: CLIProxyProvider[] = ['gemini', 'codex', 'agy', 'qwen', 'iflow', 'kiro', 'ghcp'];
+  const providers: CLIProxyProvider[] = [
+    'agy',
+    'claude',
+    'gemini',
+    'codex',
+    'qwen',
+    'iflow',
+    'kiro',
+    'ghcp',
+  ];
   return providers.map(getAuthStatus);
 }
 

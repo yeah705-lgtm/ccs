@@ -18,7 +18,7 @@ export interface ProfilesConfig {
  */
 export interface CLIProxyVariantConfig {
   /** CLIProxy provider to use */
-  provider: 'gemini' | 'codex' | 'agy' | 'qwen' | 'iflow' | 'kiro' | 'ghcp';
+  provider: 'gemini' | 'codex' | 'agy' | 'qwen' | 'iflow' | 'kiro' | 'ghcp' | 'claude';
   /** Path to settings.json with custom model configuration (optional) */
   settings?: string;
   /** Account identifier for multi-account support (optional, defaults to 'default') */

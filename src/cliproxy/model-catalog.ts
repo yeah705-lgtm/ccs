@@ -166,6 +166,55 @@ export const MODEL_CATALOG: Partial<Record<CLIProxyProvider, ProviderCatalog>> =
       },
     ],
   },
+  claude: {
+    provider: 'claude',
+    displayName: 'Claude (Anthropic)',
+    defaultModel: 'claude-sonnet-4-5-20250514',
+    models: [
+      {
+        id: 'claude-opus-4-5-20250220',
+        name: 'Claude Opus 4.5',
+        description: 'Most capable Claude model',
+        thinking: {
+          type: 'budget',
+          min: 1024,
+          max: 128000,
+          zeroAllowed: false,
+          dynamicAllowed: true,
+        },
+      },
+      {
+        id: 'claude-sonnet-4-5-20250514',
+        name: 'Claude Sonnet 4.5',
+        description: 'Balanced performance and speed',
+        thinking: {
+          type: 'budget',
+          min: 1024,
+          max: 128000,
+          zeroAllowed: false,
+          dynamicAllowed: true,
+        },
+      },
+      {
+        id: 'claude-sonnet-4-20250514',
+        name: 'Claude Sonnet 4',
+        description: 'Previous generation Sonnet',
+        thinking: {
+          type: 'budget',
+          min: 1024,
+          max: 128000,
+          zeroAllowed: false,
+          dynamicAllowed: true,
+        },
+      },
+      {
+        id: 'claude-haiku-4-5-20250514',
+        name: 'Claude Haiku 4.5',
+        description: 'Fast and efficient',
+        thinking: { type: 'none' },
+      },
+    ],
+  },
 };
 
 /**

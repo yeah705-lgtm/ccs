@@ -132,7 +132,7 @@ export function saveVariantUnified(
   if (!config.cliproxy) {
     config.cliproxy = {
       oauth_accounts: {},
-      providers: ['gemini', 'codex', 'agy', 'qwen', 'iflow', 'kiro', 'ghcp'],
+      providers: ['gemini', 'codex', 'agy', 'qwen', 'iflow', 'kiro', 'ghcp', 'claude'],
       variants: {},
     };
   }

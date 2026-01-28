@@ -299,6 +299,7 @@ const PROVIDER_DISPLAY_NAMES: Record<CLIProxyProvider, string> = {
   iflow: 'iFlow',
   kiro: 'Kiro (AWS)',
   ghcp: 'GitHub Copilot (OAuth)',
+  claude: 'Claude (Anthropic)',
 };
 
 /**

@@ -11,6 +11,7 @@ export const PROVIDER_ASSETS: Record<string, string> = {
   qwen: '/assets/providers/qwen-color.svg',
   kiro: '/assets/providers/kiro.png',
   ghcp: '/assets/providers/copilot.svg',
+  claude: '/assets/providers/claude.svg',
 };
 
 // Provider brand colors
@@ -23,6 +24,7 @@ export const PROVIDER_COLORS: Record<string, string> = {
   qwen: '#6236FF',
   kiro: '#4d908e', // Dark Cyan (AWS-inspired)
   ghcp: '#43aa8b', // Seaweed (GitHub-inspired)
+  claude: '#D97757', // Anthropic brand color (matches SVG)
 };
 
 // Provider display names
@@ -35,6 +37,7 @@ const PROVIDER_NAMES: Record<string, string> = {
   qwen: 'Qwen',
   kiro: 'Kiro (AWS)',
   ghcp: 'GitHub Copilot (OAuth)',
+  claude: 'Claude (Anthropic)',
 };
 
 // Map provider to display name
