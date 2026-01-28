@@ -8,7 +8,11 @@
  * - Gemini: 8085
  * - Codex: 1455
  * - Agy: 51121
+ * - iFlow: 11451
+ * - Kiro: 9876
+ * - Claude: 54545
  * - Qwen: Device Code Flow (no port needed)
+ * - GHCP: Device Code Flow (no port needed)
  */
 
 import {
@@ -156,7 +160,8 @@ export async function checkAllOAuthPorts(): Promise<OAuthPortDiagnostic[]> {
  * Check OAuth ports for providers that use Authorization Code flow only
  */
 export async function checkAuthCodePorts(): Promise<OAuthPortDiagnostic[]> {
-  const providers: CLIProxyProvider[] = ['gemini', 'codex', 'agy', 'iflow', 'kiro', 'claude'];
+  // Filter providers that use authorization_code flow (DRY: derive from OAUTH_FLOW_TYPES)
+  const providers = CLIPROXY_PROFILES.filter((p) => OAUTH_FLOW_TYPES[p] === 'authorization_code');
   const results: OAuthPortDiagnostic[] = [];
 
   for (const provider of providers) {
