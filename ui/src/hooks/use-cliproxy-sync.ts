@@ -49,17 +49,6 @@ export interface SyncResult {
   message?: string;
 }
 
-/** Model alias */
-export interface ModelAlias {
-  from: string;
-  to: string;
-}
-
-/** Aliases response */
-export interface AliasesResponse {
-  aliases: Record<string, ModelAlias[]>;
-}
-
 /**
  * Fetch sync status from API
  */

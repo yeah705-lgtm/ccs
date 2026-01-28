@@ -45,10 +45,10 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
-            Sync Profiles to Remote CLIProxy
+            Sync Profiles to Local CLIProxy
           </DialogTitle>
           <DialogDescription>
-            Push your CCS API profiles to the remote CLIProxy server.
+            Sync your CCS API profiles to the local CLIProxy config.yaml.
           </DialogDescription>
         </DialogHeader>
 

@@ -186,3 +186,14 @@ export function getAutoSyncStatus(): {
     syncing: isSyncing,
   };
 }
+
+/**
+ * Reset watcher state for test cleanup.
+ * Stops watcher and clears all singleton state.
+ */
+export async function resetWatcherState(): Promise<void> {
+  await stopAutoSyncWatcher();
+  watcherInstance = null;
+  syncTimeout = null;
+  isSyncing = false;
+}
