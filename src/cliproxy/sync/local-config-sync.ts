@@ -124,13 +124,14 @@ function replaceSectionInYaml(content: string, sectionKey: string, newSection: s
 
     // If we're in the section, skip lines until we hit another top-level key
     if (inSection) {
-      // Top-level key starts at column 0 and has format "key:" or "key :"
+      // Top-level key: starts at column 0, valid YAML key format (word chars + hyphens)
+      // Must match pattern like "key:", "my-key:", "key_name:" but not comments or strings
       const isTopLevelKey =
         line.length > 0 &&
         !line.startsWith(' ') &&
         !line.startsWith('\t') &&
         !line.startsWith('#') &&
-        line.includes(':');
+        /^[a-zA-Z_][a-zA-Z0-9_-]*\s*:/.test(line);
 
       if (isTopLevelKey) {
         // We've exited the section, resume normal processing

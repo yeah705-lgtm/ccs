@@ -621,7 +621,7 @@ async function showHelp(): Promise<void> {
       [
         ['sync', 'Sync API profiles to local CLIProxy config'],
         ['sync --dry-run', 'Preview sync without applying'],
-        ['sync --force', 'Sync without confirmation prompt'],
+        ['sync --verbose', 'Show detailed sync information'],
       ],
     ],
     [

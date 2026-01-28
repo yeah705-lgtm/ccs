@@ -169,6 +169,10 @@ export async function restartAutoSyncWatcher(): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
+  if (isSyncing) {
+    log('Warning: Sync still in progress after 10s timeout, proceeding with restart');
+  }
+
   await stopAutoSyncWatcher();
   startAutoSyncWatcher();
 }

@@ -10,6 +10,7 @@ import { initUI, header, subheader, color, dim, ok, fail, warn, info, table } fr
 interface SyncArgs {
   dryRun: boolean;
   verbose: boolean;
+  force: boolean;
 }
 
 /**
@@ -19,6 +20,7 @@ export function parseSyncArgs(args: string[]): SyncArgs {
   return {
     dryRun: args.includes('--dry-run') || args.includes('-n'),
     verbose: args.includes('--verbose') || args.includes('-v'),
+    force: args.includes('--force') || args.includes('-f'),
   };
 }
 
