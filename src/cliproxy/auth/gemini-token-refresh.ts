@@ -46,6 +46,12 @@ interface GeminiOAuthCreds {
   id_token?: string;
 }
 
+/** Gemini credentials with source path for write-back */
+interface GeminiCredsWithSource {
+  creds: GeminiOAuthCreds;
+  sourcePath: string;
+}
+
 /** CLIProxyAPI Gemini token structure (from GeminiTokenStorage Go struct) */
 interface CliproxyGeminiToken {
   token: {
@@ -57,9 +63,6 @@ interface CliproxyGeminiToken {
   email: string;
   type: 'gemini';
 }
-
-/** Tracks the source path of the last read token (for write-back) */
-let lastTokenSourcePath: string | null = null;
 
 /** Token refresh response from Google */
 interface TokenRefreshResponse {
@@ -90,10 +93,22 @@ function mapCliproxyToGeminiCreds(cliproxy: CliproxyGeminiToken): GeminiOAuthCre
 }
 
 /**
- * Read Gemini token from CLIProxy auth directory
- * Returns null if no valid token found
+ * Validate CLIProxyAPI token structure has required fields
  */
-function readCliproxyGeminiCreds(): GeminiOAuthCreds | null {
+function isValidCliproxyToken(data: unknown): data is CliproxyGeminiToken {
+  if (typeof data !== 'object' || data === null) return false;
+  const obj = data as Record<string, unknown>;
+  if (obj.type !== 'gemini') return false;
+  if (typeof obj.token !== 'object' || obj.token === null) return false;
+  const token = obj.token as Record<string, unknown>;
+  return typeof token.access_token === 'string';
+}
+
+/**
+ * Read Gemini token from CLIProxy auth directory
+ * Returns credentials with source path, or null if no valid token found
+ */
+function readCliproxyGeminiCreds(): GeminiCredsWithSource | null {
   const authDir = getProviderAuthDir('gemini');
   if (!fs.existsSync(authDir)) return null;
 
@@ -127,6 +142,7 @@ function readCliproxyGeminiCreds(): GeminiOAuthCreds | null {
         }
       }
     } catch {
+      // Directory read failed - continue to return null
       return null;
     }
   }
@@ -135,12 +151,14 @@ function readCliproxyGeminiCreds(): GeminiOAuthCreds | null {
 
   try {
     const content = fs.readFileSync(tokenPath, 'utf8');
-    const data = JSON.parse(content);
+    const data: unknown = JSON.parse(content);
 
-    // Check if this is CLIProxyAPI format (has nested token object)
-    if (data.type === 'gemini' && data.token) {
-      lastTokenSourcePath = tokenPath;
-      return mapCliproxyToGeminiCreds(data as CliproxyGeminiToken);
+    // Validate CLIProxyAPI format with proper type checking
+    if (isValidCliproxyToken(data)) {
+      return {
+        creds: mapCliproxyToGeminiCreds(data),
+        sourcePath: tokenPath,
+      };
     }
 
     return null;
@@ -152,12 +170,13 @@ function readCliproxyGeminiCreds(): GeminiOAuthCreds | null {
 /**
  * Read Gemini OAuth credentials
  * Priority: CLIProxy auth dir first, then ~/.gemini/oauth_creds.json
+ * Returns credentials with source path for correct write-back
  */
-function readGeminiCreds(): GeminiOAuthCreds | null {
+function readGeminiCreds(): GeminiCredsWithSource | null {
   // 1. Try CLIProxy auth directory first (CCS-managed tokens)
-  const cliproxyCreds = readCliproxyGeminiCreds();
-  if (cliproxyCreds) {
-    return cliproxyCreds;
+  const cliproxyResult = readCliproxyGeminiCreds();
+  if (cliproxyResult) {
+    return cliproxyResult;
   }
 
   // 2. Fall back to standard Gemini CLI location
@@ -166,9 +185,11 @@ function readGeminiCreds(): GeminiOAuthCreds | null {
     return null;
   }
   try {
-    lastTokenSourcePath = oauthPath;
     const content = fs.readFileSync(oauthPath, 'utf8');
-    return JSON.parse(content) as GeminiOAuthCreds;
+    return {
+      creds: JSON.parse(content) as GeminiOAuthCreds,
+      sourcePath: oauthPath,
+    };
   } catch {
     return null;
   }
@@ -199,23 +220,26 @@ function writeCliproxyGeminiCreds(tokenPath: string, creds: GeminiOAuthCreds): s
 
 /**
  * Write Gemini OAuth credentials
- * Writes back to the source location (CLIProxy or ~/.gemini)
+ * Writes back to the specified source location (CLIProxy or ~/.gemini)
+ * @param creds - The credentials to write
+ * @param sourcePath - The path where credentials were originally read from
  * @returns error message if write failed, undefined on success
  */
-function writeGeminiCreds(creds: GeminiOAuthCreds): string | undefined {
-  // If we read from CLIProxy, write back there in CLIProxy format
-  if (lastTokenSourcePath && !lastTokenSourcePath.includes('.gemini')) {
-    return writeCliproxyGeminiCreds(lastTokenSourcePath, creds);
+function writeGeminiCreds(creds: GeminiOAuthCreds, sourcePath: string): string | undefined {
+  const geminiOAuthPath = getGeminiOAuthPath();
+
+  // If source is not the standard Gemini path, write to CLIProxy format
+  if (sourcePath !== geminiOAuthPath) {
+    return writeCliproxyGeminiCreds(sourcePath, creds);
   }
 
   // Otherwise write to standard Gemini CLI location
-  const oauthPath = getGeminiOAuthPath();
-  const dir = path.dirname(oauthPath);
+  const dir = path.dirname(geminiOAuthPath);
   try {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
     }
-    fs.writeFileSync(oauthPath, JSON.stringify(creds, null, 2), { mode: 0o600 });
+    fs.writeFileSync(geminiOAuthPath, JSON.stringify(creds, null, 2), { mode: 0o600 });
     return undefined;
   } catch (err) {
     return err instanceof Error ? err.message : 'Failed to write credentials';
@@ -226,14 +250,14 @@ function writeGeminiCreds(creds: GeminiOAuthCreds): string | undefined {
  * Check if Gemini token is expired or expiring soon
  */
 export function isGeminiTokenExpiringSoon(): boolean {
-  const creds = readGeminiCreds();
-  if (!creds || !creds.access_token) {
+  const result = readGeminiCreds();
+  if (!result || !result.creds.access_token) {
     return true; // No token = needs auth
   }
-  if (!creds.expiry_date) {
+  if (!result.creds.expiry_date) {
     return false; // No expiry info = assume valid
   }
-  const expiresIn = creds.expiry_date - Date.now();
+  const expiresIn = result.creds.expiry_date - Date.now();
   return expiresIn < REFRESH_LEAD_TIME_MS;
 }
 
@@ -246,11 +270,12 @@ export async function refreshGeminiToken(): Promise<{
   error?: string;
   expiresAt?: number;
 }> {
-  const creds = readGeminiCreds();
-  if (!creds || !creds.refresh_token) {
+  const result = readGeminiCreds();
+  if (!result || !result.creds.refresh_token) {
     return { success: false, error: 'No refresh token available' };
   }
 
+  const { creds, sourcePath } = result;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
 
@@ -263,7 +288,7 @@ export async function refreshGeminiToken(): Promise<{
       },
       body: new URLSearchParams({
         grant_type: 'refresh_token',
-        refresh_token: creds.refresh_token,
+        refresh_token: creds.refresh_token as string, // Already validated above
         client_id: GEMINI_CLIENT_ID,
         client_secret: GEMINI_CLIENT_SECRET,
       }).toString(),
@@ -291,7 +316,7 @@ export async function refreshGeminiToken(): Promise<{
       access_token: data.access_token,
       expiry_date: expiresAt,
     };
-    const writeError = writeGeminiCreds(updatedCreds);
+    const writeError = writeGeminiCreds(updatedCreds, sourcePath);
     if (writeError) {
       return { success: false, error: `Token refreshed but failed to save: ${writeError}` };
     }
@@ -316,8 +341,8 @@ export async function ensureGeminiTokenValid(verbose = false): Promise<{
   refreshed: boolean;
   error?: string;
 }> {
-  const creds = readGeminiCreds();
-  if (!creds || !creds.access_token) {
+  const result = readGeminiCreds();
+  if (!result || !result.creds.access_token) {
     return { valid: false, refreshed: false, error: 'No Gemini credentials found' };
   }
 
@@ -330,13 +355,13 @@ export async function ensureGeminiTokenValid(verbose = false): Promise<{
     console.log('[i] Gemini token expired or expiring soon, refreshing...');
   }
 
-  const result = await refreshGeminiToken();
-  if (result.success) {
+  const refreshResult = await refreshGeminiToken();
+  if (refreshResult.success) {
     if (verbose) {
       console.log('[OK] Gemini token refreshed successfully');
     }
     return { valid: true, refreshed: true };
   }
 
-  return { valid: false, refreshed: false, error: result.error };
+  return { valid: false, refreshed: false, error: refreshResult.error };
 }
