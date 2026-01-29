@@ -28,6 +28,9 @@ import {
   findAccountByQuery,
 } from '../cliproxy/account-manager';
 import { fetchAllProviderQuotas } from '../cliproxy/quota-fetcher';
+import { fetchAllCodexQuotas } from '../cliproxy/quota-fetcher-codex';
+import { fetchAllGeminiCliQuotas } from '../cliproxy/quota-fetcher-gemini-cli';
+import type { CodexQuotaResult, GeminiCliQuotaResult } from '../cliproxy/quota-types';
 import { isOnCooldown } from '../cliproxy/quota-manager';
 import { DEFAULT_BACKEND, getFallbackVersion, BACKEND_CONFIG } from '../cliproxy/platform-detector';
 import { CLIPROXY_PROFILES, CLIProxyProfileName } from '../auth/profile-detector';
@@ -70,6 +73,66 @@ import { handleSync } from './cliproxy-sync-handler';
 // ============================================================================
 // ARGUMENT PARSING
 // ============================================================================
+
+/**
+ * Parse --provider flag from args for quota command
+ * Returns the provider filter value and remaining args
+ * Accepts: agy, codex, gemini, gemini-cli, all
+ */
+function parseProviderArg(args: string[]): {
+  provider: 'agy' | 'codex' | 'gemini' | 'all';
+  remainingArgs: string[];
+} {
+  const providerIdx = args.indexOf('--provider');
+  if (providerIdx === -1) {
+    // Also check for --provider=value format
+    const providerEqualsIdx = args.findIndex((a) => a.startsWith('--provider='));
+    if (providerEqualsIdx !== -1) {
+      const value = args[providerEqualsIdx].split('=')[1]?.toLowerCase() || '';
+      const remainingArgs = [...args];
+      remainingArgs.splice(providerEqualsIdx, 1);
+      // Handle empty value
+      if (!value) {
+        console.error(
+          warn('--provider requires a value. Valid options: agy, codex, gemini, gemini-cli, all')
+        );
+        return { provider: 'all', remainingArgs };
+      }
+      // Normalize gemini-cli to gemini
+      const normalized = value === 'gemini-cli' ? 'gemini' : value;
+      if (
+        normalized !== 'agy' &&
+        normalized !== 'codex' &&
+        normalized !== 'gemini' &&
+        normalized !== 'all'
+      ) {
+        console.error(
+          warn(`Invalid provider '${value}'. Valid options: agy, codex, gemini, gemini-cli, all`)
+        );
+        return { provider: 'all', remainingArgs };
+      }
+      return { provider: normalized as 'agy' | 'codex' | 'gemini' | 'all', remainingArgs };
+    }
+    return { provider: 'all', remainingArgs: args };
+  }
+  const value = args[providerIdx + 1]?.toLowerCase() || 'all';
+  const remainingArgs = [...args];
+  remainingArgs.splice(providerIdx, 2);
+  // Normalize gemini-cli to gemini
+  const normalized = value === 'gemini-cli' ? 'gemini' : value;
+  if (
+    normalized !== 'agy' &&
+    normalized !== 'codex' &&
+    normalized !== 'gemini' &&
+    normalized !== 'all'
+  ) {
+    console.error(
+      warn(`Invalid provider '${value}'. Valid options: agy, codex, gemini, gemini-cli, all`)
+    );
+    return { provider: 'all', remainingArgs };
+  }
+  return { provider: normalized as 'agy' | 'codex' | 'gemini' | 'all', remainingArgs };
+}
 
 /**
  * Parse --backend flag from args
@@ -635,7 +698,8 @@ async function showHelp(): Promise<void> {
         ['default <account>', 'Set default account for rotation'],
         ['pause <account>', 'Pause account (skip in rotation)'],
         ['resume <account>', 'Resume paused account'],
-        ['quota', 'Show quota status for all accounts'],
+        ['quota', 'Show quota status for all providers'],
+        ['quota --provider <name>', 'Filter by provider (agy|codex|gemini)'],
       ],
     ],
     [
@@ -911,22 +975,76 @@ async function handleResumeAccount(args: string[]): Promise<void> {
   }
 }
 
-async function handleQuotaStatus(verbose = false): Promise<void> {
+async function handleQuotaStatus(
+  verbose = false,
+  providerFilter: 'agy' | 'codex' | 'gemini' | 'all' = 'all'
+): Promise<void> {
   await initUI();
   console.log(header('Quota Status'));
   console.log('');
 
+  const shouldFetch = {
+    agy: providerFilter === 'all' || providerFilter === 'agy',
+    codex: providerFilter === 'all' || providerFilter === 'codex',
+    gemini: providerFilter === 'all' || providerFilter === 'gemini',
+  };
+
+  console.log(dim('Fetching quotas...'));
+
+  // Parallel fetch from all requested providers
+  const [agyResults, codexResults, geminiResults] = await Promise.all([
+    shouldFetch.agy ? fetchAllProviderQuotas('agy', verbose) : null,
+    shouldFetch.codex ? fetchAllCodexQuotas(verbose) : null,
+    shouldFetch.gemini ? fetchAllGeminiCliQuotas(verbose) : null,
+  ]);
+
+  console.log('');
+
+  // Display Antigravity section
+  if (agyResults && agyResults.accounts.length > 0) {
+    displayAntigravityQuotaSection(agyResults, verbose);
+  } else if (shouldFetch.agy) {
+    console.log(subheader('Antigravity (0 accounts)'));
+    console.log(info('No Antigravity accounts configured'));
+    console.log(`  Run: ${color('ccs agy --auth', 'command')} to authenticate`);
+    console.log('');
+  }
+
+  // Display Codex section
+  if (codexResults && codexResults.length > 0) {
+    displayCodexQuotaSection(codexResults);
+  } else if (shouldFetch.codex) {
+    console.log(subheader('Codex (0 accounts)'));
+    console.log(info('No Codex accounts configured'));
+    console.log(`  Run: ${color('ccs codex --auth', 'command')} to authenticate`);
+    console.log('');
+  }
+
+  // Display Gemini CLI section
+  if (geminiResults && geminiResults.length > 0) {
+    displayGeminiCliQuotaSection(geminiResults);
+  } else if (shouldFetch.gemini) {
+    console.log(subheader('Gemini CLI (0 accounts)'));
+    console.log(info('No Gemini CLI accounts configured'));
+    console.log(`  Run: ${color('ccs gemini --auth', 'command')} to authenticate`);
+    console.log('');
+  }
+}
+
+/**
+ * Display Antigravity quota section
+ */
+function displayAntigravityQuotaSection(
+  quotaResult: Awaited<ReturnType<typeof fetchAllProviderQuotas>>,
+  _verbose: boolean
+): void {
   const provider: CLIProxyProvider = 'agy';
   const accounts = getProviderAccounts(provider);
 
-  if (accounts.length === 0) {
-    console.log(info('No Antigravity accounts configured'));
-    console.log(`    Run: ${color('ccs agy --auth', 'command')} to authenticate`);
-    return;
-  }
-
-  console.log(dim('Fetching quotas...'));
-  const quotaResult = await fetchAllProviderQuotas(provider, verbose);
+  console.log(
+    subheader(`Antigravity (${accounts.length} account${accounts.length !== 1 ? 's' : ''})`)
+  );
+  console.log('');
 
   // Build table rows
   const rows: string[][] = [];
@@ -961,7 +1079,6 @@ async function handleQuotaStatus(verbose = false): Promise<void> {
     ]);
   }
 
-  console.log('');
   console.log(
     table(rows, {
       head: ['', 'Account', 'Tier', 'Quota', 'Status'],
@@ -969,23 +1086,118 @@ async function handleQuotaStatus(verbose = false): Promise<void> {
     })
   );
   console.log('');
-  console.log(info(`Default account marked with ${color('*', 'success')}`));
+}
+
+/**
+ * Display Codex quota section
+ */
+function displayCodexQuotaSection(results: { account: string; quota: CodexQuotaResult }[]): void {
+  console.log(subheader(`Codex (${results.length} account${results.length !== 1 ? 's' : ''})`));
   console.log('');
 
-  // Show summary of paused/cooldown accounts
-  const pausedCount = accounts.filter((a) => a.paused).length;
-  const cooldownCount = accounts.filter((a) => isOnCooldown(provider, a.id)).length;
-  if (pausedCount > 0) {
-    console.log(
-      warn(`${pausedCount} account(s) paused - use 'ccs cliproxy resume <account>' to re-enable`)
-    );
-  }
-  if (cooldownCount > 0) {
-    console.log(info(`${cooldownCount} account(s) on cooldown (exhausted recently)`));
-  }
-  if (pausedCount > 0 || cooldownCount > 0) {
+  for (const { account, quota } of results) {
+    const accountInfo = findAccountByQuery('codex', account);
+    const defaultMark = accountInfo?.isDefault ? color(' (default)', 'info') : '';
+
+    if (!quota.success) {
+      console.log(`  ${fail(account)}${defaultMark}`);
+      console.log(`    ${color(quota.error || 'Failed to fetch quota', 'error')}`);
+      console.log('');
+      continue;
+    }
+
+    // Calculate overall quota health
+    const avgQuota =
+      quota.windows.length > 0
+        ? quota.windows.reduce((sum, w) => sum + w.remainingPercent, 0) / quota.windows.length
+        : 0;
+    const statusIcon = avgQuota > 50 ? ok('') : avgQuota > 10 ? warn('') : fail('');
+    const planBadge = quota.planType ? color(` [${quota.planType}]`, 'info') : '';
+
+    console.log(`  ${statusIcon}${account}${defaultMark}${planBadge}`);
+
+    // Show windows
+    for (const window of quota.windows) {
+      const bar = formatQuotaBar(window.remainingPercent);
+      const resetLabel = window.resetAfterSeconds
+        ? dim(` Resets ${formatResetTime(window.resetAfterSeconds)}`)
+        : '';
+      console.log(
+        `    ${window.label.padEnd(24)} ${bar} ${window.remainingPercent.toFixed(0)}%${resetLabel}`
+      );
+    }
     console.log('');
   }
+}
+
+/**
+ * Display Gemini CLI quota section
+ */
+function displayGeminiCliQuotaSection(
+  results: { account: string; quota: GeminiCliQuotaResult }[]
+): void {
+  console.log(
+    subheader(`Gemini CLI (${results.length} account${results.length !== 1 ? 's' : ''})`)
+  );
+  console.log('');
+
+  for (const { account, quota } of results) {
+    const accountInfo = findAccountByQuery('gemini', account);
+    const defaultMark = accountInfo?.isDefault ? color(' (default)', 'info') : '';
+
+    if (!quota.success) {
+      console.log(`  ${fail(account)}${defaultMark}`);
+      console.log(`    ${color(quota.error || 'Failed to fetch quota', 'error')}`);
+      console.log('');
+      continue;
+    }
+
+    // Calculate overall quota health
+    const avgQuota =
+      quota.buckets.length > 0
+        ? quota.buckets.reduce((sum, b) => sum + b.remainingPercent, 0) / quota.buckets.length
+        : 0;
+    const statusIcon = avgQuota > 50 ? ok('') : avgQuota > 10 ? warn('') : fail('');
+
+    console.log(`  ${statusIcon}${account}${defaultMark}`);
+    if (quota.projectId) {
+      console.log(`    Project: ${dim(quota.projectId)}`);
+    }
+
+    // Show buckets
+    for (const bucket of quota.buckets) {
+      const bar = formatQuotaBar(bucket.remainingPercent);
+      const tokenLabel = bucket.tokenType ? dim(` (${bucket.tokenType})`) : '';
+      const resetLabel = bucket.resetTime
+        ? dim(` Resets ${formatResetTimeISO(bucket.resetTime)}`)
+        : '';
+      console.log(
+        `    ${bucket.label.padEnd(24)} ${bar} ${bucket.remainingPercent.toFixed(0)}%${tokenLabel}${resetLabel}`
+      );
+    }
+    console.log('');
+  }
+}
+
+/**
+ * Format reset time from seconds
+ */
+function formatResetTime(seconds: number): string {
+  if (seconds <= 0) return 'now';
+  if (seconds < 60) return `in ${seconds}s`;
+  if (seconds < 3600) return `in ${Math.round(seconds / 60)}m`;
+  return `in ${Math.round(seconds / 3600)}h`;
+}
+
+/**
+ * Format reset time from ISO timestamp
+ */
+function formatResetTimeISO(isoTime: string): string {
+  if (!isoTime) return 'unknown';
+  const resetDate = new Date(isoTime);
+  if (isNaN(resetDate.getTime())) return 'unknown';
+  const seconds = Math.max(0, Math.round((resetDate.getTime() - Date.now()) / 1000));
+  return formatResetTime(seconds);
 }
 
 // ============================================================================
@@ -1057,7 +1269,8 @@ export async function handleCliproxyCommand(args: string[]): Promise<void> {
   }
 
   if (command === 'quota') {
-    await handleQuotaStatus(verbose);
+    const { provider: providerFilter } = parseProviderArg(remainingArgs.slice(1));
+    await handleQuotaStatus(verbose, providerFilter);
     return;
   }
 
