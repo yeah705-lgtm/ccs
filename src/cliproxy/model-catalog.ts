@@ -169,10 +169,10 @@ export const MODEL_CATALOG: Partial<Record<CLIProxyProvider, ProviderCatalog>> =
   claude: {
     provider: 'claude',
     displayName: 'Claude (Anthropic)',
-    defaultModel: 'claude-sonnet-4-5-20250514',
+    defaultModel: 'claude-sonnet-4-5-20250929',
     models: [
       {
-        id: 'claude-opus-4-5-20250220',
+        id: 'claude-opus-4-5-20251101',
         name: 'Claude Opus 4.5',
         description: 'Most capable Claude model',
         thinking: {
@@ -184,7 +184,7 @@ export const MODEL_CATALOG: Partial<Record<CLIProxyProvider, ProviderCatalog>> =
         },
       },
       {
-        id: 'claude-sonnet-4-5-20250514',
+        id: 'claude-sonnet-4-5-20250929',
         name: 'Claude Sonnet 4.5',
         description: 'Balanced performance and speed',
         thinking: {
@@ -208,7 +208,7 @@ export const MODEL_CATALOG: Partial<Record<CLIProxyProvider, ProviderCatalog>> =
         },
       },
       {
-        id: 'claude-haiku-4-5-20250514',
+        id: 'claude-haiku-4-5-20251001',
         name: 'Claude Haiku 4.5',
         description: 'Fast and efficient',
         thinking: { type: 'none' },
