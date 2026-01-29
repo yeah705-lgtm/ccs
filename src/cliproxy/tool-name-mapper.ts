@@ -39,6 +39,12 @@ export interface SanitizationChange {
   sanitized: string;
 }
 
+/** Record of a hash collision */
+export interface HashCollision {
+  sanitized: string;
+  originals: string[];
+}
+
 /**
  * Bidirectional mapper for tool name sanitization.
  *
@@ -52,6 +58,9 @@ export class ToolNameMapper {
   /** List of all changes made during registration */
   private changes: SanitizationChange[] = [];
 
+  /** List of detected hash collisions */
+  private collisions: HashCollision[] = [];
+
   /**
    * Register tools and sanitize their names.
    * Stores mapping for later restoration.
@@ -64,6 +73,23 @@ export class ToolNameMapper {
       const result: SanitizeResult = sanitizeToolName(tool.name);
 
       if (result.changed) {
+        // Check for collision: sanitized name already maps to different original
+        const existingOriginal = this.mapping.get(result.sanitized);
+        if (existingOriginal && existingOriginal !== tool.name) {
+          // Record collision
+          const existing = this.collisions.find((c) => c.sanitized === result.sanitized);
+          if (existing) {
+            if (!existing.originals.includes(tool.name)) {
+              existing.originals.push(tool.name);
+            }
+          } else {
+            this.collisions.push({
+              sanitized: result.sanitized,
+              originals: [existingOriginal, tool.name],
+            });
+          }
+        }
+
         // Store mapping: sanitized → original
         this.mapping.set(result.sanitized, tool.name);
         this.changes.push({
@@ -144,10 +170,26 @@ export class ToolNameMapper {
   }
 
   /**
+   * Check if any hash collisions were detected.
+   * Collisions occur when multiple original names map to the same sanitized name.
+   */
+  hasCollisions(): boolean {
+    return this.collisions.length > 0;
+  }
+
+  /**
+   * Get all detected hash collisions for logging/warning.
+   */
+  getCollisions(): HashCollision[] {
+    return [...this.collisions];
+  }
+
+  /**
    * Clear all mappings. Call between requests.
    */
   clear(): void {
     this.mapping.clear();
     this.changes = [];
+    this.collisions = [];
   }
 }

@@ -13,6 +13,7 @@ import * as http from 'http';
 import * as https from 'https';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import { URL } from 'url';
 import { ToolNameMapper, type Tool, type ContentBlock } from './tool-name-mapper';
 import { getCcsDir } from '../utils/config-manager';
@@ -64,9 +65,13 @@ export class ToolSanitizationProxy {
       if (!fs.existsSync(logsDir)) {
         fs.mkdirSync(logsDir, { recursive: true });
       }
-    } catch {
+    } catch (err) {
       // Fallback to temp directory if logs dir creation fails
-      const os = require('os');
+      if (this.debugMode) {
+        console.error(
+          `[tool-sanitization-proxy] Failed to create logs dir: ${(err as Error).message}`
+        );
+      }
       return path.join(os.tmpdir(), 'tool-sanitization-proxy.log');
     }
 
@@ -212,6 +217,17 @@ export class ToolSanitizationProxy {
             this.warn(`"${change.original}" → "${change.sanitized}"`);
           }
           this.log(`Sanitized ${changes.length} tool name(s)`);
+        }
+
+        // Warn about hash collisions (multiple originals → same sanitized)
+        if (mapper.hasCollisions()) {
+          const collisions = mapper.getCollisions();
+          for (const collision of collisions) {
+            this.writeLog(
+              'warn',
+              `[tool-sanitization-proxy] Hash collision detected: ${collision.originals.join(', ')} → "${collision.sanitized}"`
+            );
+          }
         }
       }
 

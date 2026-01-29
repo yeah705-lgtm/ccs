@@ -844,7 +844,9 @@ export async function execClaudeWithCLIProxy(
 
   // Tool sanitization proxy - applies to ALL CLIProxy providers.
   // Sanitizes MCP tool names exceeding Gemini's 64-char limit.
-  // Chain: Claude CLI → ToolSanitizationProxy → [CodexReasoningProxy] → CLIProxy → Gemini
+  // Proxy chain order (request flow):
+  //   Claude CLI → ToolSanitizationProxy → [CodexReasoningProxy if codex] → CLIProxy → Backend
+  // Response flow is reversed, with each proxy transforming data back.
   let toolSanitizationProxy: ToolSanitizationProxy | null = null;
   let toolSanitizationPort: number | null = null;
 
