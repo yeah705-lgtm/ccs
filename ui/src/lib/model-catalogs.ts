@@ -314,28 +314,28 @@ export const MODEL_CATALOGS: Record<string, ProviderCatalog> = {
   claude: {
     provider: 'claude',
     displayName: 'Claude (Anthropic)',
-    defaultModel: 'claude-sonnet-4-5-20250514',
+    defaultModel: 'claude-sonnet-4-5-20250929',
     models: [
       {
-        id: 'claude-opus-4-5-20250220',
+        id: 'claude-opus-4-5-20251101',
         name: 'Claude Opus 4.5',
         description: 'Most capable Claude model',
         presetMapping: {
-          default: 'claude-opus-4-5-20250220',
-          opus: 'claude-opus-4-5-20250220',
-          sonnet: 'claude-sonnet-4-5-20250514',
-          haiku: 'claude-haiku-4-5-20250514',
+          default: 'claude-opus-4-5-20251101',
+          opus: 'claude-opus-4-5-20251101',
+          sonnet: 'claude-sonnet-4-5-20250929',
+          haiku: 'claude-haiku-4-5-20251001',
         },
       },
       {
-        id: 'claude-sonnet-4-5-20250514',
+        id: 'claude-sonnet-4-5-20250929',
         name: 'Claude Sonnet 4.5',
         description: 'Balanced performance and speed',
         presetMapping: {
-          default: 'claude-sonnet-4-5-20250514',
-          opus: 'claude-opus-4-5-20250220',
-          sonnet: 'claude-sonnet-4-5-20250514',
-          haiku: 'claude-haiku-4-5-20250514',
+          default: 'claude-sonnet-4-5-20250929',
+          opus: 'claude-opus-4-5-20251101',
+          sonnet: 'claude-sonnet-4-5-20250929',
+          haiku: 'claude-haiku-4-5-20251001',
         },
       },
       {
@@ -344,13 +344,13 @@ export const MODEL_CATALOGS: Record<string, ProviderCatalog> = {
         description: 'Previous generation Sonnet',
         presetMapping: {
           default: 'claude-sonnet-4-20250514',
-          opus: 'claude-opus-4-5-20250220',
+          opus: 'claude-opus-4-5-20251101',
           sonnet: 'claude-sonnet-4-20250514',
-          haiku: 'claude-haiku-4-5-20250514',
+          haiku: 'claude-haiku-4-5-20251001',
         },
       },
       {
-        id: 'claude-haiku-4-5-20250514',
+        id: 'claude-haiku-4-5-20251001',
         name: 'Claude Haiku 4.5',
         description: 'Fast and efficient',
       },
