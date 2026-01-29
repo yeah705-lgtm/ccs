@@ -1,3 +1,10 @@
+## [7.30.1](https://github.com/kaitranntt/ccs/compare/v7.30.0...v7.30.1) (2026-01-29)
+
+### Bug Fixes
+
+* **cliproxy:** update Claude model catalog to latest CLIProxy models ([d238a5d](https://github.com/kaitranntt/ccs/commit/d238a5d43aa50e0629609349c6eb053170f2b586)), closes [#392](https://github.com/kaitranntt/ccs/issues/392)
+* **copilot:** update fallback model ID to match catalog default ([2501843](https://github.com/kaitranntt/ccs/commit/25018431a50fae1a45121b28a0d16fa1731deace))
+
 ## [7.30.0](https://github.com/kaitranntt/ccs/compare/v7.29.0...v7.30.0) (2026-01-28)
 
 ### Features
