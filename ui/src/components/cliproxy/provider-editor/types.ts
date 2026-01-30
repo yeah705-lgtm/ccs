@@ -50,8 +50,8 @@ export interface ProviderEditorProps {
   isBulkPausing?: boolean;
   /** Bulk resume mutation in progress */
   isBulkResuming?: boolean;
-  /** Weight update mutation in progress */
-  isUpdatingWeight?: boolean;
+  /** Account ID currently having weight updated (null if none) */
+  updatingWeightAccountId?: string | null;
   /** Set tier defaults mutation in progress */
   isSettingWeights?: boolean;
 }
@@ -70,7 +70,7 @@ export interface AccountItemProps {
   isPausingAccount?: boolean;
   /** Solo mode mutation in progress */
   isSoloingAccount?: boolean;
-  /** Weight update mutation in progress */
+  /** Whether this specific account's weight is being updated */
   isUpdatingWeight?: boolean;
   privacyMode?: boolean;
   /** Show quota bar (only for 'agy' provider) */

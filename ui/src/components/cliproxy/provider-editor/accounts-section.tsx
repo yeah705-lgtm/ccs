@@ -38,8 +38,8 @@ interface AccountsSectionProps {
   isBulkPausing?: boolean;
   /** Bulk resume mutation in progress */
   isBulkResuming?: boolean;
-  /** Weight update mutation in progress */
-  isUpdatingWeight?: boolean;
+  /** Account ID currently having weight updated (null if none) */
+  updatingWeightAccountId?: string | null;
   /** Set tier defaults mutation in progress */
   isSettingWeights?: boolean;
   privacyMode?: boolean;
@@ -68,7 +68,7 @@ export function AccountsSection({
   isSoloingAccount,
   isBulkPausing,
   isBulkResuming,
-  isUpdatingWeight,
+  updatingWeightAccountId,
   isSettingWeights,
   privacyMode,
   showQuota,
@@ -208,7 +208,7 @@ export function AccountsSection({
               isRemoving={isRemovingAccount}
               isPausingAccount={isPausingAccount}
               isSoloingAccount={isSoloingAccount}
-              isUpdatingWeight={isUpdatingWeight}
+              isUpdatingWeight={updatingWeightAccountId === account.id}
               privacyMode={privacyMode}
               showQuota={showQuota}
               selectable={isSelectable}

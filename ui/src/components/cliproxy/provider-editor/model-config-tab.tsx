@@ -55,8 +55,8 @@ interface ModelConfigTabProps {
   isBulkResuming?: boolean;
   /** Weight change handler */
   onWeightChange?: (accountId: string, weight: number) => void;
-  /** Weight update mutation in progress */
-  isUpdatingWeight?: boolean;
+  /** Account ID currently having weight updated (null if none) */
+  updatingWeightAccountId?: string | null;
   /** Set all Ultra account weights */
   onSetAllUltraWeights?: (weight: number) => void;
   /** Set tier defaults mutation in progress */
@@ -95,7 +95,7 @@ export function ModelConfigTab({
   isSoloingAccount,
   isBulkPausing,
   isBulkResuming,
-  isUpdatingWeight,
+  updatingWeightAccountId,
   isSettingWeights,
   privacyMode,
   isRemoteMode,
@@ -181,7 +181,7 @@ export function ModelConfigTab({
           isSoloingAccount={isSoloingAccount}
           isBulkPausing={isBulkPausing}
           isBulkResuming={isBulkResuming}
-          isUpdatingWeight={isUpdatingWeight}
+          updatingWeightAccountId={updatingWeightAccountId}
           isSettingWeights={isSettingWeights}
           privacyMode={privacyMode}
           showQuota={

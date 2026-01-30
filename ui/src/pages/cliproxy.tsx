@@ -448,7 +448,9 @@ export function CliproxyPage() {
             isSoloingAccount={soloMutation.isPending}
             isBulkPausing={bulkPauseMutation.isPending}
             isBulkResuming={bulkResumeMutation.isPending}
-            isUpdatingWeight={setWeightMutation.isPending}
+            updatingWeightAccountId={
+              setWeightMutation.isPending ? (setWeightMutation.variables?.accountId ?? null) : null
+            }
             isSettingWeights={setTierDefaultsMutation.isPending}
           />
         ) : selectedStatus ? (
@@ -496,7 +498,9 @@ export function CliproxyPage() {
             isSoloingAccount={soloMutation.isPending}
             isBulkPausing={bulkPauseMutation.isPending}
             isBulkResuming={bulkResumeMutation.isPending}
-            isUpdatingWeight={setWeightMutation.isPending}
+            updatingWeightAccountId={
+              setWeightMutation.isPending ? (setWeightMutation.variables?.accountId ?? null) : null
+            }
             isSettingWeights={setTierDefaultsMutation.isPending}
           />
         ) : (

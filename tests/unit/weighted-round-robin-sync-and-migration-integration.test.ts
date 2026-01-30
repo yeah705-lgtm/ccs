@@ -5,15 +5,12 @@
  * Note: Uses require() for dist code to ensure CCS_HOME is properly isolated.
  */
 
-import { describe, test, expect, beforeAll } from 'bun:test';
+import { describe, test, expect } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Build dist before running tests
-beforeAll(async () => {
-  const { $ } = await import('bun');
-  await $`bun run build`.quiet();
-});
+// Note: dist/ must exist before running these tests.
+// CI runs `bun run build:all` before validate. Locally, use `bun run test` (includes build).
 
 describe('syncWeightedAuthFiles integration', () => {
   test('function exports exist', () => {

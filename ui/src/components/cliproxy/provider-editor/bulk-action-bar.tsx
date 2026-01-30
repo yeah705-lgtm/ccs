@@ -40,8 +40,10 @@ export function BulkActionBar({
   const isLoading = isPausing || isResuming || isSettingWeights;
 
   return (
-    <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg border mt-2">
-      <span className="text-sm text-muted-foreground">{selectedCount} selected</span>
+    <div className="flex flex-wrap items-center gap-2 p-2 bg-muted/50 rounded-lg border mt-2">
+      <span className="text-sm text-muted-foreground whitespace-nowrap">
+        {selectedCount} selected
+      </span>
       <Button
         variant="ghost"
         size="sm"
@@ -51,7 +53,7 @@ export function BulkActionBar({
       >
         Clear
       </Button>
-      <div className="flex gap-2 ml-auto">
+      <div className="flex flex-wrap gap-2 ml-auto">
         <Button
           size="sm"
           variant="outline"

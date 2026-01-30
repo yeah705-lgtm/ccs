@@ -49,7 +49,7 @@ export function ProviderEditor({
   isSoloingAccount,
   isBulkPausing,
   isBulkResuming,
-  isUpdatingWeight,
+  updatingWeightAccountId,
   isSettingWeights,
 }: ProviderEditorProps) {
   const [customPresetOpen, setCustomPresetOpen] = useState(false);
@@ -223,7 +223,7 @@ export function ProviderEditor({
                     isSoloingAccount={isSoloingAccount}
                     isBulkPausing={isBulkPausing}
                     isBulkResuming={isBulkResuming}
-                    isUpdatingWeight={isUpdatingWeight}
+                    updatingWeightAccountId={updatingWeightAccountId}
                     isSettingWeights={isSettingWeights}
                     privacyMode={privacyMode}
                     isRemoteMode={isRemoteMode}
