@@ -20,18 +20,17 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { CLIProxyProvider } from './types';
-import { setAccountWeight, registerAccount, getProviderAccounts } from './account-manager';
+import {
+  setAccountWeight,
+  registerAccount,
+  getProviderAccounts,
+  PROVIDERS_WITHOUT_EMAIL,
+} from './account-manager';
 import { getAuthDir, getCliproxyDir } from './config-generator';
-import { MigrationResult } from './weighted-round-robin-shared-types';
+import { MigrationResult, getFilePrefix } from './weighted-round-robin-shared-types';
 
 // Re-export type for convenience
 export type { MigrationResult } from './weighted-round-robin-shared-types';
-
-/** Map provider code to auth file prefix (CLIProxyAPI uses 'antigravity-' for agy) */
-function getFilePrefix(provider: CLIProxyProvider): string {
-  if (provider === 'agy') return 'antigravity';
-  return provider;
-}
 
 // Forward declaration to avoid circular import - sync module will be imported dynamically
 let syncModule: typeof import('./weighted-round-robin-sync') | null = null;
@@ -113,9 +112,16 @@ function detectOldPrefixFiles(provider: CLIProxyProvider): OldPrefixFile[] {
   const files = fs.readdirSync(authDir);
 
   for (const filename of files) {
-    // Must be JSON file for this provider
     const prefix = getFilePrefix(provider);
-    if (!filename.endsWith('.json') || !filename.startsWith(`${prefix}-`)) {
+
+    // Must be JSON file matching this provider's naming convention
+    if (!filename.endsWith('.json')) continue;
+
+    // Gemini uses {email}-gen-lang-client-*.json (no provider prefix)
+    const isGeminiFile = provider === 'gemini' && filename.includes('-gen-lang-client-');
+    const isPrefixedFile = filename.startsWith(`${prefix}-`);
+
+    if (!isGeminiFile && !isPrefixedFile) {
       continue;
     }
 
@@ -124,15 +130,25 @@ function detectOldPrefixFiles(provider: CLIProxyProvider): OldPrefixFile[] {
       continue;
     }
 
-    // Read email from JSON content
+    // Read identity from JSON content or derive from filename
     const filePath = path.join(authDir, filename);
     try {
       const content = fs.readFileSync(filePath, 'utf-8');
       const data = JSON.parse(content);
-      const email = data.email || '';
+      let email = data.email || '';
+
+      // For providers without email (kiro, ghcp), derive ID from filename
+      // e.g., "kiro-google-EHGA3GRVQMUK.json" → "google-EHGA3GRVQMUK"
+      // e.g., "github-copilot-kaitranntt.json" → "kaitranntt"
+      if (!email && PROVIDERS_WITHOUT_EMAIL.includes(provider)) {
+        const withoutExt = filename.replace(/\.json$/, '');
+        const prefixWithDash = `${prefix}-`;
+        email = withoutExt.startsWith(prefixWithDash)
+          ? withoutExt.slice(prefixWithDash.length)
+          : withoutExt;
+      }
 
       if (!email) {
-        // Skip files without email
         continue;
       }
 
@@ -261,7 +277,6 @@ export async function migrateOldPrefixes(provider: CLIProxyProvider): Promise<Mi
 
   const filePrefix = getFilePrefix(provider);
   const allAuthFiles = fs.existsSync(authDir) ? fs.readdirSync(authDir) : [];
-  const weightedPattern = new RegExp(`^${filePrefix}-r\\d{2}[a-z]*_`);
 
   const newFilesExist =
     registeredGroups.length === 0 ||
@@ -269,7 +284,7 @@ export async function migrateOldPrefixes(provider: CLIProxyProvider): Promise<Mi
       // Check for ANY weighted file matching this account (r01_, r01a_, r01b_, etc.)
       const escapedEmail = group.email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const accountPattern = new RegExp(`^${filePrefix}-r\\d{2}[a-z]*_${escapedEmail}\\.json$`);
-      return allAuthFiles.some((f) => weightedPattern.test(f) && accountPattern.test(f));
+      return allAuthFiles.some((f) => accountPattern.test(f));
     });
 
   if (!newFilesExist) {
@@ -277,6 +292,10 @@ export async function migrateOldPrefixes(provider: CLIProxyProvider): Promise<Mi
     // Don't delete old files, don't mark complete
     return { migrated: 0, skipped: false, failedWeightUpdates };
   }
+
+  // Mark migration complete BEFORE deleting old files (crash safety:
+  // if process dies during deletion, next run won't re-migrate — self-healing cleanup handles stragglers)
+  markMigrationComplete(provider);
 
   // Remove old prefixed files (only if verification passed)
   // Some files may already be moved to auth-backup/ by sync's canonical backup step
@@ -290,9 +309,6 @@ export async function migrateOldPrefixes(provider: CLIProxyProvider): Promise<Mi
       }
     }
   }
-
-  // Mark migration complete
-  markMigrationComplete(provider);
 
   return { migrated: groups.length, skipped: false, failedWeightUpdates };
 }

@@ -4,6 +4,17 @@
  * Extracted to break circular dependency between sync and migration modules.
  */
 
+import { CLIProxyProvider } from './types';
+
+/** Map provider code to auth file prefix used by CLIProxyAPI */
+export function getFilePrefix(provider: CLIProxyProvider): string {
+  const prefixMap: Partial<Record<CLIProxyProvider, string>> = {
+    agy: 'antigravity',
+    ghcp: 'github-copilot',
+  };
+  return prefixMap[provider] ?? provider;
+}
+
 /** Weighted file descriptor for round-robin distribution */
 export interface WeightedFile {
   /** Filename with round and suffix, e.g., "antigravity-r01_email.json" */

@@ -115,11 +115,11 @@ export async function startServer(options: ServerOptions): Promise<ServerInstanc
       // This keeps server startup instant for users who don't need analytics
       resolve({ server, wss, cleanup });
 
-      // Sync weighted auth files for all providers (fire-and-forget, deferred)
+      // Sync weighted auth files for all providers (fire-and-forget, deferred, parallel)
       // Uses setTimeout to avoid blocking event loop during startup (sync has heavy fs ops)
       setTimeout(() => {
-        void (async () => {
-          for (const provider of CLIPROXY_PROFILES) {
+        void Promise.allSettled(
+          CLIPROXY_PROFILES.map(async (provider) => {
             try {
               await syncWeightedAuthFiles(provider as CLIProxyProvider);
             } catch (err) {
@@ -128,8 +128,8 @@ export async function startServer(options: ServerOptions): Promise<ServerInstanc
                 (err as Error).message
               );
             }
-          }
-        })();
+          })
+        );
       }, 100);
     });
   });

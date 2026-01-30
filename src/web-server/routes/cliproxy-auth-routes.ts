@@ -46,8 +46,8 @@ const router = Router();
 const validProviders: CLIProxyProvider[] = [...CLIPROXY_PROFILES];
 
 /** Fire-and-forget weighted auth file sync after account mutations */
-function syncAfterMutation(provider: string): void {
-  syncWeightedAuthFiles(provider as CLIProxyProvider).catch((err) =>
+function syncAfterMutation(provider: CLIProxyProvider): void {
+  syncWeightedAuthFiles(provider).catch((err) =>
     console.error(
       `[weighted-sync] Post-mutation sync failed for ${provider}:`,
       (err as Error).message
@@ -233,7 +233,7 @@ router.post('/accounts/:provider/default', (req: Request, res: Response): void =
 
     if (success) {
       res.json({ provider, defaultAccount: accountId });
-      syncAfterMutation(provider);
+      syncAfterMutation(provider as CLIProxyProvider);
     } else {
       res
         .status(404)
@@ -271,7 +271,7 @@ router.delete('/accounts/:provider/:accountId', (req: Request, res: Response): v
 
     if (success) {
       res.json({ provider, accountId, deleted: true });
-      syncAfterMutation(provider);
+      syncAfterMutation(provider as CLIProxyProvider);
     } else {
       res
         .status(404)
@@ -305,7 +305,7 @@ router.post('/accounts/:provider/:accountId/pause', (req: Request, res: Response
     const success = pauseAccountFn(provider as CLIProxyProvider, accountId);
     if (success) {
       res.json({ provider, accountId, paused: true });
-      syncAfterMutation(provider);
+      syncAfterMutation(provider as CLIProxyProvider);
     } else {
       res
         .status(404)
@@ -338,7 +338,7 @@ router.post('/accounts/:provider/:accountId/resume', (req: Request, res: Respons
     const success = resumeAccountFn(provider as CLIProxyProvider, accountId);
     if (success) {
       res.json({ provider, accountId, paused: false });
-      syncAfterMutation(provider);
+      syncAfterMutation(provider as CLIProxyProvider);
     } else {
       res
         .status(404)
@@ -428,7 +428,7 @@ router.post('/:provider/start', async (req: Request, res: Response): Promise<voi
           isDefault: account.isDefault,
         },
       });
-      syncAfterMutation(provider);
+      syncAfterMutation(provider as CLIProxyProvider);
     } else {
       res.status(400).json({ error: 'Authentication failed or was cancelled' });
     }
@@ -580,10 +580,9 @@ router.put(
     try {
       setAccountWeight(provider as CLIProxyProvider, accountId, weight);
 
-      // Auto-sync after weight change
-      await syncWeightedAuthFiles(provider as CLIProxyProvider);
-
       res.json({ success: true, weight });
+      // Fire-and-forget sync after weight change (don't block HTTP response)
+      syncAfterMutation(provider as CLIProxyProvider);
     } catch (error) {
       const message = (error as Error).message;
       // Return 404 if account not found, 400 for validation errors, 500 for others
@@ -611,7 +610,7 @@ router.post('/weight/sync', async (_req: Request, res: Response): Promise<void> 
   try {
     const results: Record<string, { created: string[]; removed: string[]; unchanged: number }> = {};
 
-    for (const provider of ['agy', 'gemini', 'codex'] as CLIProxyProvider[]) {
+    for (const provider of validProviders) {
       results[provider] = await syncWeightedAuthFiles(provider);
     }
 
@@ -649,16 +648,16 @@ router.post('/weight/tier-defaults', async (req: Request, res: Response): Promis
   try {
     let total = 0;
 
-    for (const provider of ['agy', 'gemini', 'codex'] as CLIProxyProvider[]) {
+    for (const provider of validProviders) {
       total += setTierDefaultWeights(provider, tierWeights);
     }
 
-    // Sync after bulk update
-    for (const provider of ['agy', 'gemini', 'codex'] as CLIProxyProvider[]) {
-      await syncWeightedAuthFiles(provider);
-    }
-
     res.json({ success: true, updated: total });
+
+    // Fire-and-forget sync after bulk update (don't block HTTP response)
+    for (const provider of validProviders) {
+      syncAfterMutation(provider as CLIProxyProvider);
+    }
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }

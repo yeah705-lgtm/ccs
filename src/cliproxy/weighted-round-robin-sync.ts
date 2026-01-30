@@ -14,16 +14,11 @@ import * as path from 'path';
 import { CLIProxyProvider } from './types';
 import { AccountInfo, getProviderAccounts } from './account-manager';
 import { getAuthDir } from './config-generator';
-import { WeightedFile, SyncResult } from './weighted-round-robin-shared-types';
+import { WeightedFile, SyncResult, getFilePrefix } from './weighted-round-robin-shared-types';
 
 // Re-export types for convenience
 export type { WeightedFile, SyncResult } from './weighted-round-robin-shared-types';
-
-/** Map provider code to auth file prefix (CLIProxyAPI uses 'antigravity-' for agy) */
-function getFilePrefix(provider: CLIProxyProvider): string {
-  if (provider === 'agy') return 'antigravity';
-  return provider;
-}
+export { getFilePrefix } from './weighted-round-robin-shared-types';
 
 // Forward declaration to avoid circular import - migration module will be imported dynamically
 let migrationModule: typeof import('./weighted-round-robin-migration') | null = null;
@@ -318,13 +313,17 @@ export async function syncWeightedAuthFiles(
   // Move old canonical files to auth-backup/ after r01 files are created
   // This prevents CLIProxyAPI from discovering old canonical files alongside r{NN} files
   const backupDir = path.join(path.dirname(authDir), 'auth-backup');
-  const weightedFilePattern = new RegExp(`^${prefix}-r\\d{2}[a-z]*_`);
+
+  // Load registry once for all accounts (avoid race condition from load/save per account)
+  const { loadAccountsRegistry, saveAccountsRegistry } = await import('./account-manager');
+  const registry = loadAccountsRegistry();
+  let registryModified = false;
 
   for (const account of accounts) {
     const canonicalFile = account.tokenFile;
 
     // Skip if already r{NN} format (nothing to migrate)
-    if (weightedFilePattern.test(canonicalFile)) {
+    if (weightedPattern.test(canonicalFile)) {
       continue;
     }
 
@@ -354,14 +353,11 @@ export async function syncWeightedAuthFiles(
         const backupPath = path.join(backupDir, canonicalFile);
         fs.renameSync(canonicalPath, backupPath);
 
-        // Update account registry to point to weighted file
-        // Load fresh registry to avoid race conditions
-        const { loadAccountsRegistry, saveAccountsRegistry } = await import('./account-manager');
-        const registry = loadAccountsRegistry();
+        // Update registry in-memory (saved once after loop)
         const providerAccounts = registry.providers[provider];
         if (providerAccounts?.accounts[account.id]) {
           providerAccounts.accounts[account.id].tokenFile = accountWeightedFile.filename;
-          saveAccountsRegistry(registry);
+          registryModified = true;
         }
 
         result.removed.push(canonicalFile);
@@ -370,6 +366,11 @@ export async function syncWeightedAuthFiles(
       // Skip on error (content mismatch, read failure, etc.)
       continue;
     }
+  }
+
+  // Save registry once after all backup operations
+  if (registryModified) {
+    saveAccountsRegistry(registry);
   }
 
   return result;
