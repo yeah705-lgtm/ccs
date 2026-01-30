@@ -49,6 +49,8 @@ export interface AccountInfo {
   pausedAt?: string;
   /** Account tier: ultra, pro, or free */
   tier?: AccountTier;
+  /** Weight for round-robin distribution (0=skip, 1-99=rounds). Default: 1 */
+  weight?: number;
   /** GCP Project ID (Antigravity only) - read-only, fetched from auth token */
   projectId?: string;
 }
@@ -539,6 +541,61 @@ export function setAccountTier(
   providerAccounts.accounts[accountId].tier = tier;
   saveAccountsRegistry(registry);
   return true;
+}
+
+/**
+ * Get account weight
+ */
+export function getAccountWeight(provider: CLIProxyProvider, accountId: string): number {
+  const account = getAccount(provider, accountId);
+  return account?.weight ?? 1;
+}
+
+/**
+ * Set account weight
+ */
+export function setAccountWeight(
+  provider: CLIProxyProvider,
+  accountId: string,
+  weight: number
+): boolean {
+  if (weight < 0 || weight > 99) {
+    throw new Error('Weight must be between 0 and 99');
+  }
+
+  const registry = loadAccountsRegistry();
+  const providerAccounts = registry.providers[provider];
+  if (!providerAccounts?.accounts[accountId]) {
+    return false;
+  }
+
+  providerAccounts.accounts[accountId].weight = weight;
+  saveAccountsRegistry(registry);
+  return true;
+}
+
+/**
+ * Set tier default weights
+ */
+export function setTierDefaultWeights(
+  provider: CLIProxyProvider,
+  tierWeights: Partial<Record<AccountTier, number>>
+): number {
+  const registry = loadAccountsRegistry();
+  const providerAccounts = registry.providers[provider];
+  if (!providerAccounts) return 0;
+
+  let count = 0;
+  for (const [_id, account] of Object.entries(providerAccounts.accounts)) {
+    const tier = account.tier || 'unknown';
+    if (tier in tierWeights && tierWeights[tier as AccountTier] !== undefined) {
+      account.weight = tierWeights[tier as AccountTier];
+      count++;
+    }
+  }
+
+  saveAccountsRegistry(registry);
+  return count;
 }
 
 /**
