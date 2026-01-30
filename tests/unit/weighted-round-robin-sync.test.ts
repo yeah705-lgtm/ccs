@@ -54,10 +54,10 @@ describe('generateWeightedFiles', () => {
 
     // Should create 2 files (1 round each with suffix)
     expect(result).toHaveLength(2);
-    expect(result[0].filename).toBe('agy-r01a_alice@example.com.json');
+    expect(result[0].filename).toBe('antigravity-r01a_alice@example.com.json');
     expect(result[0].suffix).toBe('a');
     expect(result[0].round).toBe(1);
-    expect(result[1].filename).toBe('agy-r01b_bob@example.com.json');
+    expect(result[1].filename).toBe('antigravity-r01b_bob@example.com.json');
     expect(result[1].suffix).toBe('b');
     expect(result[1].round).toBe(1);
   });
@@ -77,13 +77,13 @@ describe('generateWeightedFiles', () => {
 
     // Should create 3 files (rounds 01-03, no suffix)
     expect(result).toHaveLength(3);
-    expect(result[0].filename).toBe('agy-r01_heavy@example.com.json');
+    expect(result[0].filename).toBe('antigravity-r01_heavy@example.com.json');
     expect(result[0].suffix).toBe('');
     expect(result[0].round).toBe(1);
-    expect(result[1].filename).toBe('agy-r02_heavy@example.com.json');
+    expect(result[1].filename).toBe('antigravity-r02_heavy@example.com.json');
     expect(result[1].suffix).toBe('');
     expect(result[1].round).toBe(2);
-    expect(result[2].filename).toBe('agy-r03_heavy@example.com.json');
+    expect(result[2].filename).toBe('antigravity-r03_heavy@example.com.json');
     expect(result[2].suffix).toBe('');
     expect(result[2].round).toBe(3);
   });
@@ -161,7 +161,7 @@ describe('generateWeightedFiles', () => {
     const result = generateWeightedFiles(accounts, provider);
 
     expect(result).toHaveLength(1);
-    expect(result[0].filename).toBe('agy-r01a_default@example.com.json');
+    expect(result[0].filename).toBe('antigravity-r01a_default@example.com.json');
     expect(result[0].suffix).toBe('a');
   });
 
