@@ -58,3 +58,57 @@ export function useDeleteAccount() {
     },
   });
 }
+
+export function useSetAccountWeight() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      provider,
+      accountId,
+      weight,
+    }: {
+      provider: string;
+      accountId: string;
+      weight: number;
+    }) => api.cliproxy.accounts.setWeight(provider, accountId, weight),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cliproxy-auth'] });
+      toast.success('Account weight updated');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+export function useSyncWeights() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api.cliproxy.weight.sync(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cliproxy-auth'] });
+      toast.success('Weights synced successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+export function useSetTierDefaults() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (tierWeights: Record<string, number>) =>
+      api.cliproxy.weight.setTierDefaults(tierWeights),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cliproxy-auth'] });
+      toast.success('Tier defaults applied successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}

@@ -87,6 +87,8 @@ export interface OAuthAccount {
   tier?: 'free' | 'pro' | 'ultra' | 'unknown';
   /** GCP Project ID (Antigravity only) - read-only */
   projectId?: string;
+  /** Weight for round-robin distribution (0=skip, 1-99=rounds). Default: 1 */
+  weight?: number;
 }
 
 export interface AuthStatus {
@@ -515,6 +517,16 @@ export const api = {
             body: JSON.stringify({ provider, accountIds }),
           }
         ),
+      /** Set account weight (0-99) */
+      setWeight: async (provider: string, accountId: string, weight: number) => {
+        const res = await fetch(`${BASE_URL}/cliproxy/accounts/${provider}/${accountId}/weight`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ weight }),
+        });
+        if (!res.ok) throw new Error('Failed to set weight');
+        return res.json();
+      },
     },
     // OAuth flow
     auth: {
@@ -546,6 +558,25 @@ export const api = {
         const res = await fetch(`${BASE_URL}/cliproxy/error-logs/${encodeURIComponent(name)}`);
         if (!res.ok) throw new Error('Failed to load error log');
         return res.text();
+      },
+    },
+    // Weighted round-robin
+    weight: {
+      /** Sync weighted auth files for all providers */
+      sync: async () => {
+        const res = await fetch(`${BASE_URL}/cliproxy/weight/sync`, { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to sync weights');
+        return res.json();
+      },
+      /** Set tier default weights (ultra=4, pro=1, free=1) */
+      setTierDefaults: async (tierWeights: Record<string, number>) => {
+        const res = await fetch(`${BASE_URL}/cliproxy/weight/tier-defaults`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tierWeights }),
+        });
+        if (!res.ok) throw new Error('Failed to set tier defaults');
+        return res.json();
       },
     },
   },

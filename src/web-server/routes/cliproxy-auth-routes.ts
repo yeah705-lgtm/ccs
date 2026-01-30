@@ -28,12 +28,15 @@ import {
   touchAccount,
   PROVIDERS_WITHOUT_EMAIL,
   validateNickname,
+  setAccountWeight,
+  setTierDefaultWeights,
 } from '../../cliproxy/account-manager';
 import { getProxyTarget } from '../../cliproxy/proxy-target-resolver';
 import { fetchRemoteAuthStatus } from '../../cliproxy/remote-auth-fetcher';
 import { loadOrCreateUnifiedConfig } from '../../config/unified-config-loader';
 import { tryKiroImport } from '../../cliproxy/auth/kiro-import';
 import { getProviderTokenDir } from '../../cliproxy/auth/token-manager';
+import { syncWeightedAuthFiles } from '../../cliproxy/weighted-round-robin-sync';
 import type { CLIProxyProvider } from '../../cliproxy/types';
 import { CLIPROXY_PROFILES } from '../../auth/profile-detector';
 
@@ -527,6 +530,108 @@ router.post('/kiro/import', async (_req: Request, res: Response): Promise<void> 
         error: result.error || 'Failed to import Kiro token',
       });
     }
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// ==================== Weighted Round-Robin ====================
+
+/**
+ * PUT /api/cliproxy/accounts/:provider/:accountId/weight - Set account weight
+ */
+router.put(
+  '/accounts/:provider/:accountId/weight',
+  async (req: Request, res: Response): Promise<void> => {
+    const target = getProxyTarget();
+    if (target.isRemote) {
+      res.status(501).json({ error: 'Weight management not available in remote mode' });
+      return;
+    }
+
+    const { provider, accountId } = req.params;
+    const { weight } = req.body;
+
+    if (!validProviders.includes(provider as CLIProxyProvider)) {
+      res.status(400).json({ error: `Invalid provider: ${provider}` });
+      return;
+    }
+
+    if (typeof weight !== 'number' || weight < 0 || weight > 99) {
+      res.status(400).json({ error: 'Weight must be 0-99' });
+      return;
+    }
+
+    try {
+      const success = setAccountWeight(provider as CLIProxyProvider, accountId, weight);
+      if (!success) {
+        res.status(404).json({ error: 'Account not found' });
+        return;
+      }
+
+      // Auto-sync after weight change
+      await syncWeightedAuthFiles(provider as CLIProxyProvider);
+
+      res.json({ success: true, weight });
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  }
+);
+
+/**
+ * POST /api/cliproxy/weight/sync - Sync weighted auth files for all providers
+ */
+router.post('/weight/sync', async (_req: Request, res: Response): Promise<void> => {
+  const target = getProxyTarget();
+  if (target.isRemote) {
+    res.status(501).json({ error: 'Weight sync not available in remote mode' });
+    return;
+  }
+
+  try {
+    const results: Record<string, { created: string[]; removed: string[]; unchanged: number }> = {};
+
+    for (const provider of ['agy', 'gemini', 'codex'] as CLIProxyProvider[]) {
+      results[provider] = await syncWeightedAuthFiles(provider);
+    }
+
+    res.json({ success: true, results });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+/**
+ * POST /api/cliproxy/weight/tier-defaults - Set tier default weights for all providers
+ */
+router.post('/weight/tier-defaults', async (req: Request, res: Response): Promise<void> => {
+  const target = getProxyTarget();
+  if (target.isRemote) {
+    res.status(501).json({ error: 'Weight management not available in remote mode' });
+    return;
+  }
+
+  const { tierWeights } = req.body;
+
+  if (!tierWeights || typeof tierWeights !== 'object') {
+    res.status(400).json({ error: 'tierWeights object required' });
+    return;
+  }
+
+  try {
+    let total = 0;
+
+    for (const provider of ['agy', 'gemini', 'codex'] as CLIProxyProvider[]) {
+      total += setTierDefaultWeights(provider, tierWeights);
+    }
+
+    // Sync after bulk update
+    for (const provider of ['agy', 'gemini', 'codex'] as CLIProxyProvider[]) {
+      await syncWeightedAuthFiles(provider);
+    }
+
+    res.json({ success: true, updated: total });
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
