@@ -13,6 +13,9 @@ import { WebSocketServer } from 'ws';
 import { setupWebSocket } from './websocket';
 import { createSessionMiddleware, authMiddleware } from './middleware/auth-middleware';
 import { startAutoSyncWatcher, stopAutoSyncWatcher } from '../cliproxy/sync';
+import { syncWeightedAuthFiles } from '../cliproxy/weighted-round-robin-sync';
+import { CLIPROXY_PROFILES } from '../auth/profile-detector';
+import type { CLIProxyProvider } from '../cliproxy/types';
 
 export interface ServerOptions {
   port: number;
@@ -111,6 +114,23 @@ export async function startServer(options: ServerOptions): Promise<ServerInstanc
       // Usage cache loads on-demand when Analytics page is visited
       // This keeps server startup instant for users who don't need analytics
       resolve({ server, wss, cleanup });
+
+      // Sync weighted auth files for all providers (fire-and-forget, deferred)
+      // Uses setTimeout to avoid blocking event loop during startup (sync has heavy fs ops)
+      setTimeout(() => {
+        void (async () => {
+          for (const provider of CLIPROXY_PROFILES) {
+            try {
+              await syncWeightedAuthFiles(provider as CLIProxyProvider);
+            } catch (err) {
+              console.error(
+                `[weighted-sync] Startup sync failed for ${provider}:`,
+                (err as Error).message
+              );
+            }
+          }
+        })();
+      }, 100);
     });
   });
 }

@@ -45,6 +45,16 @@ const router = Router();
 // Valid providers list - derived from canonical CLIPROXY_PROFILES
 const validProviders: CLIProxyProvider[] = [...CLIPROXY_PROFILES];
 
+/** Fire-and-forget weighted auth file sync after account mutations */
+function syncAfterMutation(provider: string): void {
+  syncWeightedAuthFiles(provider as CLIProxyProvider).catch((err) =>
+    console.error(
+      `[weighted-sync] Post-mutation sync failed for ${provider}:`,
+      (err as Error).message
+    )
+  );
+}
+
 /**
  * GET /api/cliproxy/auth - Get auth status for built-in CLIProxy profiles
  * Also fetches CLIProxyAPI stats to update lastUsedAt for active providers
@@ -223,6 +233,7 @@ router.post('/accounts/:provider/default', (req: Request, res: Response): void =
 
     if (success) {
       res.json({ provider, defaultAccount: accountId });
+      syncAfterMutation(provider);
     } else {
       res
         .status(404)
@@ -260,6 +271,7 @@ router.delete('/accounts/:provider/:accountId', (req: Request, res: Response): v
 
     if (success) {
       res.json({ provider, accountId, deleted: true });
+      syncAfterMutation(provider);
     } else {
       res
         .status(404)
@@ -293,6 +305,7 @@ router.post('/accounts/:provider/:accountId/pause', (req: Request, res: Response
     const success = pauseAccountFn(provider as CLIProxyProvider, accountId);
     if (success) {
       res.json({ provider, accountId, paused: true });
+      syncAfterMutation(provider);
     } else {
       res
         .status(404)
@@ -325,6 +338,7 @@ router.post('/accounts/:provider/:accountId/resume', (req: Request, res: Respons
     const success = resumeAccountFn(provider as CLIProxyProvider, accountId);
     if (success) {
       res.json({ provider, accountId, paused: false });
+      syncAfterMutation(provider);
     } else {
       res
         .status(404)
@@ -414,6 +428,7 @@ router.post('/:provider/start', async (req: Request, res: Response): Promise<voi
           isDefault: account.isDefault,
         },
       });
+      syncAfterMutation(provider);
     } else {
       res.status(400).json({ error: 'Authentication failed or was cancelled' });
     }

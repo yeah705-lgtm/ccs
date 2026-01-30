@@ -19,6 +19,12 @@ import { WeightedFile, SyncResult } from './weighted-round-robin-shared-types';
 // Re-export types for convenience
 export type { WeightedFile, SyncResult } from './weighted-round-robin-shared-types';
 
+/** Map provider code to auth file prefix (CLIProxyAPI uses 'antigravity-' for agy) */
+function getFilePrefix(provider: CLIProxyProvider): string {
+  if (provider === 'agy') return 'antigravity';
+  return provider;
+}
+
 // Forward declaration to avoid circular import - migration module will be imported dynamically
 let migrationModule: typeof import('./weighted-round-robin-migration') | null = null;
 
@@ -98,7 +104,8 @@ export function generateWeightedFiles(
     for (const account of multiRound) {
       const weight = account.weight ?? 1;
       if (round <= weight) {
-        const filename = `${provider}-r${roundStr}_${account.id}.json`;
+        const prefix = getFilePrefix(provider);
+        const filename = `${prefix}-r${roundStr}_${account.id}.json`;
         result.push({
           filename,
           accountId: account.id,
@@ -116,7 +123,8 @@ export function generateWeightedFiles(
     for (let i = 0; i < sliceForRound.length; i++) {
       const account = sliceForRound[i];
       const suffix = generateSuffix(i);
-      const filename = `${provider}-r${roundStr}${suffix}_${account.id}.json`;
+      const prefix = getFilePrefix(provider);
+      const filename = `${prefix}-r${roundStr}${suffix}_${account.id}.json`;
       result.push({
         filename,
         accountId: account.id,
@@ -143,10 +151,21 @@ function getCanonicalTokenPath(
   authDir: string,
   provider: CLIProxyProvider
 ): string {
-  // Try r01_ file first (canonical weighted file)
-  const r01Path = path.join(authDir, `${provider}-r01_${account.id}.json`);
+  const prefix = getFilePrefix(provider);
+  // Try r01_ file first (multi-round canonical weighted file)
+  const r01Path = path.join(authDir, `${prefix}-r01_${account.id}.json`);
   if (fs.existsSync(r01Path)) {
     return r01Path;
+  }
+
+  // Try r01{suffix}_ file (single-round accounts get r01a_, r01b_, etc.)
+  const weightedPattern = new RegExp(
+    `^${prefix}-r\\d{2}[a-z]*_${account.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.json$`
+  );
+  const files = fs.readdirSync(authDir);
+  const weightedFile = files.find((f) => weightedPattern.test(f));
+  if (weightedFile) {
+    return path.join(authDir, weightedFile);
   }
 
   // Fall back to original tokenFile
@@ -159,14 +178,21 @@ function getCanonicalTokenPath(
  * Uses atomic writes for safety.
  *
  * @param provider CLIProxy provider
+ * @param options.skipMigrationCheck Skip migration check (used internally by migration module to avoid infinite recursion)
  * @returns Sync result with created/removed/unchanged counts
  */
-export async function syncWeightedAuthFiles(provider: CLIProxyProvider): Promise<SyncResult> {
+export async function syncWeightedAuthFiles(
+  provider: CLIProxyProvider,
+  options?: { skipMigrationCheck?: boolean }
+): Promise<SyncResult> {
   // Check and run migration if needed (auto-migrate on first sync)
-  // Dynamic import to break circular dependency
-  const migration = await getMigrationModule();
-  if (!migration.isMigrationComplete(provider)) {
-    await migration.migrateOldPrefixes(provider);
+  // Skip when called from migration module to avoid infinite mutual recursion:
+  // sync → migration → sync → migration → ...
+  if (!options?.skipMigrationCheck) {
+    const migration = await getMigrationModule();
+    if (!migration.isMigrationComplete(provider)) {
+      await migration.migrateOldPrefixes(provider);
+    }
   }
 
   const authDir = getAuthDir();
@@ -189,7 +215,8 @@ export async function syncWeightedAuthFiles(provider: CLIProxyProvider): Promise
 
   // Get current weighted files (matching r\d{2}[a-z]*_ pattern)
   const currentFiles = fs.readdirSync(authDir).filter((f) => {
-    const pattern = new RegExp(`^${provider}-r\\d{2}[a-z]*_`);
+    const prefix = getFilePrefix(provider);
+    const pattern = new RegExp(`^${prefix}-r\\d{2}[a-z]*_`);
     return pattern.test(f);
   });
 
@@ -259,6 +286,91 @@ export async function syncWeightedAuthFiles(provider: CLIProxyProvider): Promise
 
   // Count unchanged files
   result.unchanged = targetFilenames.size - result.created.length;
+
+  // Self-healing cleanup: remove old-format (non-r{NN}) provider files
+  // Catches files migration missed (no email, orphaned accounts, etc.)
+  // Preserves canonical token files referenced by registered accounts
+  // SAFETY: Only run when provider has registered accounts — otherwise cleanup
+  // would destroy legitimate auth files that haven't been migrated yet
+  const prefix = getFilePrefix(provider);
+  const weightedPattern = new RegExp(`^${prefix}-r\\d{2}[a-z]*_`);
+  const canonicalFiles = new Set(accounts.map((a) => a.tokenFile));
+
+  const oldFormatFiles =
+    accounts.length > 0
+      ? fs.readdirSync(authDir).filter((f) => {
+          if (!f.startsWith(`${prefix}-`) || !f.endsWith('.json')) return false;
+          if (weightedPattern.test(f)) return false; // Already weighted format
+          if (canonicalFiles.has(f)) return false; // Canonical token source — keep
+          return true;
+        })
+      : [];
+
+  for (const filename of oldFormatFiles) {
+    try {
+      fs.unlinkSync(path.join(authDir, filename));
+      result.removed.push(filename);
+    } catch {
+      // Ignore deletion errors
+    }
+  }
+
+  // Move old canonical files to auth-backup/ after r01 files are created
+  // This prevents CLIProxyAPI from discovering old canonical files alongside r{NN} files
+  const backupDir = path.join(path.dirname(authDir), 'auth-backup');
+  const weightedFilePattern = new RegExp(`^${prefix}-r\\d{2}[a-z]*_`);
+
+  for (const account of accounts) {
+    const canonicalFile = account.tokenFile;
+
+    // Skip if already r{NN} format (nothing to migrate)
+    if (weightedFilePattern.test(canonicalFile)) {
+      continue;
+    }
+
+    // Find any weighted file created for this account (r01_, r01a_, r01b_, etc.)
+    const accountWeightedFile = targetFiles.find((f) => f.accountId === account.id);
+    if (!accountWeightedFile) continue;
+
+    const weightedPath = path.join(authDir, accountWeightedFile.filename);
+    const canonicalPath = path.join(authDir, canonicalFile);
+
+    if (!fs.existsSync(weightedPath) || !fs.existsSync(canonicalPath)) {
+      continue;
+    }
+
+    // Verify weighted file has same content as canonical (safety check)
+    try {
+      const weightedContent = fs.readFileSync(weightedPath, 'utf-8');
+      const canonicalContent = fs.readFileSync(canonicalPath, 'utf-8');
+
+      if (weightedContent === canonicalContent) {
+        // Create backup directory if needed
+        if (!fs.existsSync(backupDir)) {
+          fs.mkdirSync(backupDir, { recursive: true, mode: 0o700 });
+        }
+
+        // Move old canonical to backup directory
+        const backupPath = path.join(backupDir, canonicalFile);
+        fs.renameSync(canonicalPath, backupPath);
+
+        // Update account registry to point to weighted file
+        // Load fresh registry to avoid race conditions
+        const { loadAccountsRegistry, saveAccountsRegistry } = await import('./account-manager');
+        const registry = loadAccountsRegistry();
+        const providerAccounts = registry.providers[provider];
+        if (providerAccounts?.accounts[account.id]) {
+          providerAccounts.accounts[account.id].tokenFile = accountWeightedFile.filename;
+          saveAccountsRegistry(registry);
+        }
+
+        result.removed.push(canonicalFile);
+      }
+    } catch {
+      // Skip on error (content mismatch, read failure, etc.)
+      continue;
+    }
+  }
 
   return result;
 }

@@ -20,12 +20,18 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { CLIProxyProvider } from './types';
-import { setAccountWeight } from './account-manager';
+import { setAccountWeight, registerAccount, getProviderAccounts } from './account-manager';
 import { getAuthDir, getCliproxyDir } from './config-generator';
 import { MigrationResult } from './weighted-round-robin-shared-types';
 
 // Re-export type for convenience
 export type { MigrationResult } from './weighted-round-robin-shared-types';
+
+/** Map provider code to auth file prefix (CLIProxyAPI uses 'antigravity-' for agy) */
+function getFilePrefix(provider: CLIProxyProvider): string {
+  if (provider === 'agy') return 'antigravity';
+  return provider;
+}
 
 // Forward declaration to avoid circular import - sync module will be imported dynamically
 let syncModule: typeof import('./weighted-round-robin-sync') | null = null;
@@ -65,8 +71,13 @@ interface EmailGroup {
 /**
  * Check if migration is complete for provider.
  */
+/** Get migration directory for marker files */
+function getMigrationDir(): string {
+  return path.join(getCliproxyDir(), 'migration');
+}
+
 export function isMigrationComplete(provider: CLIProxyProvider): boolean {
-  const markerPath = path.join(getCliproxyDir(), `${MIGRATION_MARKER}-${provider}`);
+  const markerPath = path.join(getMigrationDir(), `${MIGRATION_MARKER}-${provider}`);
   return fs.existsSync(markerPath);
 }
 
@@ -74,7 +85,7 @@ export function isMigrationComplete(provider: CLIProxyProvider): boolean {
  * Mark migration as complete for provider.
  */
 function markMigrationComplete(provider: CLIProxyProvider): void {
-  const markerPath = path.join(getCliproxyDir(), `${MIGRATION_MARKER}-${provider}`);
+  const markerPath = path.join(getMigrationDir(), `${MIGRATION_MARKER}-${provider}`);
   const dir = path.dirname(markerPath);
 
   if (!fs.existsSync(dir)) {
@@ -103,7 +114,8 @@ function detectOldPrefixFiles(provider: CLIProxyProvider): OldPrefixFile[] {
 
   for (const filename of files) {
     // Must be JSON file for this provider
-    if (!filename.endsWith('.json') || !filename.startsWith(`${provider}-`)) {
+    const prefix = getFilePrefix(provider);
+    if (!filename.endsWith('.json') || !filename.startsWith(`${prefix}-`)) {
       continue;
     }
 
@@ -212,6 +224,20 @@ export async function migrateOldPrefixes(provider: CLIProxyProvider): Promise<Mi
   // Group by email and calculate weights
   const groups = groupByEmail(oldFiles);
 
+  // Ensure accounts exist in registry before setting weights.
+  // Migration may run when registry is empty (e.g., after stale entry cleanup),
+  // so auto-register discovered accounts from auth files.
+  const existingAccounts = new Set(getProviderAccounts(provider).map((a) => a.id));
+  for (const group of groups) {
+    if (!existingAccounts.has(group.email)) {
+      try {
+        registerAccount(provider, group.canonicalFile, group.email);
+      } catch (error) {
+        console.warn(`Failed to register ${group.email} for ${provider}:`, error);
+      }
+    }
+  }
+
   // Update weights in registry, tracking failures
   const failedWeightUpdates: string[] = [];
   for (const group of groups) {
@@ -224,19 +250,27 @@ export async function migrateOldPrefixes(provider: CLIProxyProvider): Promise<Mi
   }
 
   // Generate new weighted files (dynamic import to break circular dependency)
+  // Pass skipMigrationCheck to avoid infinite mutual recursion: sync → migration → sync → ...
   const sync = await getSyncModule();
-  await sync.syncWeightedAuthFiles(provider);
+  await sync.syncWeightedAuthFiles(provider, { skipMigrationCheck: true });
 
-  // Verify new files were created before deleting old ones
+  // Verify new files were created for registered accounts (exclude failed weight updates)
   const authDir = getAuthDir();
-  const newFilesExist = groups.every((group) => {
-    // Check at least r01 file exists for each migrated account
-    const r01File = `${provider}-r01_${group.email}.json`;
-    const r01aFile = `${provider}-r01a_${group.email}.json`;
-    return (
-      fs.existsSync(path.join(authDir, r01File)) || fs.existsSync(path.join(authDir, r01aFile))
-    );
-  });
+  const failedSet = new Set(failedWeightUpdates);
+  const registeredGroups = groups.filter((g) => !failedSet.has(g.email));
+
+  const filePrefix = getFilePrefix(provider);
+  const allAuthFiles = fs.existsSync(authDir) ? fs.readdirSync(authDir) : [];
+  const weightedPattern = new RegExp(`^${filePrefix}-r\\d{2}[a-z]*_`);
+
+  const newFilesExist =
+    registeredGroups.length === 0 ||
+    registeredGroups.every((group) => {
+      // Check for ANY weighted file matching this account (r01_, r01a_, r01b_, etc.)
+      const escapedEmail = group.email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const accountPattern = new RegExp(`^${filePrefix}-r\\d{2}[a-z]*_${escapedEmail}\\.json$`);
+      return allAuthFiles.some((f) => weightedPattern.test(f) && accountPattern.test(f));
+    });
 
   if (!newFilesExist) {
     console.warn('Migration verification failed: not all new files created');
@@ -245,12 +279,15 @@ export async function migrateOldPrefixes(provider: CLIProxyProvider): Promise<Mi
   }
 
   // Remove old prefixed files (only if verification passed)
+  // Some files may already be moved to auth-backup/ by sync's canonical backup step
   for (const file of oldFiles) {
     const filePath = path.join(authDir, file.filename);
-    try {
-      fs.unlinkSync(filePath);
-    } catch {
-      console.warn(`Warning: Could not remove old file: ${file.filename}`);
+    if (fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath);
+      } catch {
+        console.warn(`Warning: Could not remove old file: ${file.filename}`);
+      }
     }
   }
 
