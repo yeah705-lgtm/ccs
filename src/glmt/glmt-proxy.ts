@@ -106,9 +106,11 @@ export class GlmtProxy {
     this.timeout = config.timeout || 120000; // 120s default
 
     // Retry configuration for handling 429 rate limit errors
+    const maxRetries = parseInt(process.env.GLMT_MAX_RETRIES || '3', 10);
+    const baseDelay = parseInt(process.env.GLMT_RETRY_BASE_DELAY || '1000', 10);
     this.retryConfig = {
-      maxRetries: parseInt(process.env.GLMT_MAX_RETRIES || '3', 10),
-      baseDelay: parseInt(process.env.GLMT_RETRY_BASE_DELAY || '1000', 10),
+      maxRetries: isNaN(maxRetries) || maxRetries < 0 ? 3 : maxRetries,
+      baseDelay: isNaN(baseDelay) || baseDelay < 0 ? 1000 : baseDelay,
       enabled: process.env.GLMT_DISABLE_RETRY !== '1',
     };
 
@@ -387,8 +389,12 @@ export class GlmtProxy {
         return retryAfter * 1000; // Convert seconds to ms
       }
     }
-    // Exponential backoff: 2^attempt * baseDelay + random jitter (0-500ms)
-    const exponentialDelay = Math.pow(2, attempt) * this.retryConfig.baseDelay;
+    // Exponential backoff: 2^attempt * baseDelay + random jitter (0-500ms), capped at 30s
+    const MAX_DELAY_MS = 30000;
+    const exponentialDelay = Math.min(
+      Math.pow(2, attempt) * this.retryConfig.baseDelay,
+      MAX_DELAY_MS
+    );
     const jitter = Math.random() * 500;
     return exponentialDelay + jitter;
   }
