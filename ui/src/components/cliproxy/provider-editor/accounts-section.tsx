@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
-import { User, Plus, Globe } from 'lucide-react';
+import { User, Plus, Globe, RefreshCw, Loader2 } from 'lucide-react';
 import { AccountItem } from './account-item';
 import { BulkActionBar } from './bulk-action-bar';
 import type { OAuthAccount } from '@/lib/api-client';
@@ -42,6 +42,10 @@ interface AccountsSectionProps {
   updatingWeightAccountId?: string | null;
   /** Set tier defaults mutation in progress */
   isSettingWeights?: boolean;
+  /** Trigger manual weight sync */
+  onSyncWeights?: () => void;
+  /** Weight sync mutation in progress */
+  isSyncingWeights?: boolean;
   privacyMode?: boolean;
   /** Show quota bars for accounts (only applicable for 'agy' provider) */
   showQuota?: boolean;
@@ -70,6 +74,8 @@ export function AccountsSection({
   isBulkResuming,
   updatingWeightAccountId,
   isSettingWeights,
+  onSyncWeights,
+  isSyncingWeights,
   privacyMode,
   showQuota,
   isKiro,
@@ -170,10 +176,28 @@ export function AccountsSection({
             </Badge>
           )}
         </h3>
-        <Button variant="default" size="sm" className="h-7 text-xs gap-1" onClick={onAddAccount}>
-          <Plus className="w-3 h-3" />
-          Add
-        </Button>
+        <div className="flex items-center gap-1.5">
+          {onSyncWeights && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1"
+              onClick={onSyncWeights}
+              disabled={isSyncingWeights}
+            >
+              {isSyncingWeights ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3 h-3" />
+              )}
+              Sync
+            </Button>
+          )}
+          <Button variant="default" size="sm" className="h-7 text-xs gap-1" onClick={onAddAccount}>
+            <Plus className="w-3 h-3" />
+            Add
+          </Button>
+        </div>
       </div>
 
       {/* Bulk Action Bar - shows when accounts selected (positioned at TOP for visibility) */}

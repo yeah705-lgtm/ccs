@@ -51,6 +51,8 @@ export function ProviderEditor({
   isBulkResuming,
   updatingWeightAccountId,
   isSettingWeights,
+  onSyncWeights,
+  isSyncingWeights,
 }: ProviderEditorProps) {
   const [customPresetOpen, setCustomPresetOpen] = useState(false);
   const { privacyMode } = usePrivacy();
@@ -225,6 +227,8 @@ export function ProviderEditor({
                     isBulkResuming={isBulkResuming}
                     updatingWeightAccountId={updatingWeightAccountId}
                     isSettingWeights={isSettingWeights}
+                    onSyncWeights={onSyncWeights}
+                    isSyncingWeights={isSyncingWeights}
                     privacyMode={privacyMode}
                     isRemoteMode={isRemoteMode}
                   />

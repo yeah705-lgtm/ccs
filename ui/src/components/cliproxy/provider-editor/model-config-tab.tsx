@@ -61,6 +61,10 @@ interface ModelConfigTabProps {
   onSetAllUltraWeights?: (weight: number) => void;
   /** Set tier defaults mutation in progress */
   isSettingWeights?: boolean;
+  /** Trigger manual weight sync */
+  onSyncWeights?: () => void;
+  /** Weight sync mutation in progress */
+  isSyncingWeights?: boolean;
   privacyMode?: boolean;
   /** True if connected to remote CLIProxy (quota not available) */
   isRemoteMode?: boolean;
@@ -97,6 +101,8 @@ export function ModelConfigTab({
   isBulkResuming,
   updatingWeightAccountId,
   isSettingWeights,
+  onSyncWeights,
+  isSyncingWeights,
   privacyMode,
   isRemoteMode,
 }: ModelConfigTabProps) {
@@ -183,6 +189,8 @@ export function ModelConfigTab({
           isBulkResuming={isBulkResuming}
           updatingWeightAccountId={updatingWeightAccountId}
           isSettingWeights={isSettingWeights}
+          onSyncWeights={onSyncWeights}
+          isSyncingWeights={isSyncingWeights}
           privacyMode={privacyMode}
           showQuota={
             QUOTA_SUPPORTED_PROVIDERS.includes(provider as QuotaSupportedProvider) && !isRemoteMode

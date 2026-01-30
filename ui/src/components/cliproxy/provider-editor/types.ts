@@ -54,6 +54,10 @@ export interface ProviderEditorProps {
   updatingWeightAccountId?: string | null;
   /** Set tier defaults mutation in progress */
   isSettingWeights?: boolean;
+  /** Trigger manual weight sync */
+  onSyncWeights?: () => void;
+  /** Weight sync mutation in progress */
+  isSyncingWeights?: boolean;
 }
 
 export interface AccountItemProps {

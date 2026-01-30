@@ -29,7 +29,7 @@ import {
   useBulkResumeAccounts,
   useDeleteVariant,
 } from '@/hooks/use-cliproxy';
-import { useSetAccountWeight, useSetTierDefaults } from '@/hooks/use-accounts';
+import { useSetAccountWeight, useSetTierDefaults, useSyncWeights } from '@/hooks/use-accounts';
 import type { AuthStatus, Variant } from '@/lib/api-client';
 import { MODEL_CATALOGS } from '@/lib/model-catalogs';
 import { cn } from '@/lib/utils';
@@ -195,6 +195,7 @@ export function CliproxyPage() {
   const deleteMutation = useDeleteVariant();
   const setWeightMutation = useSetAccountWeight();
   const setTierDefaultsMutation = useSetTierDefaults();
+  const syncWeightsMutation = useSyncWeights();
 
   // Selection state: either a provider or a variant
   // Initialize from localStorage if available
@@ -452,6 +453,8 @@ export function CliproxyPage() {
               setWeightMutation.isPending ? (setWeightMutation.variables?.accountId ?? null) : null
             }
             isSettingWeights={setTierDefaultsMutation.isPending}
+            onSyncWeights={() => syncWeightsMutation.mutate()}
+            isSyncingWeights={syncWeightsMutation.isPending}
           />
         ) : selectedStatus ? (
           <ProviderEditor
@@ -502,6 +505,8 @@ export function CliproxyPage() {
               setWeightMutation.isPending ? (setWeightMutation.variables?.accountId ?? null) : null
             }
             isSettingWeights={setTierDefaultsMutation.isPending}
+            onSyncWeights={() => syncWeightsMutation.mutate()}
+            isSyncingWeights={syncWeightsMutation.isPending}
           />
         ) : (
           <EmptyProviderState onSetup={() => setWizardOpen(true)} />
