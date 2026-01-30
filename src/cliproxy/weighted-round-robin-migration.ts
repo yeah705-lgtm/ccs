@@ -22,7 +22,20 @@ import * as path from 'path';
 import { CLIProxyProvider } from './types';
 import { setAccountWeight } from './account-manager';
 import { getAuthDir, getCliproxyDir } from './config-generator';
-import { syncWeightedAuthFiles } from './weighted-round-robin-sync';
+import { MigrationResult } from './weighted-round-robin-shared-types';
+
+// Re-export type for convenience
+export type { MigrationResult } from './weighted-round-robin-shared-types';
+
+// Forward declaration to avoid circular import - sync module will be imported dynamically
+let syncModule: typeof import('./weighted-round-robin-sync') | null = null;
+
+async function getSyncModule() {
+  if (!syncModule) {
+    syncModule = await import('./weighted-round-robin-sync');
+  }
+  return syncModule;
+}
 
 /** Migration marker version */
 const MIGRATION_MARKER = '.weight-migration-v1';
@@ -175,15 +188,16 @@ function groupByEmail(files: OldPrefixFile[]): EmailGroup[] {
  * Migrate old prefix files to weighted round-robin structure.
  * Auto-executes on first sync (per validation decision).
  *
+ * Note: This is a best-effort migration. If weight updates fail for some accounts
+ * (e.g., account not in registry), migration continues and reports failures.
+ *
  * @param provider CLIProxy provider
- * @returns Migration result with count of migrated accounts
+ * @returns Migration result with count of migrated accounts and any failures
  */
-export async function migrateOldPrefixes(
-  provider: CLIProxyProvider
-): Promise<{ migrated: number; skipped: boolean }> {
+export async function migrateOldPrefixes(provider: CLIProxyProvider): Promise<MigrationResult> {
   // Check if already migrated
   if (isMigrationComplete(provider)) {
-    return { migrated: 0, skipped: true };
+    return { migrated: 0, skipped: true, failedWeightUpdates: [] };
   }
 
   // Detect old prefix files
@@ -192,23 +206,26 @@ export async function migrateOldPrefixes(
   if (oldFiles.length === 0) {
     // No files to migrate, mark complete
     markMigrationComplete(provider);
-    return { migrated: 0, skipped: false };
+    return { migrated: 0, skipped: false, failedWeightUpdates: [] };
   }
 
   // Group by email and calculate weights
   const groups = groupByEmail(oldFiles);
 
-  // Update weights in registry
+  // Update weights in registry, tracking failures
+  const failedWeightUpdates: string[] = [];
   for (const group of groups) {
     try {
       setAccountWeight(provider, group.email, group.weight);
     } catch (error) {
       console.warn(`Failed to set weight for ${group.email}:`, error);
+      failedWeightUpdates.push(group.email);
     }
   }
 
-  // Generate new weighted files
-  await syncWeightedAuthFiles(provider);
+  // Generate new weighted files (dynamic import to break circular dependency)
+  const sync = await getSyncModule();
+  await sync.syncWeightedAuthFiles(provider);
 
   // Verify new files were created before deleting old ones
   const authDir = getAuthDir();
@@ -224,7 +241,7 @@ export async function migrateOldPrefixes(
   if (!newFilesExist) {
     console.warn('Migration verification failed: not all new files created');
     // Don't delete old files, don't mark complete
-    return { migrated: 0, skipped: false };
+    return { migrated: 0, skipped: false, failedWeightUpdates };
   }
 
   // Remove old prefixed files (only if verification passed)
@@ -240,5 +257,5 @@ export async function migrateOldPrefixes(
   // Mark migration complete
   markMigrationComplete(provider);
 
-  return { migrated: groups.length, skipped: false };
+  return { migrated: groups.length, skipped: false, failedWeightUpdates };
 }

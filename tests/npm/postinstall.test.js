@@ -4,20 +4,23 @@ const path = require('path');
 const { createTestEnvironment } = require('../shared/fixtures/test-environment');
 
 describe('npm postinstall', () => {
+  // Increase timeout for all hooks and tests in this suite (CI can be slow)
+  jest.setTimeout(30000);
+
   let testEnv;
   const postinstallScript = path.join(__dirname, '..', '..', 'scripts', 'postinstall.js');
 
   beforeEach(() => {
     // Create isolated test environment for each test
     testEnv = createTestEnvironment();
-  }, { timeout: 10000 }); // Allow 10 seconds for test environment setup
+  });
 
   afterEach(() => {
     // Clean up test environment
     if (testEnv) {
       testEnv.cleanup();
     }
-  }, { timeout: 10000 }); // Allow 10 seconds for cleanup
+  });
 
   it('creates config.yaml (primary format)', function() {
     execSync(`node "${postinstallScript}"`, {
@@ -39,7 +42,7 @@ describe('npm postinstall', () => {
     // Profiles are now empty by default - users create via presets
     assert.deepStrictEqual(config.profiles, {}, 'profiles should be empty by default');
     assert(config.version, 'config.yaml should have version');
-  }, { timeout: 20000 }); // Allow 20 seconds total for test
+  }); // Allow 20 seconds total for test
 
   it('does NOT auto-create glm.settings.json (v6.0 - use presets instead)', function() {
     execSync(`node "${postinstallScript}"`, {
@@ -53,7 +56,7 @@ describe('npm postinstall', () => {
     assert(!testEnv.fileExists('glm.settings.json'), 'glm.settings.json should NOT be auto-created');
     assert(!testEnv.fileExists('glmt.settings.json'), 'glmt.settings.json should NOT be auto-created');
     assert(!testEnv.fileExists('kimi.settings.json'), 'kimi.settings.json should NOT be auto-created');
-  }, { timeout: 20000 }); // Allow 20 seconds total for test
+  }); // Allow 20 seconds total for test
 
   it('is idempotent', function() {
     const env = { ...process.env, CCS_HOME: testEnv.testHome };
@@ -83,7 +86,7 @@ describe('npm postinstall', () => {
     const config = yaml.load(configContent);
     assert(config.profiles.custom, 'Custom profile should be preserved');
     assert.strictEqual(config.profiles.custom, '~/.custom.json');
-  }, { timeout: 25000 }); // Allow 25 seconds for running postinstall twice
+  }); // Allow 25 seconds for running postinstall twice
 
   it('uses ASCII symbols', function() {
     const output = execSync(`node "${postinstallScript}"`, {
@@ -98,7 +101,7 @@ describe('npm postinstall', () => {
     // Verify no emojis in output
     const emojiRegex = /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u;
     assert(!emojiRegex.test(output), 'Should not contain emojis');
-  }, { timeout: 20000 }); // Allow 20 seconds total for test
+  }); // Allow 20 seconds total for test
 
   it('handles existing directory gracefully', function() {
     // Create directory manually first
@@ -116,7 +119,7 @@ describe('npm postinstall', () => {
     assert(testEnv.fileExists('config.yaml'), 'config.yaml should be created');
     // GLM/GLMT/Kimi are no longer auto-created
     assert(!testEnv.fileExists('glm.settings.json'), 'glm.settings.json should NOT be auto-created');
-  }, { timeout: 20000 }); // Allow 20 seconds total for test
+  }); // Allow 20 seconds total for test
 
   it('does not create VERSION file', function() {
     execSync(`node "${postinstallScript}"`, {
@@ -127,5 +130,5 @@ describe('npm postinstall', () => {
 
     // The postinstall script doesn't create VERSION file (only native install does)
     assert(!testEnv.fileExists('VERSION'), 'VERSION file should NOT be created by npm postinstall');
-  }, { timeout: 20000 }); // Allow 20 seconds total for test
+  }); // Allow 20 seconds total for test
 });

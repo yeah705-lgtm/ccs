@@ -4,6 +4,9 @@ const path = require('path');
 const { createTestEnvironment } = require('../shared/fixtures/test-environment');
 
 describe('npm CLI', () => {
+  // Increase timeout for all hooks and tests in this suite (CI can be slow)
+  jest.setTimeout(30000);
+
   const ccsPath = path.join(__dirname, '..', '..', 'dist', 'ccs.js');
   let testEnv;
   let testCcsHome;
@@ -20,14 +23,14 @@ describe('npm CLI', () => {
       env: { ...process.env, CCS_HOME: testCcsHome },
       timeout: 15000 // Allow 15 seconds for postinstall (CI can be slow)
     });
-  }, { timeout: 20000 }); // Allow 20 seconds for the entire beforeAll hook
+  });
 
   afterAll(() => {
     // Clean up test environment
     if (testEnv) {
       testEnv.cleanup();
     }
-  }, { timeout: 10000 }); // Allow 10 seconds for cleanup
+  });
 
   // Helper to run CLI with test environment
   function runCli(args, options = {}) {
@@ -83,7 +86,7 @@ describe('npm CLI', () => {
 
     it('shows helpful error for non-existent profile', function() {
       try {
-        runCli('glm --help', { stdio: 'pipe' });
+        runCli('glm --help', { stdio: 'pipe', timeout: 5000 });
         // If GLM profile exists from previous setup, this is fine too
       } catch (e) {
         const output = e.stderr?.toString() || e.stdout?.toString() || '';
@@ -98,7 +101,7 @@ describe('npm CLI', () => {
 
     it('shows error for invalid profile', function() {
       try {
-        runCli('invalid-profile-name', { stdio: 'pipe' });
+        runCli('invalid-profile-name', { stdio: 'pipe', timeout: 5000 });
         assert(false, 'Should have thrown an error for invalid profile');
       } catch (e) {
         const output = e.stderr?.toString() || e.stdout?.toString() || '';
@@ -119,22 +122,22 @@ describe('npm CLI', () => {
 
   describe('Version and help', () => {
     it('shows version with --version flag', function() {
-      const output = runCli('--version', { encoding: 'utf8' });
+      const output = runCli('--version', { encoding: 'utf8', timeout: 5000 });
       assert(/\d+\.\d+\.\d+/.test(output), 'Should show version number');
     });
 
     it('shows version with -v flag', function() {
-      const output = runCli('-v', { encoding: 'utf8' });
+      const output = runCli('-v', { encoding: 'utf8', timeout: 5000 });
       assert(/\d+\.\d+\.\d+/.test(output), 'Should show version number');
     });
 
     it('shows help with --help flag', function() {
-      const output = runCli('--help', { encoding: 'utf8' });
+      const output = runCli('--help', { encoding: 'utf8', timeout: 5000 });
       assert(/usage|help|options/i.test(output), 'Should show help information');
     });
 
     it('shows help with -h flag', function() {
-      const output = runCli('-h', { encoding: 'utf8' });
+      const output = runCli('-h', { encoding: 'utf8', timeout: 5000 });
       assert(/usage|help|options/i.test(output), 'Should show help information');
     });
   });

@@ -14,28 +14,19 @@ import * as path from 'path';
 import { CLIProxyProvider } from './types';
 import { AccountInfo, getProviderAccounts } from './account-manager';
 import { getAuthDir } from './config-generator';
-import { migrateOldPrefixes, isMigrationComplete } from './weighted-round-robin-migration';
+import { WeightedFile, SyncResult } from './weighted-round-robin-shared-types';
 
-/** Weighted file descriptor for round-robin distribution */
-export interface WeightedFile {
-  /** Filename with round and suffix, e.g., "antigravity-r01_email.json" */
-  filename: string;
-  /** Account registry ID */
-  accountId: string;
-  /** 1-based round number */
-  round: number;
-  /** Empty for multi-round, letter suffix for single-round */
-  suffix: string;
-}
+// Re-export types for convenience
+export type { WeightedFile, SyncResult } from './weighted-round-robin-shared-types';
 
-/** Result of sync operation */
-export interface SyncResult {
-  /** Files created during sync */
-  created: string[];
-  /** Files removed during sync */
-  removed: string[];
-  /** Files unchanged (already existed) */
-  unchanged: number;
+// Forward declaration to avoid circular import - migration module will be imported dynamically
+let migrationModule: typeof import('./weighted-round-robin-migration') | null = null;
+
+async function getMigrationModule() {
+  if (!migrationModule) {
+    migrationModule = await import('./weighted-round-robin-migration');
+  }
+  return migrationModule;
 }
 
 /**
@@ -43,6 +34,12 @@ export interface SyncResult {
  * - 0-25 → 'a'-'z'
  * - 26-51 → 'aa'-'az'
  * - 52-77 → 'ba'-'bz'
+ *
+ * NOTE: Supports up to 676 single-round accounts per round (26 + 26*25 = 676).
+ * For 676+ accounts, suffix generation would produce incorrect results.
+ * This is an acceptable limitation as 676 single-round accounts per round
+ * is far beyond any realistic usage scenario.
+ *
  * @param index Zero-based index
  * @returns Letter suffix
  */
@@ -166,8 +163,10 @@ function getCanonicalTokenPath(
  */
 export async function syncWeightedAuthFiles(provider: CLIProxyProvider): Promise<SyncResult> {
   // Check and run migration if needed (auto-migrate on first sync)
-  if (!isMigrationComplete(provider)) {
-    await migrateOldPrefixes(provider);
+  // Dynamic import to break circular dependency
+  const migration = await getMigrationModule();
+  if (!migration.isMigrationComplete(provider)) {
+    await migration.migrateOldPrefixes(provider);
   }
 
   const authDir = getAuthDir();
