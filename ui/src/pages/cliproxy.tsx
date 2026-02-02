@@ -29,7 +29,7 @@ import {
   useBulkResumeAccounts,
   useDeleteVariant,
 } from '@/hooks/use-cliproxy';
-import { useSetAccountWeight, useSetTierDefaults, useSyncWeights } from '@/hooks/use-accounts';
+import { useDebouncedWeightChange, useSetTierDefaults, useSyncWeights } from '@/hooks/use-accounts';
 import type { AuthStatus, Variant } from '@/lib/api-client';
 import { MODEL_CATALOGS } from '@/lib/model-catalogs';
 import { cn } from '@/lib/utils';
@@ -193,7 +193,7 @@ export function CliproxyPage() {
   const bulkPauseMutation = useBulkPauseAccounts();
   const bulkResumeMutation = useBulkResumeAccounts();
   const deleteMutation = useDeleteVariant();
-  const setWeightMutation = useSetAccountWeight();
+  const { debouncedMutate: debouncedSetWeight, ...setWeightMutation } = useDebouncedWeightChange();
   const setTierDefaultsMutation = useSetTierDefaults();
   const syncWeightsMutation = useSyncWeights();
 
@@ -437,7 +437,7 @@ export function CliproxyPage() {
               handleBulkResume(selectedVariantData.provider, accountIds)
             }
             onWeightChange={(accountId, weight) =>
-              setWeightMutation.mutate({
+              debouncedSetWeight({
                 provider: selectedVariantData.provider,
                 accountId,
                 weight,
@@ -489,7 +489,7 @@ export function CliproxyPage() {
             onBulkPause={(accountIds) => handleBulkPause(selectedStatus.provider, accountIds)}
             onBulkResume={(accountIds) => handleBulkResume(selectedStatus.provider, accountIds)}
             onWeightChange={(accountId, weight) =>
-              setWeightMutation.mutate({
+              debouncedSetWeight({
                 provider: selectedStatus.provider,
                 accountId,
                 weight,
