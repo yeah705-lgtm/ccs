@@ -15,16 +15,14 @@ export function getFilePrefix(provider: CLIProxyProvider): string {
   return prefixMap[provider] ?? provider;
 }
 
-/** Weighted file descriptor for round-robin distribution */
+/** Weighted file descriptor for interleaved round-robin distribution */
 export interface WeightedFile {
-  /** Filename with round and suffix, e.g., "antigravity-r01_email.json" */
+  /** Filename with sequence position, e.g., "antigravity-s000_email.json" */
   filename: string;
   /** Account registry ID */
   accountId: string;
-  /** 1-based round number */
-  round: number;
-  /** Empty for multi-round, letter suffix for single-round */
-  suffix: string;
+  /** 0-based sequence position */
+  sequence: number;
 }
 
 /** Result of sync operation */

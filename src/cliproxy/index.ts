@@ -194,12 +194,14 @@ export {
 export {
   generateWeightedFiles,
   syncWeightedAuthFiles,
+  scheduleSyncForProvider,
   type WeightedFile,
   type SyncResult,
 } from './weighted-round-robin-sync';
 
 export {
   migrateOldPrefixes,
+  migrateRoundToSequence,
   isMigrationComplete,
   type MigrationResult,
 } from './weighted-round-robin-migration';

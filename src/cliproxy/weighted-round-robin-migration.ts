@@ -42,8 +42,9 @@ async function getSyncModule() {
   return syncModule;
 }
 
-/** Migration marker version */
-const MIGRATION_MARKER = '.weight-migration-v1';
+/** Migration marker versions */
+const MIGRATION_MARKER_V1 = '.weight-migration-v1';
+const MIGRATION_MARKER_V2 = '.weight-migration-v2';
 
 /** Old prefix file descriptor */
 interface OldPrefixFile {
@@ -75,22 +76,43 @@ function getMigrationDir(): string {
   return path.join(getCliproxyDir(), 'migration');
 }
 
-export function isMigrationComplete(provider: CLIProxyProvider): boolean {
-  const markerPath = path.join(getMigrationDir(), `${MIGRATION_MARKER}-${provider}`);
+/** Check if v1 migration (k_/m_/z_ → r{NN}) is complete */
+function isMigrationV1Complete(provider: CLIProxyProvider): boolean {
+  const markerPath = path.join(getMigrationDir(), `${MIGRATION_MARKER_V1}-${provider}`);
+  return fs.existsSync(markerPath);
+}
+
+/** Check if v2 migration (r{NN} → s{NNN}) is complete */
+function isMigrationV2Complete(provider: CLIProxyProvider): boolean {
+  const markerPath = path.join(getMigrationDir(), `${MIGRATION_MARKER_V2}-${provider}`);
   return fs.existsSync(markerPath);
 }
 
 /**
- * Mark migration as complete for provider.
+ * Check if all migrations are complete for provider.
+ * v2 subsumes v1 — if v2 is done, everything is migrated.
  */
-function markMigrationComplete(provider: CLIProxyProvider): void {
-  const markerPath = path.join(getMigrationDir(), `${MIGRATION_MARKER}-${provider}`);
-  const dir = path.dirname(markerPath);
+export function isMigrationComplete(provider: CLIProxyProvider): boolean {
+  return isMigrationV2Complete(provider);
+}
 
+/** Mark v1 migration as complete */
+function markMigrationV1Complete(provider: CLIProxyProvider): void {
+  const dir = getMigrationDir();
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   }
+  const markerPath = path.join(dir, `${MIGRATION_MARKER_V1}-${provider}`);
+  fs.writeFileSync(markerPath, new Date().toISOString(), { mode: 0o600 });
+}
 
+/** Mark v2 migration as complete */
+function markMigrationV2Complete(provider: CLIProxyProvider): void {
+  const dir = getMigrationDir();
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  }
+  const markerPath = path.join(dir, `${MIGRATION_MARKER_V2}-${provider}`);
   fs.writeFileSync(markerPath, new Date().toISOString(), { mode: 0o600 });
 }
 
@@ -223,8 +245,8 @@ function groupByEmail(files: OldPrefixFile[]): EmailGroup[] {
  * @returns Migration result with count of migrated accounts and any failures
  */
 export async function migrateOldPrefixes(provider: CLIProxyProvider): Promise<MigrationResult> {
-  // Check if already migrated
-  if (isMigrationComplete(provider)) {
+  // Check if v1 already complete (v1 handles k_/m_/z_ prefix migration)
+  if (isMigrationV1Complete(provider)) {
     return { migrated: 0, skipped: true, failedWeightUpdates: [] };
   }
 
@@ -233,7 +255,7 @@ export async function migrateOldPrefixes(provider: CLIProxyProvider): Promise<Mi
 
   if (oldFiles.length === 0) {
     // No files to migrate, mark complete
-    markMigrationComplete(provider);
+    markMigrationV1Complete(provider);
     return { migrated: 0, skipped: false, failedWeightUpdates: [] };
   }
 
@@ -281,9 +303,9 @@ export async function migrateOldPrefixes(provider: CLIProxyProvider): Promise<Mi
   const newFilesExist =
     registeredGroups.length === 0 ||
     registeredGroups.every((group) => {
-      // Check for ANY weighted file matching this account (r01_, r01a_, r01b_, etc.)
+      // Check for ANY sequence file matching this account (s000_, s001_, etc.)
       const escapedEmail = group.email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const accountPattern = new RegExp(`^${filePrefix}-r\\d{2}[a-z]*_${escapedEmail}\\.json$`);
+      const accountPattern = new RegExp(`^${filePrefix}-s\\d{3}_${escapedEmail}\\.json$`);
       return allAuthFiles.some((f) => accountPattern.test(f));
     });
 
@@ -295,7 +317,7 @@ export async function migrateOldPrefixes(provider: CLIProxyProvider): Promise<Mi
 
   // Mark migration complete BEFORE deleting old files (crash safety:
   // if process dies during deletion, next run won't re-migrate — self-healing cleanup handles stragglers)
-  markMigrationComplete(provider);
+  markMigrationV1Complete(provider);
 
   // Remove old prefixed files (only if verification passed)
   // Some files may already be moved to auth-backup/ by sync's canonical backup step
@@ -311,4 +333,45 @@ export async function migrateOldPrefixes(provider: CLIProxyProvider): Promise<Mi
   }
 
   return { migrated: groups.length, skipped: false, failedWeightUpdates };
+}
+
+/**
+ * Migrate r{NN} format files to s{NNN} interleaved sequence format.
+ * Delegates to syncWeightedAuthFiles which handles all file creation/deletion.
+ *
+ * @param provider CLIProxy provider
+ * @returns Migration result
+ */
+export async function migrateRoundToSequence(provider: CLIProxyProvider): Promise<MigrationResult> {
+  if (isMigrationV2Complete(provider)) {
+    return { migrated: 0, skipped: true, failedWeightUpdates: [] };
+  }
+
+  // Run v1 first if not complete (chain: k_/m_/z_ → r{NN} → s{NNN})
+  if (!isMigrationV1Complete(provider)) {
+    await migrateOldPrefixes(provider);
+  }
+
+  // Sync generates new s{NNN} files and removes old r{NN} files
+  const sync = await getSyncModule();
+  await sync.syncWeightedAuthFiles(provider, { skipMigrationCheck: true });
+
+  // Verify new files exist
+  const authDir = getAuthDir();
+  const prefix = getFilePrefix(provider);
+  const allFiles = fs.existsSync(authDir) ? fs.readdirSync(authDir) : [];
+  const newFiles = allFiles.filter((f) => new RegExp(`^${prefix}-s\\d{3}_`).test(f));
+
+  const activeAccounts = getProviderAccounts(provider).filter(
+    (a) => !a.paused && (a.weight ?? 1) > 0
+  );
+
+  // If accounts exist but no new files, don't mark complete
+  if (activeAccounts.length > 0 && newFiles.length === 0) {
+    console.warn('v2 migration verification failed: no s{NNN} files created');
+    return { migrated: 0, skipped: false, failedWeightUpdates: [] };
+  }
+
+  markMigrationV2Complete(provider);
+  return { migrated: newFiles.length, skipped: false, failedWeightUpdates: [] };
 }
