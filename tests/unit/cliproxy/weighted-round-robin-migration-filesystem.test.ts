@@ -108,19 +108,27 @@ describe('isMigrationComplete', () => {
     expect(isMigrationComplete('agy')).toBe(false);
   });
 
-  test('returns true when marker exists', () => {
+  test('returns false when only v1 marker exists (v2 required)', () => {
     const migrationDir = path.join(testEnv.cliproxyDir, 'migration');
     mkdirSync(migrationDir, { recursive: true });
-    const markerPath = path.join(migrationDir, '.weight-migration-v1-agy');
-    writeFileSync(markerPath, new Date().toISOString());
+    const v1Marker = path.join(migrationDir, '.weight-migration-v1-agy');
+    writeFileSync(v1Marker, new Date().toISOString());
+    // v2 not present — migration not complete
+    expect(isMigrationComplete('agy')).toBe(false);
+  });
+
+  test('returns true when v2 marker exists', () => {
+    const migrationDir = path.join(testEnv.cliproxyDir, 'migration');
+    mkdirSync(migrationDir, { recursive: true });
+    const v2Marker = path.join(migrationDir, '.weight-migration-v2-agy');
+    writeFileSync(v2Marker, new Date().toISOString());
     expect(isMigrationComplete('agy')).toBe(true);
   });
 
   test('checks correct provider marker (not cross-provider)', () => {
     const migrationDir = path.join(testEnv.cliproxyDir, 'migration');
     mkdirSync(migrationDir, { recursive: true });
-    const agyMarker = path.join(migrationDir, '.weight-migration-v1-agy');
-    const codexMarker = path.join(testEnv.cliproxyDir, 'migration', '.weight-migration-v1-codex');
+    const agyMarker = path.join(migrationDir, '.weight-migration-v2-agy');
     writeFileSync(agyMarker, new Date().toISOString());
 
     expect(isMigrationComplete('agy')).toBe(true);
@@ -191,7 +199,11 @@ describe('migrateOldPrefixes - detection', () => {
       },
     });
 
-    writeTokenFile(testEnv.authDir, 'antigravity-z_charlie_example_com.json', 'charlie@example.com');
+    writeTokenFile(
+      testEnv.authDir,
+      'antigravity-z_charlie_example_com.json',
+      'charlie@example.com'
+    );
 
     const result = await migrateOldPrefixes('agy');
     expect(result.migrated).toBe(1);
@@ -550,7 +562,11 @@ describe('migrateOldPrefixes - end-to-end', () => {
 
     writeTokenFile(testEnv.authDir, 'antigravity-k_alice_example_com.json', 'alice@example.com');
     writeTokenFile(testEnv.authDir, 'antigravity-m_bob_example_com.json', 'bob@example.com');
-    writeTokenFile(testEnv.authDir, 'antigravity-z_charlie_example_com.json', 'charlie@example.com');
+    writeTokenFile(
+      testEnv.authDir,
+      'antigravity-z_charlie_example_com.json',
+      'charlie@example.com'
+    );
 
     const result = await migrateOldPrefixes('agy');
     expect(result.migrated).toBe(3);
@@ -558,7 +574,9 @@ describe('migrateOldPrefixes - end-to-end', () => {
     expect(result.failedWeightUpdates).toEqual([]);
 
     const files = listAuthFiles(testEnv.authDir);
-    expect(files.some((f) => f.startsWith('antigravity-r01'))).toBe(true);
+    // New s{NNN} files created
+    expect(files.some((f) => /^antigravity-s\d{3}_/.test(f))).toBe(true);
+    // Old prefix files removed
     expect(files.some((f) => f.includes('k_'))).toBe(false);
     expect(files.some((f) => f.includes('m_'))).toBe(false);
     expect(files.some((f) => f.includes('z_'))).toBe(false);
@@ -592,8 +610,8 @@ describe('migrateOldPrefixes - end-to-end', () => {
     expect(result.failedWeightUpdates).toEqual([]);
 
     const files = listAuthFiles(testEnv.authDir);
-    expect(files.some((f) => f.includes('r01') && f.includes('alice@example.com'))).toBe(true);
-    expect(files.some((f) => f.includes('r01') && f.includes('orphan@example.com'))).toBe(true);
+    expect(files.some((f) => /^antigravity-s\d{3}_alice@example\.com/.test(f))).toBe(true);
+    expect(files.some((f) => /^antigravity-s\d{3}_orphan@example\.com/.test(f))).toBe(true);
     expect(markerExists(testEnv.cliproxyDir, 'agy')).toBe(true);
   });
 });
