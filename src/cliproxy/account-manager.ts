@@ -584,11 +584,29 @@ export function setTierDefaultWeights(
   const providerAccounts = registry.providers[provider];
   if (!providerAccounts) return 0;
 
+  const normalizeTier = (tier: string | undefined): AccountTier => {
+    if (!tier) return 'unknown';
+    const normalized = tier.toLowerCase();
+    if (normalized.includes('ultra')) return 'ultra';
+    if (normalized.includes('pro')) return 'pro';
+    if (normalized.includes('free')) return 'free';
+    if (normalized === 'unknown') return 'unknown';
+    return 'unknown';
+  };
+
+  const normalizedTierWeights: Partial<Record<AccountTier, number>> = {};
+  for (const [tier, value] of Object.entries(tierWeights)) {
+    const normalizedTier = normalizeTier(tier);
+    if (normalizedTier !== 'unknown') {
+      normalizedTierWeights[normalizedTier] = value;
+    }
+  }
+
   let count = 0;
   for (const [_id, account] of Object.entries(providerAccounts.accounts)) {
-    const tier = account.tier || 'unknown';
-    if (tier in tierWeights && tierWeights[tier as AccountTier] !== undefined) {
-      account.weight = tierWeights[tier as AccountTier];
+    const tier = normalizeTier(account.tier);
+    if (tier in normalizedTierWeights && normalizedTierWeights[tier] !== undefined) {
+      account.weight = normalizedTierWeights[tier];
       count++;
     }
   }
