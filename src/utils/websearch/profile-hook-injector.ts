@@ -14,6 +14,7 @@ import { getWebSearchHookConfig, getHookPath } from './hook-config';
 import { getWebSearchConfig } from '../../config/unified-config-loader';
 import { removeHookConfig } from './hook-config';
 import { getCcsDir } from '../config-manager';
+import { isCcsWebSearchHook, deduplicateCcsHooks } from './hook-utils';
 
 // Valid profile name pattern (alphanumeric, dash, underscore only)
 const VALID_PROFILE_NAME = /^[a-zA-Z0-9_-]+$/;
@@ -33,14 +34,7 @@ function hasCcsHook(settings: Record<string, unknown>): boolean {
   if (!hooks?.PreToolUse) return false;
 
   return hooks.PreToolUse.some((h: unknown) => {
-    const hook = h as Record<string, unknown>;
-    if (hook.matcher !== 'WebSearch') return false;
-
-    const hookArray = hook.hooks as Array<Record<string, unknown>> | undefined;
-    if (!hookArray?.[0]?.command) return false;
-
-    const command = hookArray[0].command as string;
-    return command.includes('.ccs/hooks/websearch-transformer');
+    return isCcsWebSearchHook(h as Record<string, unknown>);
   });
 }
 
@@ -126,6 +120,16 @@ export function ensureProfileHooks(profileName: string): boolean {
 
     // Check if CCS hook already present
     if (hasCcsHook(settings)) {
+      // Clean up any duplicates that may have accumulated (Windows path bug fix)
+      const hadDuplicates = deduplicateCcsHooks(settings);
+      if (hadDuplicates) {
+        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+        if (process.env.CCS_DEBUG) {
+          console.error(
+            info(`Removed duplicate WebSearch hooks from ${profileName}.settings.json`)
+          );
+        }
+      }
       // Update timeout if needed
       return updateHookTimeoutIfNeeded(settings, settingsPath);
     }
@@ -188,8 +192,11 @@ function updateHookTimeoutIfNeeded(
       const hookArray = hook.hooks as Array<Record<string, unknown>>;
       if (!hookArray?.[0]?.command) continue;
 
-      const command = hookArray[0].command as string;
-      if (!command.includes('.ccs/hooks/websearch-transformer')) continue;
+      const command = hookArray[0].command;
+      if (typeof command !== 'string') continue;
+      // Normalize path separators for cross-platform matching (Windows uses backslashes)
+      const normalizedCommand = command.replace(/\\/g, '/');
+      if (!normalizedCommand.includes('.ccs/hooks/websearch-transformer')) continue;
 
       // Found CCS hook - check if needs update
       if (hookArray[0].command !== expectedCommand) {
