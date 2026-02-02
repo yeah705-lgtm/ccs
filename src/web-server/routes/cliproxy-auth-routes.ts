@@ -36,7 +36,10 @@ import { fetchRemoteAuthStatus } from '../../cliproxy/remote-auth-fetcher';
 import { loadOrCreateUnifiedConfig } from '../../config/unified-config-loader';
 import { tryKiroImport } from '../../cliproxy/auth/kiro-import';
 import { getProviderTokenDir } from '../../cliproxy/auth/token-manager';
-import { syncWeightedAuthFiles } from '../../cliproxy/weighted-round-robin-sync';
+import {
+  syncWeightedAuthFiles,
+  scheduleSyncForProvider,
+} from '../../cliproxy/weighted-round-robin-sync';
 import type { CLIProxyProvider } from '../../cliproxy/types';
 import { CLIPROXY_PROFILES } from '../../auth/profile-detector';
 
@@ -45,14 +48,9 @@ const router = Router();
 // Valid providers list - derived from canonical CLIPROXY_PROFILES
 const validProviders: CLIProxyProvider[] = [...CLIPROXY_PROFILES];
 
-/** Fire-and-forget weighted auth file sync after account mutations */
+/** Fire-and-forget weighted auth file sync after account mutations (mutex + coalescing) */
 function syncAfterMutation(provider: CLIProxyProvider): void {
-  syncWeightedAuthFiles(provider).catch((err) =>
-    console.error(
-      `[weighted-sync] Post-mutation sync failed for ${provider}:`,
-      (err as Error).message
-    )
-  );
+  scheduleSyncForProvider(provider);
 }
 
 /**
