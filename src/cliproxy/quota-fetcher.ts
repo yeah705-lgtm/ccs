@@ -407,12 +407,14 @@ async function fetchAvailableModels(accessToken: string, _projectId: string): Pr
     clearTimeout(timeoutId);
 
     if (response.status === 403) {
+      // 403 = account lacks Gemini Code Assist access (not same as quota exhausted)
+      // Keep success=false with isForbidden flag for UI to show distinct "403" badge
       return {
         success: false,
         models: [],
         lastUpdated: Date.now(),
         isForbidden: true,
-        error: 'Quota access forbidden for this account',
+        error: '403 Forbidden - No Gemini Code Assist access',
       };
     }
 

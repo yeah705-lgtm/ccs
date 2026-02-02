@@ -253,13 +253,16 @@ export async function fetchCodexQuota(
     }
 
     if (response.status === 403) {
+      // 403 = account lacks API access (not same as quota exhausted)
+      // Keep success=false with isForbidden flag for UI to show distinct "403" badge
       return {
         success: false,
         windows: [],
         planType: null,
         lastUpdated: Date.now(),
-        error: 'Quota access not available (free plan may not have quota API access)',
+        error: '403 Forbidden - No quota API access',
         accountId,
+        isForbidden: true,
       };
     }
 

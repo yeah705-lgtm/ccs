@@ -45,6 +45,8 @@ export interface CodexQuotaResult {
   accountId?: string;
   /** True if token is expired and needs re-authentication */
   needsReauth?: boolean;
+  /** True if account lacks quota access (403) - displayed as 0% instead of error */
+  isForbidden?: boolean;
 }
 
 /**

@@ -180,6 +180,8 @@ export interface CodexQuotaResult {
   needsReauth?: boolean;
   /** True if result was served from cache */
   cached?: boolean;
+  /** True if account lacks quota access (403) - displayed as 0% instead of error */
+  isForbidden?: boolean;
 }
 
 /** Gemini CLI bucket (grouped by model series) */
