@@ -92,7 +92,7 @@ describe('mcp-manager logic', () => {
 
     it('should not detect unrelated MCPs', () => {
       expect(detectWebSearchMcp({ 'my-custom-mcp': {} })).toBe(false);
-      expect(detectWebSearchMcp({ 'filesystem': {} })).toBe(false);
+      expect(detectWebSearchMcp({ filesystem: {} })).toBe(false);
       expect(detectWebSearchMcp({ 'github-copilot': {} })).toBe(false);
     });
 

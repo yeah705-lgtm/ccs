@@ -75,7 +75,7 @@ describe('Beta Channel Implementation (Phase 3)', function () {
       // Create mock response object
       const mockRes = {
         statusCode: 200,
-        on: function(event, handler) {
+        on: function (event, handler) {
           if (event === 'data') {
             // Simulate receiving data
             setTimeout(() => {
@@ -88,7 +88,7 @@ describe('Beta Channel Implementation (Phase 3)', function () {
           } else if (event === 'end') {
             setTimeout(handler, 10);
           }
-        }
+        },
       };
 
       // Call callback with mock response
@@ -98,16 +98,16 @@ describe('Beta Channel Implementation (Phase 3)', function () {
 
       // Return mock request object
       return {
-        on: function(event, handler) {
+        on: function (event, handler) {
           if (event === 'error') {
             // Don't call error handler by default
           } else if (event === 'timeout') {
             // Don't call timeout handler by default
           }
         },
-        destroy: function() {
+        destroy: function () {
           // Mock destroy method
-        }
+        },
       };
     };
   });
@@ -127,8 +127,8 @@ describe('Beta Channel Implementation (Phase 3)', function () {
       const result = await updateCheckerModule.checkForUpdates('5.4.0', true, 'npm', 'latest');
 
       // Should have made request to correct URL
-      const latestRequest = httpsRequests.find(req =>
-        req.url === 'https://registry.npmjs.org/@kaitranntt/ccs/latest'
+      const latestRequest = httpsRequests.find(
+        (req) => req.url === 'https://registry.npmjs.org/@kaitranntt/ccs/latest'
       );
       assert(latestRequest, 'should request latest tag from npm registry');
 
@@ -142,8 +142,8 @@ describe('Beta Channel Implementation (Phase 3)', function () {
       const result = await updateCheckerModule.checkForUpdates('5.4.1', true, 'npm', 'dev');
 
       // Should have made request to correct URL
-      const devRequest = httpsRequests.find(req =>
-        req.url === 'https://registry.npmjs.org/@kaitranntt/ccs/dev'
+      const devRequest = httpsRequests.find(
+        (req) => req.url === 'https://registry.npmjs.org/@kaitranntt/ccs/dev'
       );
       assert(devRequest, 'should request dev tag from npm registry');
 
@@ -156,12 +156,12 @@ describe('Beta Channel Implementation (Phase 3)', function () {
       // Mock https.get to simulate network error
       https.get = (url, options, callback) => {
         const req = {
-          on: function(event, handler) {
+          on: function (event, handler) {
             if (event === 'error') {
               setTimeout(() => handler(new Error('Network error')), 0);
             }
           },
-          destroy: function() {}
+          destroy: function () {},
         };
         return req;
       };
@@ -176,9 +176,9 @@ describe('Beta Channel Implementation (Phase 3)', function () {
       https.get = (url, options, callback) => {
         const mockRes = {
           statusCode: 200,
-          on: function(event, handler) {
+          on: function (event, handler) {
             // Don't send any data to trigger timeout
-          }
+          },
         };
 
         if (callback) {
@@ -186,7 +186,7 @@ describe('Beta Channel Implementation (Phase 3)', function () {
         }
 
         return {
-          on: function(event, handler) {
+          on: function (event, handler) {
             if (event === 'timeout') {
               setTimeout(() => {
                 handler();
@@ -194,7 +194,7 @@ describe('Beta Channel Implementation (Phase 3)', function () {
               }, 100);
             }
           },
-          destroy: function() {}
+          destroy: function () {},
         };
       };
 
@@ -208,13 +208,13 @@ describe('Beta Channel Implementation (Phase 3)', function () {
       https.get = (url, options, callback) => {
         const mockRes = {
           statusCode: 200,
-          on: function(event, handler) {
+          on: function (event, handler) {
             if (event === 'data') {
               setTimeout(() => handler('invalid json'), 0);
             } else if (event === 'end') {
               setTimeout(handler, 10);
             }
-          }
+          },
         };
 
         if (callback) {
@@ -222,8 +222,8 @@ describe('Beta Channel Implementation (Phase 3)', function () {
         }
 
         return {
-          on: function() {},
-          destroy: function() {}
+          on: function () {},
+          destroy: function () {},
         };
       };
 
@@ -237,11 +237,11 @@ describe('Beta Channel Implementation (Phase 3)', function () {
       https.get = (url, options, callback) => {
         const mockRes = {
           statusCode: 404,
-          on: function(event, handler) {
+          on: function (event, handler) {
             if (event === 'end') {
               setTimeout(handler, 0);
             }
-          }
+          },
         };
 
         if (callback) {
@@ -249,8 +249,8 @@ describe('Beta Channel Implementation (Phase 3)', function () {
         }
 
         return {
-          on: function() {},
-          destroy: function() {}
+          on: function () {},
+          destroy: function () {},
         };
       };
 
@@ -266,18 +266,17 @@ describe('Beta Channel Implementation (Phase 3)', function () {
       const cacheData = {
         last_check: 0,
         latest_version: null,
-        dismissed_version: null
+        dismissed_version: null,
       };
-      mockFileSystem[path.join(os.homedir(), '.ccs', 'cache', 'update-check.json')] = JSON.stringify(cacheData);
+      mockFileSystem[path.join(os.homedir(), '.ccs', 'cache', 'update-check.json')] =
+        JSON.stringify(cacheData);
     });
 
     it('should use latest tag when targetTag is "latest"', async function () {
       const result = await updateCheckerModule.checkForUpdates('5.4.0', true, 'npm', 'latest');
 
       // Should request latest tag
-      const latestRequest = httpsRequests.find(req =>
-        req.url.includes('/latest')
-      );
+      const latestRequest = httpsRequests.find((req) => req.url.includes('/latest'));
       assert(latestRequest, 'should request latest tag');
 
       // Should return update available
@@ -290,9 +289,7 @@ describe('Beta Channel Implementation (Phase 3)', function () {
       const result = await updateCheckerModule.checkForUpdates('5.4.0', true, 'npm', 'dev');
 
       // Should request dev tag
-      const devRequest = httpsRequests.find(req =>
-        req.url.includes('/dev')
-      );
+      const devRequest = httpsRequests.find((req) => req.url.includes('/dev'));
       assert(devRequest, 'should request dev tag');
 
       // Should return update available (dev version newer)
@@ -327,12 +324,12 @@ describe('Beta Channel Implementation (Phase 3)', function () {
       // Mock https.get to fail
       https.get = (url, options, callback) => {
         const req = {
-          on: function(event, handler) {
+          on: function (event, handler) {
             if (event === 'error') {
               setTimeout(() => handler(new Error('Network error')), 0);
             }
           },
-          destroy: function() {}
+          destroy: function () {},
         };
         return req;
       };
@@ -346,7 +343,12 @@ describe('Beta Channel Implementation (Phase 3)', function () {
       httpsRequests = [];
 
       // Test direct install
-      const directResult = await updateCheckerModule.checkForUpdates('5.4.1', true, 'direct', 'latest');
+      const directResult = await updateCheckerModule.checkForUpdates(
+        '5.4.1',
+        true,
+        'direct',
+        'latest'
+      );
       assert.strictEqual(directResult.status, 'check_failed');
       assert.strictEqual(directResult.reason, 'github_api_error');
     });
@@ -369,9 +371,10 @@ describe('Beta Channel Implementation (Phase 3)', function () {
         last_check: Date.now() - 1000, // 1 second ago
         latest_version: null,
         dev_version: '5.5.0',
-        dismissed_version: null
+        dismissed_version: null,
       };
-      mockFileSystem[path.join(os.homedir(), '.ccs', 'cache', 'update-check.json')] = JSON.stringify(cacheData);
+      mockFileSystem[path.join(os.homedir(), '.ccs', 'cache', 'update-check.json')] =
+        JSON.stringify(cacheData);
 
       // Call with force=false to use cache
       const result = await updateCheckerModule.checkForUpdates('5.4.0', false, 'npm', 'dev');
@@ -399,13 +402,13 @@ describe('Beta Channel Implementation (Phase 3)', function () {
       https.get = (url, options, callback) => {
         const mockRes = {
           statusCode: 200,
-          on: function(event, handler) {
+          on: function (event, handler) {
             if (event === 'data') {
               setTimeout(() => handler('{"version":"5.4.1"}'), 0);
             } else if (event === 'end') {
               setTimeout(handler, 10);
             }
-          }
+          },
         };
 
         if (callback) {
@@ -413,8 +416,8 @@ describe('Beta Channel Implementation (Phase 3)', function () {
         }
 
         return {
-          on: function() {},
-          destroy: function() {}
+          on: function () {},
+          destroy: function () {},
         };
       };
 
@@ -430,13 +433,13 @@ describe('Beta Channel Implementation (Phase 3)', function () {
       https.get = (url, options, callback) => {
         const mockRes = {
           statusCode: 200,
-          on: function(event, handler) {
+          on: function (event, handler) {
             if (event === 'data') {
               setTimeout(() => handler('{"version":"5.4.0"}'), 0);
             } else if (event === 'end') {
               setTimeout(handler, 10);
             }
-          }
+          },
         };
 
         if (callback) {
@@ -444,8 +447,8 @@ describe('Beta Channel Implementation (Phase 3)', function () {
         }
 
         return {
-          on: function() {},
-          destroy: function() {}
+          on: function () {},
+          destroy: function () {},
         };
       };
 
@@ -475,9 +478,10 @@ describe('Beta Channel Implementation (Phase 3)', function () {
         last_check: Date.now() - 1000,
         latest_version: null,
         dev_version: '5.5.0',
-        dismissed_version: '5.5.0'
+        dismissed_version: '5.5.0',
       };
-      mockFileSystem[path.join(os.homedir(), '.ccs', 'cache', 'update-check.json')] = JSON.stringify(cacheData);
+      mockFileSystem[path.join(os.homedir(), '.ccs', 'cache', 'update-check.json')] =
+        JSON.stringify(cacheData);
 
       const result = await updateCheckerModule.checkForUpdates('5.4.1', false, 'npm', 'dev');
 
@@ -488,7 +492,8 @@ describe('Beta Channel Implementation (Phase 3)', function () {
 
     it('should handle corrupted cache gracefully', async function () {
       // Set up corrupted cache
-      mockFileSystem[path.join(os.homedir(), '.ccs', 'cache', 'update-check.json')] = 'invalid json';
+      mockFileSystem[path.join(os.homedir(), '.ccs', 'cache', 'update-check.json')] =
+        'invalid json';
 
       // Should not throw error
       const result = await updateCheckerModule.checkForUpdates('5.4.0', true, 'npm', 'latest');

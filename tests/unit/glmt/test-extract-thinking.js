@@ -18,9 +18,9 @@ const test1 = {
   messages: [
     {
       role: 'user',
-      content: 'Calculate 15 factorial'
-    }
-  ]
+      content: 'Calculate 15 factorial',
+    },
+  ],
 };
 
 console.log('\nTest 1: First message (string content)');
@@ -35,26 +35,26 @@ const test2 = {
   messages: [
     {
       role: 'user',
-      content: 'Calculate 15 factorial'
+      content: 'Calculate 15 factorial',
     },
     {
       role: 'assistant',
       content: [
         {
           type: 'thinking',
-          thinking: '15! = 15 × 14 × ... × 1'
+          thinking: '15! = 15 × 14 × ... × 1',
         },
         {
           type: 'text',
-          text: 'The factorial of 15 is 1,307,674,368,000'
-        }
-      ]
+          text: 'The factorial of 15 is 1,307,674,368,000',
+        },
+      ],
     },
     {
       role: 'user',
-      content: 'What is the square root of 2?'
-    }
-  ]
+      content: 'What is the square root of 2?',
+    },
+  ],
 };
 
 console.log('\n' + '='.repeat(60));
@@ -76,11 +76,11 @@ const test3 = {
       content: [
         {
           type: 'text',
-          text: 'Calculate something'
-        }
-      ]
-    }
-  ]
+          text: 'Calculate something',
+        },
+      ],
+    },
+  ],
 };
 
 console.log('\n' + '='.repeat(60));
@@ -97,9 +97,9 @@ const test4 = {
   messages: [
     {
       role: 'user',
-      content: '<Thinking:Off> Just give me a quick answer'
-    }
-  ]
+      content: '<Thinking:Off> Just give me a quick answer',
+    },
+  ],
 };
 
 console.log('\n' + '='.repeat(60));

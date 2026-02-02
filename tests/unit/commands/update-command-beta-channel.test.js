@@ -90,7 +90,7 @@ describe.skip('Update Command Beta Channel Implementation (Phase 3)', function (
           // Store callbacks for testing
           mockChild._callbacks = mockChild._callbacks || {};
           mockChild._callbacks[event] = callback;
-        }
+        },
       };
       return mockChild;
     };
@@ -126,7 +126,7 @@ describe.skip('Update Command Beta Channel Implementation (Phase 3)', function (
       updateCheckerModule.checkForUpdates = async () => ({
         status: 'update_available',
         latest: '5.5.0',
-        current: '5.4.1'
+        current: '5.4.1',
       });
 
       // Mock spawn to prevent actual installation
@@ -137,7 +137,7 @@ describe.skip('Update Command Beta Channel Implementation (Phase 3)', function (
             if (event === 'exit') {
               setTimeout(() => callback(0), 10);
             }
-          }
+          },
         };
         return mockChild;
       };
@@ -148,18 +148,20 @@ describe.skip('Update Command Beta Channel Implementation (Phase 3)', function (
         updateCommandModule.handleUpdateCommand({ beta: true });
 
         // Should show beta warning
-        const betaWarning = consoleOutput.find(output =>
-          output[0] && output[0].includes('[!] Installing from @dev channel (unstable)')
+        const betaWarning = consoleOutput.find(
+          (output) => output[0] && output[0].includes('[!] Installing from @dev channel (unstable)')
         );
         assert(betaWarning, 'should show beta channel warning');
 
-        const notRecommended = consoleOutput.find(output =>
-          output[0] && output[0].includes('[!] Not recommended for production use')
+        const notRecommended = consoleOutput.find(
+          (output) => output[0] && output[0].includes('[!] Not recommended for production use')
         );
         assert(notRecommended, 'should show not recommended warning');
 
-        const returnStable = consoleOutput.find(output =>
-          output[0] && output[0].includes('[!] Use `ccs update` (without --beta) to return to stable')
+        const returnStable = consoleOutput.find(
+          (output) =>
+            output[0] &&
+            output[0].includes('[!] Use `ccs update` (without --beta) to return to stable')
         );
         assert(returnStable, 'should show return to stable instruction');
       } finally {
@@ -180,7 +182,7 @@ describe.skip('Update Command Beta Channel Implementation (Phase 3)', function (
       updateCheckerModule.checkForUpdates = async () => ({
         status: 'update_available',
         latest: '5.4.2',
-        current: '5.4.1'
+        current: '5.4.1',
       });
 
       try {
@@ -188,13 +190,13 @@ describe.skip('Update Command Beta Channel Implementation (Phase 3)', function (
         updateCommandModule.handleUpdateCommand({ beta: false });
 
         // Should NOT show beta warning
-        const betaWarning = consoleOutput.find(output =>
-          output[0] && output[0].includes('[!] Installing from @dev channel (unstable)')
+        const betaWarning = consoleOutput.find(
+          (output) => output[0] && output[0].includes('[!] Installing from @dev channel (unstable)')
         );
         assert(!betaWarning, 'should not show beta warning for stable channel');
 
-        const unstableWarning = consoleOutput.find(output =>
-          output[0] && output[0].includes('[!] Not recommended for production use')
+        const unstableWarning = consoleOutput.find(
+          (output) => output[0] && output[0].includes('[!] Not recommended for production use')
         );
         assert(!unstableWarning, 'should not show production warning for stable channel');
       } finally {
@@ -214,8 +216,8 @@ describe.skip('Update Command Beta Channel Implementation (Phase 3)', function (
         updateCommandModule.handleUpdateCommand({ force: true, beta: true });
 
         // Should show beta warning even with force
-        const betaWarning = consoleOutput.find(output =>
-          output[0] && output[0].includes('[!] Installing from @dev channel (unstable)')
+        const betaWarning = consoleOutput.find(
+          (output) => output[0] && output[0].includes('[!] Installing from @dev channel (unstable)')
         );
         assert(betaWarning, 'should show beta warning even with force');
       } finally {
@@ -236,7 +238,7 @@ describe.skip('Update Command Beta Channel Implementation (Phase 3)', function (
         const originalCheckForUpdates = updateCheckerModule.checkForUpdates;
         updateCheckerModule.checkForUpdates = async () => ({
           status: 'check_failed',
-          message: 'Failed to check for updates'
+          message: 'Failed to check for updates',
         });
 
         // Call with beta: true
@@ -246,8 +248,8 @@ describe.skip('Update Command Beta Channel Implementation (Phase 3)', function (
       }
 
       // Should show manual command with dev tag
-      const manualCommand = consoleOutput.find(output =>
-        output[0] && output[0].includes('npm install -g @kaitranntt/ccs@dev')
+      const manualCommand = consoleOutput.find(
+        (output) => output[0] && output[0].includes('npm install -g @kaitranntt/ccs@dev')
       );
       assert(manualCommand, 'should show manual npm install command with dev tag');
     });
@@ -262,7 +264,7 @@ describe.skip('Update Command Beta Channel Implementation (Phase 3)', function (
         const originalCheckForUpdates = updateCheckerModule.checkForUpdates;
         updateCheckerModule.checkForUpdates = async () => ({
           status: 'check_failed',
-          message: 'Failed to check for updates'
+          message: 'Failed to check for updates',
         });
 
         // Call with beta: false (default)
@@ -272,8 +274,8 @@ describe.skip('Update Command Beta Channel Implementation (Phase 3)', function (
       }
 
       // Should show manual command with latest tag
-      const manualCommand = consoleOutput.find(output =>
-        output[0] && output[0].includes('npm install -g @kaitranntt/ccs@latest')
+      const manualCommand = consoleOutput.find(
+        (output) => output[0] && output[0].includes('npm install -g @kaitranntt/ccs@latest')
       );
       assert(manualCommand, 'should show manual npm install command with latest tag');
     });
@@ -283,7 +285,7 @@ describe.skip('Update Command Beta Channel Implementation (Phase 3)', function (
         { name: 'npm', command: 'npm install -g @kaitranntt/ccs@dev' },
         { name: 'yarn', command: 'yarn global add @kaitranntt/ccs@dev' },
         { name: 'pnpm', command: 'pnpm add -g @kaitranntt/ccs@dev' },
-        { name: 'bun', command: 'bun add -g @kaitranntt/ccs@dev' }
+        { name: 'bun', command: 'bun add -g @kaitranntt/ccs@dev' },
       ];
 
       packageManagers.forEach(({ name, command }) => {
@@ -299,7 +301,7 @@ describe.skip('Update Command Beta Channel Implementation (Phase 3)', function (
           const originalCheckForUpdates = updateCheckerModule.checkForUpdates;
           updateCheckerModule.checkForUpdates = async () => ({
             status: 'check_failed',
-            message: 'Failed to check for updates'
+            message: 'Failed to check for updates',
           });
 
           // Call with beta: true
@@ -309,8 +311,8 @@ describe.skip('Update Command Beta Channel Implementation (Phase 3)', function (
         }
 
         // Should show correct manual command
-        const manualCommand = consoleOutput.find(output =>
-          output[0] && output[0].includes(command)
+        const manualCommand = consoleOutput.find(
+          (output) => output[0] && output[0].includes(command)
         );
         assert(manualCommand, `should show manual ${name} command with dev tag`);
 
@@ -342,7 +344,7 @@ describe.skip('Update Command Beta Channel Implementation (Phase 3)', function (
         const originalCheckForUpdates = updateCheckerModule.checkForUpdates;
         updateCheckerModule.checkForUpdates = async () => ({
           status: 'check_failed',
-          message: 'Network error'
+          message: 'Network error',
         });
 
         updateCommandModule.handleUpdateCommand();
@@ -369,7 +371,7 @@ describe.skip('Update Command Beta Channel Implementation (Phase 3)', function (
         updateCommandModule.handleUpdateCommand({ beta: true });
 
         // Should pass 'dev' as targetTag
-        const devCall = checkForUpdatesCalls.find(call => call.targetTag === 'dev');
+        const devCall = checkForUpdatesCalls.find((call) => call.targetTag === 'dev');
         assert(devCall, 'should pass dev tag for beta updates');
         assert.strictEqual(devCall.installMethod, 'npm');
       } finally {

@@ -8,7 +8,7 @@ try {
   expandPath = require('../../dist/utils/helpers').expandPath;
 } catch (e) {
   // If helpers module doesn't exist or doesn't export expandPath, create a mock
-  expandPath = function(p) {
+  expandPath = function (p) {
     if (!p || typeof p !== 'string') return p;
     if (p.startsWith('~/')) {
       return path.join(os.homedir(), p.slice(2));
@@ -76,7 +76,10 @@ describe('cross-platform', () => {
   describe('platform-specific behavior', () => {
     it('detects platform correctly', () => {
       const platform = os.platform();
-      assert(['darwin', 'linux', 'win32'].includes(platform), 'Should be running on supported platform');
+      assert(
+        ['darwin', 'linux', 'win32'].includes(platform),
+        'Should be running on supported platform'
+      );
     });
 
     it('handles path separators correctly', () => {

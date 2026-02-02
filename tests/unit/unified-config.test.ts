@@ -19,7 +19,16 @@ import { isUnifiedConfigEnabled } from '../../src/config/feature-flags';
 // Inline helper to test secret key detection (utility kept for potential reuse)
 function isSecretKey(key: string): boolean {
   const upper = key.toUpperCase();
-  const secretPatterns = ['TOKEN', 'SECRET', 'API_KEY', 'APIKEY', 'PASSWORD', 'CREDENTIAL', 'AUTH', 'PRIVATE'];
+  const secretPatterns = [
+    'TOKEN',
+    'SECRET',
+    'API_KEY',
+    'APIKEY',
+    'PASSWORD',
+    'CREDENTIAL',
+    'AUTH',
+    'PRIVATE',
+  ];
   return secretPatterns.some((pattern) => upper.includes(pattern));
 }
 

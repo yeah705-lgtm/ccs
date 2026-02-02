@@ -125,31 +125,31 @@ describe('CCS Flag Parsing', function () {
         {
           args: ['update'],
           expected: { force: false, beta: false },
-          description: 'no flags'
+          description: 'no flags',
         },
         {
           args: ['update', '--force'],
           expected: { force: true, beta: false },
-          description: '--force only'
+          description: '--force only',
         },
         {
           args: ['update', '--beta'],
           expected: { force: false, beta: true },
-          description: '--beta only'
+          description: '--beta only',
         },
         {
           args: ['update', '--force', '--beta'],
           expected: { force: true, beta: true },
-          description: 'both flags'
+          description: 'both flags',
         },
         {
           args: ['update', '--beta', '--force'],
           expected: { force: true, beta: true },
-          description: 'both flags (reverse order)'
-        }
+          description: 'both flags (reverse order)',
+        },
       ];
 
-      testCases.forEach(testCase => {
+      testCases.forEach((testCase) => {
         const firstArg = testCase.args[0];
 
         if (firstArg === 'update') {
@@ -177,10 +177,10 @@ describe('CCS Flag Parsing', function () {
         { input: ['update', '--force'], expectedForce: true, expectedBeta: false },
         { input: ['update', '--beta'], expectedForce: false, expectedBeta: true },
         { input: ['update', '--force', '--beta'], expectedForce: true, expectedBeta: true },
-        { input: ['update', '--beta', '--force'], expectedForce: true, expectedBeta: true }
+        { input: ['update', '--beta', '--force'], expectedForce: true, expectedBeta: true },
       ];
 
-      scenarios.forEach(scenario => {
+      scenarios.forEach((scenario) => {
         const firstArg = scenario.input[0];
 
         if (firstArg === 'update' || firstArg === '--update') {

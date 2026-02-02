@@ -11,7 +11,10 @@ const path = require('path');
 const os = require('os');
 
 // Set test isolation environment before importing
-const testHome = path.join(os.tmpdir(), `ccs-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+const testHome = path.join(
+  os.tmpdir(),
+  `ccs-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+);
 process.env.CCS_HOME = testHome;
 
 const {

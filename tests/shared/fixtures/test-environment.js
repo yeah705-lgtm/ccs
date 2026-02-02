@@ -130,7 +130,7 @@ function createTestEnvironment() {
         // Ignore cleanup errors
         console.warn(`[test-environment] Cleanup warning: ${err.message}`);
       }
-    }
+    },
   };
 }
 
@@ -156,5 +156,5 @@ function getCcsDir() {
 module.exports = {
   createTestEnvironment,
   getCcsHome,
-  getCcsDir
+  getCcsDir,
 };

@@ -389,7 +389,7 @@ describe('Persist Command', () => {
   describe('Error Messages', () => {
     it('account profile error message mentions CLAUDE_CONFIG_DIR', () => {
       const errorMessage =
-        "Account profiles use CLAUDE_CONFIG_DIR isolation, not env vars.\n" +
+        'Account profiles use CLAUDE_CONFIG_DIR isolation, not env vars.\n' +
         "Use 'ccs profileName' to run with this profile instead.";
       assert(errorMessage.includes('CLAUDE_CONFIG_DIR'));
       assert(errorMessage.includes('ccs profileName'));
@@ -477,30 +477,21 @@ describe('Persist Command', () => {
   // =========================================================================
   describe('Backup Restore Logic', () => {
     it('selects first backup when restore=true (latest)', () => {
-      const backups = [
-        { timestamp: '20260110_205324' },
-        { timestamp: '20260110_100000' },
-      ];
+      const backups = [{ timestamp: '20260110_205324' }, { timestamp: '20260110_100000' }];
       const restore = true;
       const selected = restore === true ? backups[0] : backups.find((b) => b.timestamp === restore);
       assert.strictEqual(selected.timestamp, '20260110_205324');
     });
 
     it('selects specific backup when restore is a timestamp', () => {
-      const backups = [
-        { timestamp: '20260110_205324' },
-        { timestamp: '20260110_100000' },
-      ];
+      const backups = [{ timestamp: '20260110_205324' }, { timestamp: '20260110_100000' }];
       const restore = '20260110_100000';
       const selected = restore === true ? backups[0] : backups.find((b) => b.timestamp === restore);
       assert.strictEqual(selected.timestamp, '20260110_100000');
     });
 
     it('returns undefined when timestamp not found', () => {
-      const backups = [
-        { timestamp: '20260110_205324' },
-        { timestamp: '20260110_100000' },
-      ];
+      const backups = [{ timestamp: '20260110_205324' }, { timestamp: '20260110_100000' }];
       const restore = '20260101_000000';
       const selected = restore === true ? backups[0] : backups.find((b) => b.timestamp === restore);
       assert.strictEqual(selected, undefined);

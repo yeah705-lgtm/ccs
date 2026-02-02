@@ -10,10 +10,7 @@ describe('HeadlessExecutor flag construction', () => {
   // Since HeadlessExecutor.execute() spawns a process, we test the logic directly
 
   describe('Duplicate flag filtering', () => {
-    function filterExtraArgs(
-      extraArgs: string[],
-      explicitFlags: Set<string>
-    ): string[] {
+    function filterExtraArgs(extraArgs: string[], explicitFlags: Set<string>): string[] {
       const filteredExtras: string[] = [];
       for (let i = 0; i < extraArgs.length; i++) {
         if (explicitFlags.has(extraArgs[i])) {

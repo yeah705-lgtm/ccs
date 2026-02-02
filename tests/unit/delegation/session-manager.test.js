@@ -27,7 +27,7 @@ describe('SessionManager', () => {
       mgr.storeSession('glm', {
         sessionId: 'test123',
         totalCost: 0.0025,
-        cwd: '/home/test'
+        cwd: '/home/test',
       });
 
       const session = mgr.getLastSession('glm');
@@ -43,11 +43,11 @@ describe('SessionManager', () => {
       mgr.storeSession('glm', {
         sessionId: 'test456',
         totalCost: 0.001,
-        cwd: '/home/test'
+        cwd: '/home/test',
       });
 
       mgr.updateSession('glm', 'test456', {
-        totalCost: 0.002
+        totalCost: 0.002,
       });
 
       const session = mgr.getLastSession('glm');
@@ -69,13 +69,13 @@ describe('SessionManager', () => {
       mgr.storeSession('glm', {
         sessionId: 'glm123',
         totalCost: 0.001,
-        cwd: '/home/test'
+        cwd: '/home/test',
       });
 
       mgr.storeSession('kimi', {
         sessionId: 'kimi123',
         totalCost: 0.002,
-        cwd: '/home/test'
+        cwd: '/home/test',
       });
 
       const glmSession = mgr.getLastSession('glm');
@@ -93,7 +93,7 @@ describe('SessionManager', () => {
       mgr.storeSession('glm', {
         sessionId: 'test789',
         totalCost: 0.001,
-        cwd: '/home/test'
+        cwd: '/home/test',
       });
 
       mgr.clearProfile('glm');
@@ -108,7 +108,7 @@ describe('SessionManager', () => {
       const mgr = new SessionManager();
 
       const sessions = {};
-      const oldTime = Date.now() - (31 * 24 * 60 * 60 * 1000);
+      const oldTime = Date.now() - 31 * 24 * 60 * 60 * 1000;
       sessions['glm:latest'] = {
         sessionId: 'old123',
         profile: 'glm',
@@ -116,7 +116,7 @@ describe('SessionManager', () => {
         lastTurnTime: oldTime,
         totalCost: 0.001,
         turns: 1,
-        cwd: '/home/test'
+        cwd: '/home/test',
       };
 
       const dir = path.dirname(mgr.sessionsPath);
@@ -137,7 +137,7 @@ describe('SessionManager', () => {
       mgr.storeSession('glm', {
         sessionId: 'recent123',
         totalCost: 0.001,
-        cwd: '/home/test'
+        cwd: '/home/test',
       });
 
       mgr.cleanupExpired();

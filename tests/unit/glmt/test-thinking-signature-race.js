@@ -90,43 +90,51 @@ runner.test('Signature generated correctly after content accumulated', () => {
   // Should return valid signature event
   assert(signatureEvent !== null, 'Expected signature event for non-empty block');
   assert(signatureEvent.event === 'content_block_delta', 'Expected content_block_delta event');
-  assert(signatureEvent.data.delta.type === 'thinking_signature_delta', 'Expected thinking_signature_delta type');
+  assert(
+    signatureEvent.data.delta.type === 'thinking_signature_delta',
+    'Expected thinking_signature_delta type'
+  );
   assert(signatureEvent.data.delta.signature.length > 0, 'Expected signature length > 0');
   assert(signatureEvent.data.delta.signature.hash, 'Expected signature hash');
   assert(signatureEvent.data.delta.signature.hash.length === 16, 'Expected 16-char hash');
 });
 
 // Test 3: transformDelta skips signature for empty thinking blocks
-runner.test('transformDelta skips signature for empty thinking blocks (thinking→text transition)', () => {
-  const transformer = new GlmtTransformer({ verbose: false });
-  const accumulator = new DeltaAccumulator({ thinking: true });
+runner.test(
+  'transformDelta skips signature for empty thinking blocks (thinking→text transition)',
+  () => {
+    const transformer = new GlmtTransformer({ verbose: false });
+    const accumulator = new DeltaAccumulator({ thinking: true });
 
-  // Simulate thinking block with no content
-  accumulator.messageStarted = true;
-  const block = accumulator.startBlock('thinking');
+    // Simulate thinking block with no content
+    accumulator.messageStarted = true;
+    const block = accumulator.startBlock('thinking');
 
-  // Transition to text (would normally generate signature)
-  const openaiEvent = {
-    event: 'message',
-    data: {
-      choices: [{
-        delta: { content: 'Text response after empty thinking' }
-      }]
-    }
-  };
+    // Transition to text (would normally generate signature)
+    const openaiEvent = {
+      event: 'message',
+      data: {
+        choices: [
+          {
+            delta: { content: 'Text response after empty thinking' },
+          },
+        ],
+      },
+    };
 
-  const events = transformer.transformDelta(openaiEvent, accumulator);
+    const events = transformer.transformDelta(openaiEvent, accumulator);
 
-  // Signature event should not be present
-  const signatureEvents = events.filter(e =>
-    e.data?.delta?.type === 'thinking_signature_delta'
-  );
-  assert(signatureEvents.length === 0, 'Expected 0 signature events for empty thinking block');
+    // Signature event should not be present
+    const signatureEvents = events.filter(
+      (e) => e.data?.delta?.type === 'thinking_signature_delta'
+    );
+    assert(signatureEvents.length === 0, 'Expected 0 signature events for empty thinking block');
 
-  // Should still have content_block_stop event
-  const stopEvents = events.filter(e => e.event === 'content_block_stop');
-  assert(stopEvents.length > 0, 'Expected content_block_stop event');
-});
+    // Should still have content_block_stop event
+    const stopEvents = events.filter((e) => e.event === 'content_block_stop');
+    assert(stopEvents.length > 0, 'Expected content_block_stop event');
+  }
+);
 
 // Test 4: transformDelta generates signature for non-empty thinking blocks
 runner.test('transformDelta generates signature for non-empty thinking blocks', () => {
@@ -141,10 +149,12 @@ runner.test('transformDelta generates signature for non-empty thinking blocks', 
   const reasoningEvent = {
     event: 'message',
     data: {
-      choices: [{
-        delta: { reasoning_content: 'This is actual thinking content. ' }
-      }]
-    }
+      choices: [
+        {
+          delta: { reasoning_content: 'This is actual thinking content. ' },
+        },
+      ],
+    },
   };
   transformer.transformDelta(reasoningEvent, accumulator);
 
@@ -152,10 +162,12 @@ runner.test('transformDelta generates signature for non-empty thinking blocks', 
   const moreReasoningEvent = {
     event: 'message',
     data: {
-      choices: [{
-        delta: { reasoning_content: 'More thinking here.' }
-      }]
-    }
+      choices: [
+        {
+          delta: { reasoning_content: 'More thinking here.' },
+        },
+      ],
+    },
   };
   transformer.transformDelta(moreReasoningEvent, accumulator);
 
@@ -163,18 +175,18 @@ runner.test('transformDelta generates signature for non-empty thinking blocks', 
   const textEvent = {
     event: 'message',
     data: {
-      choices: [{
-        delta: { content: 'Final text response' }
-      }]
-    }
+      choices: [
+        {
+          delta: { content: 'Final text response' },
+        },
+      ],
+    },
   };
 
   const events = transformer.transformDelta(textEvent, accumulator);
 
   // Signature event should be present
-  const signatureEvents = events.filter(e =>
-    e.data?.delta?.type === 'thinking_signature_delta'
-  );
+  const signatureEvents = events.filter((e) => e.data?.delta?.type === 'thinking_signature_delta');
   assert(signatureEvents.length === 1, 'Expected 1 signature event for non-empty thinking block');
 
   // Verify signature structure
@@ -206,10 +218,12 @@ runner.test('Loop detection handles empty thinking blocks without signature', ()
   const openaiEvent = {
     event: 'message',
     data: {
-      choices: [{
-        delta: { reasoning_content: '' }
-      }]
-    }
+      choices: [
+        {
+          delta: { reasoning_content: '' },
+        },
+      ],
+    },
   };
 
   // This would trigger loop detection logic
@@ -219,7 +233,10 @@ runner.test('Loop detection handles empty thinking blocks without signature', ()
   if (currentBlock && currentBlock.type === 'thinking') {
     const signatureEvent = transformer._createSignatureDeltaEvent(currentBlock);
     // Should return null for empty block
-    assert(signatureEvent === null, 'Expected null signature for empty thinking block during loop detection');
+    assert(
+      signatureEvent === null,
+      'Expected null signature for empty thinking block during loop detection'
+    );
   }
 });
 
@@ -236,13 +253,14 @@ runner.test('finalizeDelta handles empty thinking blocks without signature', () 
   const events = transformer.finalizeDelta(accumulator);
 
   // Should not include signature event for empty block
-  const signatureEvents = events.filter(e =>
-    e.data?.delta?.type === 'thinking_signature_delta'
+  const signatureEvents = events.filter((e) => e.data?.delta?.type === 'thinking_signature_delta');
+  assert(
+    signatureEvents.length === 0,
+    'Expected 0 signature events for empty thinking block in finalizeDelta'
   );
-  assert(signatureEvents.length === 0, 'Expected 0 signature events for empty thinking block in finalizeDelta');
 
   // Should still include content_block_stop
-  const stopEvents = events.filter(e => e.event === 'content_block_stop');
+  const stopEvents = events.filter((e) => e.event === 'content_block_stop');
   assert(stopEvents.length === 1, 'Expected content_block_stop event in finalizeDelta');
 });
 

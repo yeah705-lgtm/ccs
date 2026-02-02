@@ -427,9 +427,7 @@ describe('management-api-client', () => {
     describe('CRUD operations', () => {
       it('should get claude keys', async () => {
         const client = new ManagementApiClient(config);
-        const mockKeys: ClaudeKey[] = [
-          { 'api-key': 'sk-test-123', prefix: 'glm-' },
-        ];
+        const mockKeys: ClaudeKey[] = [{ 'api-key': 'sk-test-123', prefix: 'glm-' }];
 
         const originalFetch = global.fetch;
         global.fetch = mock(() =>
@@ -449,9 +447,7 @@ describe('management-api-client', () => {
 
       it('should put claude keys', async () => {
         const client = new ManagementApiClient(config);
-        const mockKeys: ClaudeKey[] = [
-          { 'api-key': 'sk-test-456', prefix: 'kimi-' },
-        ];
+        const mockKeys: ClaudeKey[] = [{ 'api-key': 'sk-test-456', prefix: 'kimi-' }];
 
         const originalFetch = global.fetch;
         let requestBody: string | undefined;

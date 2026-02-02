@@ -23,7 +23,11 @@ describe('SSEParser', () => {
       const events1 = parser.parse('data: {"test":');
       assert.strictEqual(events1.length, 0, 'Should not emit incomplete event');
       const events2 = parser.parse('"value"}\n\n');
-      assert.strictEqual(events2.length, 1, `Expected 1 event after completion, got ${events2.length}`);
+      assert.strictEqual(
+        events2.length,
+        1,
+        `Expected 1 event after completion, got ${events2.length}`
+      );
       assert.strictEqual(events2[0].data.test, 'value');
     });
 
@@ -92,7 +96,8 @@ describe('SSEParser', () => {
   describe('Z.AI stream format', () => {
     it('parses real Z.AI stream format', () => {
       const parser = new SSEParser();
-      const chunk = 'data: {"choices":[{"delta":{"role":"assistant","reasoning_content":"test"}}]}\n\n';
+      const chunk =
+        'data: {"choices":[{"delta":{"role":"assistant","reasoning_content":"test"}}]}\n\n';
       const events = parser.parse(chunk);
       assert.strictEqual(events.length, 1);
       assert.strictEqual(events[0].data.choices[0].delta.reasoning_content, 'test');
@@ -100,7 +105,8 @@ describe('SSEParser', () => {
 
     it('parses multiple Z.AI deltas', () => {
       const parser = new SSEParser();
-      const chunk = 'data: {"choices":[{"delta":{"reasoning_content":"chunk1"}}]}\n\ndata: {"choices":[{"delta":{"reasoning_content":"chunk2"}}]}\n\n';
+      const chunk =
+        'data: {"choices":[{"delta":{"reasoning_content":"chunk1"}}]}\n\ndata: {"choices":[{"delta":{"reasoning_content":"chunk2"}}]}\n\n';
       const events = parser.parse(chunk);
       assert.strictEqual(events.length, 2);
       assert.strictEqual(events[0].data.choices[0].delta.reasoning_content, 'chunk1');

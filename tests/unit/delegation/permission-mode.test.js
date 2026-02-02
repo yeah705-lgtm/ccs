@@ -27,10 +27,7 @@ describe('Permission Mode', () => {
     });
 
     it('rejects empty mode', () => {
-      assert.throws(
-        () => HeadlessExecutor._validatePermissionMode(''),
-        /Invalid permission mode/
-      );
+      assert.throws(() => HeadlessExecutor._validatePermissionMode(''), /Invalid permission mode/);
     });
 
     it('rejects null mode', () => {

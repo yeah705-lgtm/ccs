@@ -14,9 +14,7 @@ import { type RawUsageEntry } from '../../src/web-server/jsonl-parser';
 // TEST FIXTURES
 // ============================================================================
 
-const createEntry = (
-  overrides: Partial<RawUsageEntry> = {}
-): RawUsageEntry => ({
+const createEntry = (overrides: Partial<RawUsageEntry> = {}): RawUsageEntry => ({
   inputTokens: 1000,
   outputTokens: 500,
   cacheCreationTokens: 100,
@@ -66,9 +64,7 @@ describe('aggregateDailyUsage', () => {
     expect(result[0].modelsUsed).toContain('claude-opus-4-5-20251101');
 
     // Find sonnet breakdown
-    const sonnet = result[0].modelBreakdowns.find(
-      (b) => b.modelName === 'claude-sonnet-4-5'
-    );
+    const sonnet = result[0].modelBreakdowns.find((b) => b.modelName === 'claude-sonnet-4-5');
     expect(sonnet!.inputTokens).toBe(1500); // 1000 + 500
   });
 

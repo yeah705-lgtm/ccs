@@ -21,7 +21,7 @@ describe('npm CLI', () => {
     execSync(`node "${postinstallScript}"`, {
       stdio: 'ignore',
       env: { ...process.env, CCS_HOME: testCcsHome },
-      timeout: 15000 // Allow 15 seconds for postinstall (CI can be slow)
+      timeout: 15000, // Allow 15 seconds for postinstall (CI can be slow)
     });
   });
 
@@ -36,12 +36,12 @@ describe('npm CLI', () => {
   function runCli(args, options = {}) {
     return execSync(`node "${ccsPath}" ${args}`, {
       ...options,
-      env: { ...process.env, CCS_HOME: testCcsHome }
+      env: { ...process.env, CCS_HOME: testCcsHome },
     });
   }
 
   describe('Argument parsing', () => {
-    it('handles flag -c without profile error', function() {
+    it('handles flag -c without profile error', function () {
       try {
         runCli('-c', { stdio: 'pipe', timeout: 3000 });
       } catch (e) {
@@ -51,16 +51,19 @@ describe('npm CLI', () => {
       }
     });
 
-    it('handles flag --verbose without profile error', function() {
+    it('handles flag --verbose without profile error', function () {
       try {
         runCli('--verbose', { stdio: 'pipe', timeout: 3000 });
       } catch (e) {
         const output = e.stderr?.toString() || e.stdout?.toString() || '';
-        assert(!output.includes("Profile '--verbose' not found"), 'Should not treat --verbose as profile');
+        assert(
+          !output.includes("Profile '--verbose' not found"),
+          'Should not treat --verbose as profile'
+        );
       }
     });
 
-    it('handles flag -p with value', function() {
+    it('handles flag -p with value', function () {
       try {
         runCli('-p "test prompt"', { stdio: 'pipe', timeout: 8000 });
       } catch (e) {
@@ -69,13 +72,16 @@ describe('npm CLI', () => {
       }
     });
 
-    it('handles multiple flags', function() {
+    it('handles multiple flags', function () {
       try {
         runCli('-c --verbose', { stdio: 'pipe', timeout: 3000 });
       } catch (e) {
         const output = e.stderr?.toString() || e.stdout?.toString() || '';
         assert(!output.includes("Profile '-c' not found"), 'Should not treat flags as profiles');
-        assert(!output.includes("Profile '--verbose' not found"), 'Should not treat flags as profiles');
+        assert(
+          !output.includes("Profile '--verbose' not found"),
+          'Should not treat flags as profiles'
+        );
       }
     });
   });
@@ -84,7 +90,7 @@ describe('npm CLI', () => {
     // Note: GLM/GLMT/Kimi profiles are no longer auto-created (v6.0)
     // Users create these via UI presets or CLI: ccs api create --preset glm
 
-    it('shows helpful error for non-existent profile', function() {
+    it('shows helpful error for non-existent profile', function () {
       try {
         runCli('glm --help', { stdio: 'pipe', timeout: 5000 });
         // If GLM profile exists from previous setup, this is fine too
@@ -92,24 +98,28 @@ describe('npm CLI', () => {
         const output = e.stderr?.toString() || e.stdout?.toString() || '';
         // Either profile exists and works, or shows helpful "not found" message
         // Both are valid behaviors depending on user's setup
-        const isValid = !output.includes("Profile 'glm' not found") ||
-                        output.includes("not found") ||
-                        output.includes("ccs api create");
+        const isValid =
+          !output.includes("Profile 'glm' not found") ||
+          output.includes('not found') ||
+          output.includes('ccs api create');
         assert(isValid, 'Should either find profile or show helpful message');
       }
     });
 
-    it('shows error for invalid profile', function() {
+    it('shows error for invalid profile', function () {
       try {
         runCli('invalid-profile-name', { stdio: 'pipe', timeout: 5000 });
         assert(false, 'Should have thrown an error for invalid profile');
       } catch (e) {
         const output = e.stderr?.toString() || e.stdout?.toString() || '';
-        assert(output.includes("not found") || output.includes("invalid"), 'Should show profile not found error');
+        assert(
+          output.includes('not found') || output.includes('invalid'),
+          'Should show profile not found error'
+        );
       }
     });
 
-    it('handles profile with flags correctly', function() {
+    it('handles profile with flags correctly', function () {
       try {
         // Use a known command instead of profile that may not exist
         runCli('api --help', { stdio: 'pipe', timeout: 3000 });
@@ -121,46 +131,52 @@ describe('npm CLI', () => {
   });
 
   describe('Version and help', () => {
-    it('shows version with --version flag', function() {
+    it('shows version with --version flag', function () {
       const output = runCli('--version', { encoding: 'utf8', timeout: 5000 });
       assert(/\d+\.\d+\.\d+/.test(output), 'Should show version number');
     });
 
-    it('shows version with -v flag', function() {
+    it('shows version with -v flag', function () {
       const output = runCli('-v', { encoding: 'utf8', timeout: 5000 });
       assert(/\d+\.\d+\.\d+/.test(output), 'Should show version number');
     });
 
-    it('shows help with --help flag', function() {
+    it('shows help with --help flag', function () {
       const output = runCli('--help', { encoding: 'utf8', timeout: 5000 });
       assert(/usage|help|options/i.test(output), 'Should show help information');
     });
 
-    it('shows help with -h flag', function() {
+    it('shows help with -h flag', function () {
       const output = runCli('-h', { encoding: 'utf8', timeout: 5000 });
       assert(/usage|help|options/i.test(output), 'Should show help information');
     });
   });
 
   describe('Error handling', () => {
-    it('handles empty arguments gracefully', function() {
+    it('handles empty arguments gracefully', function () {
       try {
         runCli('', { stdio: 'pipe', timeout: 3000 });
       } catch (e) {
         // Should either succeed or fail gracefully with a helpful error
         const output = e.stderr?.toString() || e.stdout?.toString() || '';
-        assert(!output.includes('TypeError') && !output.includes('Cannot read'), 'Should not crash with TypeError');
+        assert(
+          !output.includes('TypeError') && !output.includes('Cannot read'),
+          'Should not crash with TypeError'
+        );
       }
     });
 
-    it('handles very long argument', function() {
+    it('handles very long argument', function () {
       const longArg = 'a'.repeat(1000);
       try {
         runCli(`"${longArg}"`, { stdio: 'pipe', timeout: 3000 });
       } catch (e) {
         // Should handle gracefully, not crash
         const output = e.stderr?.toString() || e.stdout?.toString() || '';
-        assert(!output.includes('TypeError') && !output.includes('Cannot read'), 'Should not crash with TypeError');
+        assert(
+          !output.includes('TypeError') && !output.includes('Cannot read'),
+          'Should not crash with TypeError'
+        );
       }
     });
   });

@@ -44,9 +44,7 @@ describe('Model Catalog', () => {
 
     it('includes Claude Opus 4.5 Thinking', () => {
       const { MODEL_CATALOG } = modelCatalog;
-      const opus = MODEL_CATALOG.agy.models.find(
-        (m) => m.id === 'gemini-claude-opus-4-5-thinking'
-      );
+      const opus = MODEL_CATALOG.agy.models.find((m) => m.id === 'gemini-claude-opus-4-5-thinking');
       assert(opus, 'Should include Claude Opus 4.5 Thinking');
       assert.strictEqual(opus.name, 'Claude Opus 4.5 Thinking');
     });
@@ -226,9 +224,7 @@ describe('Model Catalog', () => {
   describe('Thinking models ordering', () => {
     it('Claude Opus 4.5 Thinking is not deprecated', () => {
       const { MODEL_CATALOG } = modelCatalog;
-      const opus = MODEL_CATALOG.agy.models.find(
-        (m) => m.id === 'gemini-claude-opus-4-5-thinking'
-      );
+      const opus = MODEL_CATALOG.agy.models.find((m) => m.id === 'gemini-claude-opus-4-5-thinking');
       assert(opus, 'Should include Claude Opus 4.5 Thinking');
       assert.strictEqual(opus.deprecated, undefined, 'Should not be marked as deprecated');
     });
@@ -239,7 +235,11 @@ describe('Model Catalog', () => {
         (m) => m.id === 'gemini-claude-sonnet-4-5-thinking'
       );
       assert(sonnetThinking, 'Should include Claude Sonnet 4.5 Thinking');
-      assert.strictEqual(sonnetThinking.deprecated, undefined, 'Should not be marked as deprecated');
+      assert.strictEqual(
+        sonnetThinking.deprecated,
+        undefined,
+        'Should not be marked as deprecated'
+      );
     });
 
     it('thinking models are at the top of the list', () => {
@@ -259,14 +259,8 @@ describe('Model Catalog', () => {
       // Thinking models should come before non-thinking models
       assert(opusIdx < sonnetIdx, 'Opus Thinking should be above non-thinking Sonnet');
       assert(opusIdx < geminiIdx, 'Opus Thinking should be above non-thinking Gemini');
-      assert(
-        sonnetThinkingIdx < sonnetIdx,
-        'Sonnet Thinking should be above non-thinking Sonnet'
-      );
-      assert(
-        sonnetThinkingIdx < geminiIdx,
-        'Sonnet Thinking should be above non-thinking Gemini'
-      );
+      assert(sonnetThinkingIdx < sonnetIdx, 'Sonnet Thinking should be above non-thinking Sonnet');
+      assert(sonnetThinkingIdx < geminiIdx, 'Sonnet Thinking should be above non-thinking Gemini');
     });
   });
 
@@ -292,8 +286,14 @@ describe('Model Catalog', () => {
   describe('getModelDeprecationReason', () => {
     it('returns undefined for thinking models (no longer deprecated)', () => {
       const { getModelDeprecationReason } = modelCatalog;
-      assert.strictEqual(getModelDeprecationReason('agy', 'gemini-claude-opus-4-5-thinking'), undefined);
-      assert.strictEqual(getModelDeprecationReason('agy', 'gemini-claude-sonnet-4-5-thinking'), undefined);
+      assert.strictEqual(
+        getModelDeprecationReason('agy', 'gemini-claude-opus-4-5-thinking'),
+        undefined
+      );
+      assert.strictEqual(
+        getModelDeprecationReason('agy', 'gemini-claude-sonnet-4-5-thinking'),
+        undefined
+      );
     });
 
     it('returns undefined for non-deprecated models', () => {

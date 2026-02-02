@@ -89,7 +89,9 @@ describe('Update Command stderr filter', function () {
       filter.processChunk('npm warn deprecated lodash@1.0.0: Use lodash@4.x instead\n');
       filter.flush();
 
-      assert.deepStrictEqual(filter.getOutput(), ['npm warn deprecated lodash@1.0.0: Use lodash@4.x instead']);
+      assert.deepStrictEqual(filter.getOutput(), [
+        'npm warn deprecated lodash@1.0.0: Use lodash@4.x instead',
+      ]);
     });
 
     it('preserves npm errors', function () {
@@ -98,7 +100,10 @@ describe('Update Command stderr filter', function () {
       filter.processChunk('npm ERR! network request failed\n');
       filter.flush();
 
-      assert.deepStrictEqual(filter.getOutput(), ['npm ERR! code ENOTFOUND', 'npm ERR! network request failed']);
+      assert.deepStrictEqual(filter.getOutput(), [
+        'npm ERR! code ENOTFOUND',
+        'npm ERR! network request failed',
+      ]);
     });
 
     it('filters cleanup but preserves other warnings in mixed output', function () {
@@ -160,7 +165,9 @@ describe('Update Command stderr filter', function () {
 
       // Complete the line
       filter.processChunk(' - now complete\n');
-      assert.deepStrictEqual(filter.getOutput(), ['incomplete line without newline - now complete']);
+      assert.deepStrictEqual(filter.getOutput(), [
+        'incomplete line without newline - now complete',
+      ]);
     });
 
     it('flushes remaining buffer on close', function () {

@@ -19,7 +19,7 @@ describe('LocaleEnforcer', () => {
       const enforcer = new LocaleEnforcer({ forceEnglish: true });
       const messages = [
         { role: 'system', content: 'You are a helpful assistant.' },
-        { role: 'user', content: 'Plan a microservices architecture' }
+        { role: 'user', content: 'Plan a microservices architecture' },
       ];
 
       const result = enforcer.injectInstruction(messages);
@@ -32,9 +32,7 @@ describe('LocaleEnforcer', () => {
 
     it('should inject instruction into first user message if no system prompt', () => {
       const enforcer = new LocaleEnforcer({ forceEnglish: true });
-      const messages = [
-        { role: 'user', content: 'Fix the bug in login.js' }
-      ];
+      const messages = [{ role: 'user', content: 'Fix the bug in login.js' }];
 
       const result = enforcer.injectInstruction(messages);
 
@@ -48,11 +46,9 @@ describe('LocaleEnforcer', () => {
       const messages = [
         {
           role: 'system',
-          content: [
-            { type: 'text', text: 'You are a code assistant.' }
-          ]
+          content: [{ type: 'text', text: 'You are a code assistant.' }],
         },
-        { role: 'user', content: 'Implement REST API' }
+        { role: 'user', content: 'Implement REST API' },
       ];
 
       const result = enforcer.injectInstruction(messages);
@@ -70,7 +66,7 @@ describe('LocaleEnforcer', () => {
       const enforcer = new LocaleEnforcer({ forceEnglish: true });
       const messages = [
         { role: 'system', content: '你是一个编程助手' },
-        { role: 'user', content: '实现用户认证系统' }
+        { role: 'user', content: '实现用户认证系统' },
       ];
 
       const result = enforcer.injectInstruction(messages);
@@ -86,10 +82,8 @@ describe('LocaleEnforcer', () => {
       const messages = [
         {
           role: 'user',
-          content: [
-            { type: 'text', text: '分析代码性能' }
-          ]
-        }
+          content: [{ type: 'text', text: '分析代码性能' }],
+        },
       ];
 
       const result = enforcer.injectInstruction(messages);
@@ -104,9 +98,7 @@ describe('LocaleEnforcer', () => {
   describe('Scenario 3: Mixed language prompt → English output', () => {
     it('should inject instruction for mixed English and Chinese', () => {
       const enforcer = new LocaleEnforcer({ forceEnglish: true });
-      const messages = [
-        { role: 'user', content: 'Implement 用户登录 with JWT authentication' }
-      ];
+      const messages = [{ role: 'user', content: 'Implement 用户登录 with JWT authentication' }];
 
       const result = enforcer.injectInstruction(messages);
 
@@ -122,9 +114,9 @@ describe('LocaleEnforcer', () => {
           role: 'user',
           content: [
             { type: 'text', text: 'Create a REST API for ' },
-            { type: 'text', text: '产品管理' }
-          ]
-        }
+            { type: 'text', text: '产品管理' },
+          ],
+        },
       ];
 
       const result = enforcer.injectInstruction(messages);
@@ -147,9 +139,7 @@ describe('LocaleEnforcer', () => {
 
     it('should handle messages with no system or user role', () => {
       const enforcer = new LocaleEnforcer({ forceEnglish: true });
-      const messages = [
-        { role: 'assistant', content: 'Previous response' }
-      ];
+      const messages = [{ role: 'assistant', content: 'Previous response' }];
 
       const result = enforcer.injectInstruction(messages);
 
@@ -159,9 +149,7 @@ describe('LocaleEnforcer', () => {
 
     it('should not mutate original messages array', () => {
       const enforcer = new LocaleEnforcer({ forceEnglish: true });
-      const originalMessages = [
-        { role: 'user', content: 'Test prompt' }
-      ];
+      const originalMessages = [{ role: 'user', content: 'Test prompt' }];
       const originalCopy = JSON.parse(JSON.stringify(originalMessages));
 
       enforcer.injectInstruction(originalMessages);
@@ -171,9 +159,7 @@ describe('LocaleEnforcer', () => {
 
     it('should handle default forceEnglish option (should be true)', () => {
       const enforcer = new LocaleEnforcer();
-      const messages = [
-        { role: 'user', content: 'Test' }
-      ];
+      const messages = [{ role: 'user', content: 'Test' }];
 
       const result = enforcer.injectInstruction(messages);
 
@@ -191,7 +177,7 @@ if (require.main === module) {
   // Load this test file
   require(module.filename);
 
-  mocha.run(failures => {
+  mocha.run((failures) => {
     process.exitCode = failures ? 1 : 0;
   });
 }

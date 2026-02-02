@@ -63,7 +63,8 @@ describe('SharedManager', () => {
             'claude-hud@claude-hud': [
               {
                 scope: 'user',
-                installPath: '/home/kai/.ccs/instances/ck/plugins/cache/claude-hud/claude-hud/0.0.2',
+                installPath:
+                  '/home/kai/.ccs/instances/ck/plugins/cache/claude-hud/claude-hud/0.0.2',
                 version: '0.0.2',
               },
             ],

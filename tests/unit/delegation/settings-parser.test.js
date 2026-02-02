@@ -41,12 +41,15 @@ describe('SettingsParser', () => {
   describe('Parse shared settings', () => {
     it('parses shared settings.json', () => {
       const settingsPath = path.join(claudeDir, 'settings.json');
-      fs.writeFileSync(settingsPath, JSON.stringify({
-        permissions: {
-          allow: ['Bash(git:*)', 'Read'],
-          deny: ['Bash(rm:*)']
-        }
-      }));
+      fs.writeFileSync(
+        settingsPath,
+        JSON.stringify({
+          permissions: {
+            allow: ['Bash(git:*)', 'Read'],
+            deny: ['Bash(rm:*)'],
+          },
+        })
+      );
 
       const restrictions = SettingsParser.parseToolRestrictions(testDir);
 
@@ -59,19 +62,25 @@ describe('SettingsParser', () => {
 
   describe('Local settings override', () => {
     it('local settings override shared', () => {
-      fs.writeFileSync(path.join(claudeDir, 'settings.json'), JSON.stringify({
-        permissions: {
-          allow: ['Read'],
-          deny: []
-        }
-      }));
+      fs.writeFileSync(
+        path.join(claudeDir, 'settings.json'),
+        JSON.stringify({
+          permissions: {
+            allow: ['Read'],
+            deny: [],
+          },
+        })
+      );
 
-      fs.writeFileSync(path.join(claudeDir, 'settings.local.json'), JSON.stringify({
-        permissions: {
-          allow: ['Bash(git:*)'],
-          deny: ['Bash(rm:*)']
-        }
-      }));
+      fs.writeFileSync(
+        path.join(claudeDir, 'settings.local.json'),
+        JSON.stringify({
+          permissions: {
+            allow: ['Bash(git:*)'],
+            deny: ['Bash(rm:*)'],
+          },
+        })
+      );
 
       const restrictions = SettingsParser.parseToolRestrictions(testDir);
 
@@ -95,9 +104,12 @@ describe('SettingsParser', () => {
 
     it('handles settings without permissions key', () => {
       const settingsPath = path.join(claudeDir, 'settings.json');
-      fs.writeFileSync(settingsPath, JSON.stringify({
-        someOtherKey: 'value'
-      }));
+      fs.writeFileSync(
+        settingsPath,
+        JSON.stringify({
+          someOtherKey: 'value',
+        })
+      );
 
       const restrictions = SettingsParser.parseToolRestrictions(testDir);
 
@@ -107,12 +119,15 @@ describe('SettingsParser', () => {
 
     it('handles empty permissions arrays', () => {
       const settingsPath = path.join(claudeDir, 'settings.json');
-      fs.writeFileSync(settingsPath, JSON.stringify({
-        permissions: {
-          allow: [],
-          deny: []
-        }
-      }));
+      fs.writeFileSync(
+        settingsPath,
+        JSON.stringify({
+          permissions: {
+            allow: [],
+            deny: [],
+          },
+        })
+      );
 
       const restrictions = SettingsParser.parseToolRestrictions(testDir);
 

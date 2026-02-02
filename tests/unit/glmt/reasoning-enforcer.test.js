@@ -38,7 +38,7 @@ describe('ReasoningEnforcer', () => {
       const enforcer = new ReasoningEnforcer({ enabled: true });
       const messages = [
         { role: 'system', content: 'You are a helpful assistant.' },
-        { role: 'user', content: 'Calculate 2+2' }
+        { role: 'user', content: 'Calculate 2+2' },
       ];
 
       const result = enforcer.injectInstruction(messages, { thinking: true, effort: 'medium' });
@@ -54,9 +54,9 @@ describe('ReasoningEnforcer', () => {
       const messages = [
         {
           role: 'system',
-          content: [{ type: 'text', text: 'You are a code assistant.' }]
+          content: [{ type: 'text', text: 'You are a code assistant.' }],
         },
-        { role: 'user', content: 'Write a function' }
+        { role: 'user', content: 'Write a function' },
       ];
 
       const result = enforcer.injectInstruction(messages, { thinking: true });
@@ -161,7 +161,7 @@ describe('ReasoningEnforcer', () => {
         low: 'Custom low prompt',
         medium: 'Custom medium prompt',
         high: 'Custom high prompt',
-        max: 'Custom max prompt'
+        max: 'Custom max prompt',
       };
       const enforcer = new ReasoningEnforcer({ enabled: true, prompts: customPrompts });
       const messages = [{ role: 'user', content: 'Test' }];

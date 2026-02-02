@@ -42,8 +42,22 @@ describe('CLIProxy Command - Profile Management', () => {
       }
       if (name.length > 32) return 'Name must be 32 characters or less';
       const reserved = [
-        'default', 'auth', 'api', 'doctor', 'sync', 'update', 'help', 'version',
-        'cliproxy', 'create', 'list', 'remove', 'gemini', 'codex', 'agy', 'qwen'
+        'default',
+        'auth',
+        'api',
+        'doctor',
+        'sync',
+        'update',
+        'help',
+        'version',
+        'cliproxy',
+        'create',
+        'list',
+        'remove',
+        'gemini',
+        'codex',
+        'agy',
+        'qwen',
       ];
       if (reserved.includes(name.toLowerCase())) return `'${name}' is a reserved name`;
       return null;
@@ -88,7 +102,16 @@ describe('CLIProxy Command - Profile Management', () => {
     });
 
     it('rejects reserved names (case insensitive)', () => {
-      const reserved = ['gemini', 'GEMINI', 'Gemini', 'codex', 'agy', 'qwen', 'default', 'cliproxy'];
+      const reserved = [
+        'gemini',
+        'GEMINI',
+        'Gemini',
+        'codex',
+        'agy',
+        'qwen',
+        'default',
+        'cliproxy',
+      ];
       reserved.forEach((name) => {
         const result = validateProfileName(name);
         assert(result !== null, `Should reject reserved name: ${name}`);
@@ -274,7 +297,10 @@ describe('CLIProxy Command - Profile Management', () => {
     it('uses temp file + rename pattern for safety', () => {
       const configPath = testConfigPath;
       const tempPath = configPath + '.tmp';
-      const config = { profiles: {}, cliproxy: { test: { provider: 'gemini', settings: '~/.ccs/test.json' } } };
+      const config = {
+        profiles: {},
+        cliproxy: { test: { provider: 'gemini', settings: '~/.ccs/test.json' } },
+      };
 
       // Write to temp
       fs.writeFileSync(tempPath, JSON.stringify(config, null, 2) + '\n');

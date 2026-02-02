@@ -67,9 +67,7 @@ describe('Gemini CLI Quota Fetcher', () => {
     });
 
     it('should handle camelCase API response', () => {
-      const rawBuckets = [
-        { modelId: 'gemini-3-flash-preview', remainingFraction: 0.75 },
-      ];
+      const rawBuckets = [{ modelId: 'gemini-3-flash-preview', remainingFraction: 0.75 }];
 
       const buckets = buildGeminiCliBuckets(rawBuckets);
 

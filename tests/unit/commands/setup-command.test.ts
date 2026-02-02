@@ -39,7 +39,8 @@ describe('isFirstTimeInstall logic', () => {
       createConfigJson({ profiles: { glm: '~/.ccs/glm.settings.json' } });
 
       const legacyConfig = JSON.parse(fs.readFileSync(path.join(testDir, 'config.json'), 'utf8'));
-      const hasLegacyProfiles = legacyConfig.profiles && Object.keys(legacyConfig.profiles).length > 0;
+      const hasLegacyProfiles =
+        legacyConfig.profiles && Object.keys(legacyConfig.profiles).length > 0;
 
       expect(hasLegacyProfiles).toBe(true);
     });
@@ -48,8 +49,11 @@ describe('isFirstTimeInstall logic', () => {
       createConfigYaml('version: 2\nprofiles: {}\naccounts: {}');
       createProfilesJson({ profiles: { work: { path: '/some/path' } } });
 
-      const legacyProfiles = JSON.parse(fs.readFileSync(path.join(testDir, 'profiles.json'), 'utf8'));
-      const hasLegacyAccounts = legacyProfiles.profiles && Object.keys(legacyProfiles.profiles).length > 0;
+      const legacyProfiles = JSON.parse(
+        fs.readFileSync(path.join(testDir, 'profiles.json'), 'utf8')
+      );
+      const hasLegacyAccounts =
+        legacyProfiles.profiles && Object.keys(legacyProfiles.profiles).length > 0;
 
       expect(hasLegacyAccounts).toBe(true);
     });
@@ -105,7 +109,9 @@ cliproxy_server:
       createProfilesJson({ profiles: {} });
 
       const legacyConfig = JSON.parse(fs.readFileSync(path.join(testDir, 'config.json'), 'utf8'));
-      const legacyProfiles = JSON.parse(fs.readFileSync(path.join(testDir, 'profiles.json'), 'utf8'));
+      const legacyProfiles = JSON.parse(
+        fs.readFileSync(path.join(testDir, 'profiles.json'), 'utf8')
+      );
 
       const hasLegacyProfiles = Object.keys(legacyConfig.profiles || {}).length > 0;
       const hasLegacyAccounts = Object.keys(legacyProfiles.profiles || {}).length > 0;

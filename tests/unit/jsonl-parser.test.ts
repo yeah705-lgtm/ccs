@@ -189,14 +189,7 @@ describe('parseJsonlFile', () => {
 
   test('handles file with blank lines', async () => {
     const filePath = path.join(tempDir, 'blanks.jsonl');
-    const content = [
-      '',
-      VALID_ASSISTANT_ENTRY,
-      '',
-      '   ',
-      ASSISTANT_ENTRY_NO_CACHE,
-      '',
-    ].join('\n');
+    const content = ['', VALID_ASSISTANT_ENTRY, '', '   ', ASSISTANT_ENTRY_NO_CACHE, ''].join('\n');
 
     fs.writeFileSync(filePath, content);
 

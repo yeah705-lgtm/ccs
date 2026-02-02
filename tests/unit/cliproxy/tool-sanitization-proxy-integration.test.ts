@@ -111,7 +111,10 @@ describe('ToolSanitizationProxy Integration', () => {
           body: JSON.stringify({
             model: 'test-model',
             tools: [
-              { name: 'gitmcp__plus-pro-components__plus-pro-components', description: 'Test tool' },
+              {
+                name: 'gitmcp__plus-pro-components__plus-pro-components',
+                description: 'Test tool',
+              },
               { name: 'valid_tool', description: 'Valid tool' },
             ],
             messages: [{ role: 'user', content: 'test' }],
@@ -465,11 +468,7 @@ describe('ToolSanitizationProxy Integration', () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            tools: [
-              { name: 'tool_a__x__x' },
-              { name: 'tool_b__y__y' },
-              { name: 'tool_c_valid' },
-            ],
+            tools: [{ name: 'tool_a__x__x' }, { name: 'tool_b__y__y' }, { name: 'tool_c_valid' }],
           }),
         });
 

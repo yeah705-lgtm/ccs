@@ -9,21 +9,23 @@ const iterations = 1000;
 
 const sampleRequest = {
   model: 'claude-sonnet-4.5',
-  messages: [{ role: 'user', content: 'Test performance' }]
+  messages: [{ role: 'user', content: 'Test performance' }],
 };
 
 const sampleResponse = {
   id: 'perf-test',
   model: 'GLM-4.6',
-  choices: [{
-    message: {
-      role: 'assistant',
-      content: 'Quick response',
-      reasoning_content: 'Some reasoning content here...'
+  choices: [
+    {
+      message: {
+        role: 'assistant',
+        content: 'Quick response',
+        reasoning_content: 'Some reasoning content here...',
+      },
+      finish_reason: 'stop',
     },
-    finish_reason: 'stop'
-  }],
-  usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }
+  ],
+  usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
 };
 
 // Test 1: Debug OFF

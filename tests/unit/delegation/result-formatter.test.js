@@ -11,7 +11,7 @@ describe('ResultFormatter', () => {
         stdout: 'Task completed successfully',
         stderr: '',
         duration: 2300,
-        success: true
+        success: true,
       };
 
       const formatted = await ResultFormatter.format(result);
@@ -32,7 +32,7 @@ describe('ResultFormatter', () => {
         stdout: 'Error occurred',
         stderr: 'Command failed',
         duration: 1500,
-        success: false
+        success: false,
       };
 
       const formatted = await ResultFormatter.format(result);
@@ -52,7 +52,7 @@ describe('ResultFormatter', () => {
         stdout: '',
         stderr: '',
         duration: 1000,
-        success: true
+        success: true,
       };
 
       const formatted = await ResultFormatter.format(result);
@@ -119,7 +119,7 @@ describe('ResultFormatter', () => {
         stdout: 'Created: src/new.js\nModified: src/old.js',
         stderr: '',
         duration: 1000,
-        success: true
+        success: true,
       };
 
       const formatted = await ResultFormatter.format(result);
@@ -136,7 +136,7 @@ describe('ResultFormatter', () => {
         stdout: 'Line 1\nLine 2\nLine 3',
         stderr: '',
         duration: 1000,
-        success: true
+        success: true,
       };
 
       const formatted = await ResultFormatter.format(result);
@@ -156,7 +156,7 @@ describe('ResultFormatter', () => {
         stdout: 'Done',
         stderr: '',
         duration: 1000,
-        success: true
+        success: true,
       };
 
       const formatted = await ResultFormatter.format(result);
@@ -175,7 +175,7 @@ describe('ResultFormatter', () => {
         stdout: '',
         stderr: '',
         duration: 1000,
-        success: true
+        success: true,
       };
 
       const glmFormatted = await ResultFormatter.format(glmResult);
@@ -196,7 +196,7 @@ describe('ResultFormatter', () => {
         stdout: '',
         stderr: '',
         duration: 12345,
-        success: true
+        success: true,
       };
 
       const formatted = await ResultFormatter.format(result);
@@ -214,7 +214,7 @@ describe('ResultFormatter', () => {
         stdout: 'Done',
         stderr: '',
         duration: 1500,
-        success: true
+        success: true,
       };
 
       const minimal = await ResultFormatter.formatMinimal(result);
@@ -235,7 +235,7 @@ describe('ResultFormatter', () => {
         sessionId: 'test-session-123',
         totalCost: undefined,
         numTurns: 5,
-        timedOut: true
+        timedOut: true,
       };
 
       const formatted = await ResultFormatter.format(result);
@@ -253,7 +253,7 @@ describe('ResultFormatter', () => {
         sessionId: 'test-session-456',
         totalCost: null,
         numTurns: 3,
-        timedOut: true
+        timedOut: true,
       };
 
       const formatted = await ResultFormatter.format(result);
@@ -270,7 +270,7 @@ describe('ResultFormatter', () => {
         sessionId: 'test-session-789',
         totalCost: 0.1234,
         numTurns: 4,
-        timedOut: true
+        timedOut: true,
       };
 
       const formatted = await ResultFormatter.format(result);
@@ -289,7 +289,7 @@ describe('ResultFormatter', () => {
         success: true,
         sessionId: 'session-abc',
         totalCost: undefined,
-        numTurns: 2
+        numTurns: 2,
       };
 
       const formatted = await ResultFormatter.format(result);

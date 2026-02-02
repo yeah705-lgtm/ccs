@@ -124,13 +124,7 @@ describe('DelegationHandler', () => {
 
   describe('_extractOptions - agents JSON validation', () => {
     it('accepts valid JSON for agents', () => {
-      const options = handler._extractOptions([
-        'glm',
-        '-p',
-        'test',
-        '--agents',
-        '{"name":"test"}',
-      ]);
+      const options = handler._extractOptions(['glm', '-p', 'test', '--agents', '{"name":"test"}']);
       expect(options.agents).toBe('{"name":"test"}');
     });
 
@@ -153,7 +147,13 @@ describe('DelegationHandler', () => {
 
   describe('_extractOptions - betas validation', () => {
     it('accepts valid betas value', () => {
-      const options = handler._extractOptions(['glm', '-p', 'test', '--betas', 'feature1,feature2']);
+      const options = handler._extractOptions([
+        'glm',
+        '-p',
+        'test',
+        '--betas',
+        'feature1,feature2',
+      ]);
       expect(options.betas).toBe('feature1,feature2');
     });
 
@@ -165,13 +165,7 @@ describe('DelegationHandler', () => {
 
   describe('_extractOptions - extraArgs passthrough', () => {
     it('passes unknown flags through to extraArgs', () => {
-      const options = handler._extractOptions([
-        'glm',
-        '-p',
-        'test',
-        '--unknown-flag',
-        'value',
-      ]);
+      const options = handler._extractOptions(['glm', '-p', 'test', '--unknown-flag', 'value']);
       expect(options.extraArgs).toContain('--unknown-flag');
       expect(options.extraArgs).toContain('value');
     });

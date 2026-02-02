@@ -100,12 +100,14 @@ describe('ProfileDetector', () => {
       const mockUnifiedConfig = {
         version: 2,
         profiles: {
-          glm: { settings: settingsPath, type: 'api' }
-        }
+          glm: { settings: settingsPath, type: 'api' },
+        },
       };
 
       const isUnifiedModeSpy = spyOn(unifiedConfigLoader, 'isUnifiedMode').mockReturnValue(true);
-      const loadUnifiedConfigSpy = spyOn(unifiedConfigLoader, 'loadUnifiedConfig').mockReturnValue(mockUnifiedConfig as any);
+      const loadUnifiedConfigSpy = spyOn(unifiedConfigLoader, 'loadUnifiedConfig').mockReturnValue(
+        mockUnifiedConfig as any
+      );
 
       try {
         const result = detector.detectProfileType('glm');
@@ -122,12 +124,14 @@ describe('ProfileDetector', () => {
       const mockUnifiedConfig = {
         version: 2,
         accounts: {
-          work: { created: '2025-01-01', last_used: '2025-01-02' }
-        }
+          work: { created: '2025-01-01', last_used: '2025-01-02' },
+        },
       };
 
       const isUnifiedModeSpy = spyOn(unifiedConfigLoader, 'isUnifiedMode').mockReturnValue(true);
-      const loadUnifiedConfigSpy = spyOn(unifiedConfigLoader, 'loadUnifiedConfig').mockReturnValue(mockUnifiedConfig as any);
+      const loadUnifiedConfigSpy = spyOn(unifiedConfigLoader, 'loadUnifiedConfig').mockReturnValue(
+        mockUnifiedConfig as any
+      );
 
       try {
         const result = detector.detectProfileType('work');

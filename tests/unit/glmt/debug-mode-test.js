@@ -25,7 +25,7 @@ console.log('\n=== Test 1: Debug Mode OFF (default) ===');
 
   const input = {
     model: 'claude-sonnet-4.5',
-    messages: [{ role: 'user', content: 'Test without debug' }]
+    messages: [{ role: 'user', content: 'Test without debug' }],
   };
 
   const { openaiRequest } = transformer.transformRequest(input);
@@ -33,15 +33,17 @@ console.log('\n=== Test 1: Debug Mode OFF (default) ===');
   const openaiResponse = {
     id: 'test-1',
     model: 'GLM-4.6',
-    choices: [{
-      message: {
-        role: 'assistant',
-        content: 'Response without debug',
-        reasoning_content: 'Some reasoning...'
+    choices: [
+      {
+        message: {
+          role: 'assistant',
+          content: 'Response without debug',
+          reasoning_content: 'Some reasoning...',
+        },
+        finish_reason: 'stop',
       },
-      finish_reason: 'stop'
-    }],
-    usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }
+    ],
+    usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
   };
 
   transformer.transformResponse(openaiResponse, {});
@@ -65,7 +67,7 @@ console.log('\n=== Test 2: Debug Mode ON (via config) ===');
 
   const input = {
     model: 'claude-sonnet-4.5',
-    messages: [{ role: 'user', content: 'Test with debug' }]
+    messages: [{ role: 'user', content: 'Test with debug' }],
   };
 
   const { openaiRequest } = transformer.transformRequest(input);
@@ -73,15 +75,17 @@ console.log('\n=== Test 2: Debug Mode ON (via config) ===');
   const openaiResponse = {
     id: 'test-2',
     model: 'GLM-4.6',
-    choices: [{
-      message: {
-        role: 'assistant',
-        content: 'Response with debug',
-        reasoning_content: 'Detailed reasoning process for debugging...'
+    choices: [
+      {
+        message: {
+          role: 'assistant',
+          content: 'Response with debug',
+          reasoning_content: 'Detailed reasoning process for debugging...',
+        },
+        finish_reason: 'stop',
       },
-      finish_reason: 'stop'
-    }],
-    usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }
+    ],
+    usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
   };
 
   transformer.transformResponse(openaiResponse, {});
@@ -105,10 +109,10 @@ console.log('\n=== Test 2: Debug Mode ON (via config) ===');
   }
 
   // Check file names
-  const hasRequestAnthropic = files.some(f => f.includes('request-anthropic'));
-  const hasRequestOpenai = files.some(f => f.includes('request-openai'));
-  const hasResponseOpenai = files.some(f => f.includes('response-openai'));
-  const hasResponseAnthropic = files.some(f => f.includes('response-anthropic'));
+  const hasRequestAnthropic = files.some((f) => f.includes('request-anthropic'));
+  const hasRequestOpenai = files.some((f) => f.includes('request-openai'));
+  const hasResponseOpenai = files.some((f) => f.includes('response-openai'));
+  const hasResponseAnthropic = files.some((f) => f.includes('response-anthropic'));
 
   console.log(`\nFile types found:`);
   console.log(`  request-anthropic: ${hasRequestAnthropic ? '✓' : '✗'}`);
@@ -122,25 +126,27 @@ console.log('\n=== Test 2: Debug Mode ON (via config) ===');
   }
 
   // Check file contents
-  const responseOpenaiFile = files.find(f => f.includes('response-openai'));
+  const responseOpenaiFile = files.find((f) => f.includes('response-openai'));
   const responseOpenaiPath = path.join(logDir, responseOpenaiFile);
   const responseOpenaiData = JSON.parse(fs.readFileSync(responseOpenaiPath, 'utf8'));
 
   console.log(`\nChecking response-openai.json for reasoning_content...`);
   if (responseOpenaiData.choices[0].message.reasoning_content) {
     console.log('✓ reasoning_content found in response-openai.json');
-    console.log(`  Length: ${responseOpenaiData.choices[0].message.reasoning_content.length} chars`);
+    console.log(
+      `  Length: ${responseOpenaiData.choices[0].message.reasoning_content.length} chars`
+    );
   } else {
     console.log('ERROR: reasoning_content NOT found in response-openai.json!');
     process.exit(1);
   }
 
-  const responseAnthropicFile = files.find(f => f.includes('response-anthropic'));
+  const responseAnthropicFile = files.find((f) => f.includes('response-anthropic'));
   const responseAnthropicPath = path.join(logDir, responseAnthropicFile);
   const responseAnthropicData = JSON.parse(fs.readFileSync(responseAnthropicPath, 'utf8'));
 
   console.log(`\nChecking response-anthropic.json for thinking block...`);
-  const thinkingBlock = responseAnthropicData.content.find(b => b.type === 'thinking');
+  const thinkingBlock = responseAnthropicData.content.find((b) => b.type === 'thinking');
   if (thinkingBlock) {
     console.log('✓ Thinking block found in response-anthropic.json');
     console.log(`  Length: ${thinkingBlock.thinking.length} chars`);
@@ -163,7 +169,7 @@ console.log('\n=== Test 3: Debug Mode via CCS_DEBUG=1 ===');
 
   const input = {
     model: 'claude-sonnet-4.5',
-    messages: [{ role: 'user', content: 'Test with env var' }]
+    messages: [{ role: 'user', content: 'Test with env var' }],
   };
 
   transformer.transformRequest(input);
@@ -171,15 +177,17 @@ console.log('\n=== Test 3: Debug Mode via CCS_DEBUG=1 ===');
   const openaiResponse = {
     id: 'test-3',
     model: 'GLM-4.6',
-    choices: [{
-      message: {
-        role: 'assistant',
-        content: 'Response',
-        reasoning_content: 'Reasoning...'
+    choices: [
+      {
+        message: {
+          role: 'assistant',
+          content: 'Response',
+          reasoning_content: 'Reasoning...',
+        },
+        finish_reason: 'stop',
       },
-      finish_reason: 'stop'
-    }],
-    usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }
+    ],
+    usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
   };
 
   transformer.transformResponse(openaiResponse, {});
@@ -211,14 +219,14 @@ console.log('\n=== Test 4: Error Handling (No Write Permission) ===');
   const transformer = new GlmtTransformer({
     debugLog: true,
     debugLogDir: readOnlyDir,
-    verbose: false
+    verbose: false,
   });
 
   console.log('Testing graceful error handling with read-only directory...');
 
   const input = {
     model: 'claude-sonnet-4.5',
-    messages: [{ role: 'user', content: 'Test error handling' }]
+    messages: [{ role: 'user', content: 'Test error handling' }],
   };
 
   try {

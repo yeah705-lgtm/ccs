@@ -175,7 +175,7 @@ describe('DeltaAccumulator', () => {
         index: 0,
         id: 'call_123',
         type: 'function',
-        function: { name: 'read_file', arguments: '{"path": "test.js"}' }
+        function: { name: 'read_file', arguments: '{"path": "test.js"}' },
       });
 
       acc.startBlock('thinking');
@@ -259,12 +259,12 @@ describe('DeltaAccumulator', () => {
         index: 0,
         id: 'call_1',
         type: 'function',
-        function: { name: 'test', arguments: '{"a":' }
+        function: { name: 'test', arguments: '{"a":' },
       });
 
       acc.addToolCallDelta({
         index: 0,
-        function: { arguments: '1}' }
+        function: { arguments: '1}' },
       });
 
       const toolCalls = acc.getToolCalls();

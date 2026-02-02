@@ -8,7 +8,7 @@ describe('GlmtTransformer', () => {
       const input = {
         model: 'claude-sonnet-4.5',
         messages: [{ role: 'user', content: 'Hello' }],
-        max_tokens: 4096
+        max_tokens: 4096,
       };
 
       const { openaiRequest } = transformer.transformRequest(input);
@@ -25,7 +25,7 @@ describe('GlmtTransformer', () => {
         model: 'claude-sonnet-4.5',
         messages: [{ role: 'user', content: 'Test' }],
         temperature: 0.7,
-        top_p: 0.9
+        top_p: 0.9,
       };
 
       const { openaiRequest } = transformer.transformRequest(input);
@@ -34,7 +34,8 @@ describe('GlmtTransformer', () => {
       assert.strictEqual(openaiRequest.top_p, 0.9);
     });
 
-    it.skip('handles errors in transformRequest gracefully', () => { // Skip: requires proper null safety mocking
+    it.skip('handles errors in transformRequest gracefully', () => {
+      // Skip: requires proper null safety mocking
       const transformer = new GlmtTransformer();
       const { thinkingConfig, error } = transformer.transformRequest(null);
 
@@ -47,7 +48,7 @@ describe('GlmtTransformer', () => {
       const input = {
         model: 'claude-sonnet-4.5',
         messages: [{ role: 'user', content: 'Test' }],
-        stream: true
+        stream: true,
       };
 
       const { openaiRequest } = transformer.transformRequest(input);
@@ -61,10 +62,12 @@ describe('GlmtTransformer', () => {
       const transformer = new GlmtTransformer();
       const input = {
         model: 'claude-sonnet-4.5',
-        messages: [{
-          role: 'user',
-          content: '<Thinking:On> <Effort:High> Solve this problem'
-        }]
+        messages: [
+          {
+            role: 'user',
+            content: '<Thinking:On> <Effort:High> Solve this problem',
+          },
+        ],
       };
 
       const { thinkingConfig } = transformer.transformRequest(input);
@@ -77,10 +80,12 @@ describe('GlmtTransformer', () => {
       const transformer = new GlmtTransformer();
       const input = {
         model: 'claude-sonnet-4.5',
-        messages: [{
-          role: 'user',
-          content: '<Thinking:Off> Quick question'
-        }]
+        messages: [
+          {
+            role: 'user',
+            content: '<Thinking:Off> Quick question',
+          },
+        ],
       };
 
       const { thinkingConfig } = transformer.transformRequest(input);
@@ -92,7 +97,7 @@ describe('GlmtTransformer', () => {
       const transformer = new GlmtTransformer({ defaultThinking: true });
       const input = {
         model: 'claude-sonnet-4.5',
-        messages: [{ role: 'user', content: 'Test' }]
+        messages: [{ role: 'user', content: 'Test' }],
       };
 
       const { openaiRequest, thinkingConfig } = transformer.transformRequest(input);
@@ -108,15 +113,17 @@ describe('GlmtTransformer', () => {
       const openaiResponse = {
         id: 'chatcmpl-123',
         model: 'GLM-4.6',
-        choices: [{
-          message: {
-            role: 'assistant',
-            content: 'Here is the answer',
-            reasoning_content: 'Let me think through this problem...'
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content: 'Here is the answer',
+              reasoning_content: 'Let me think through this problem...',
+            },
+            finish_reason: 'stop',
           },
-          finish_reason: 'stop'
-        }],
-        usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }
+        ],
+        usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
       };
 
       const result = transformer.transformResponse(openaiResponse, {});
@@ -133,13 +140,15 @@ describe('GlmtTransformer', () => {
       const openaiResponse = {
         id: 'chatcmpl-123',
         model: 'GLM-4.6',
-        choices: [{
-          message: {
-            role: 'assistant',
-            content: 'Simple answer'
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content: 'Simple answer',
+            },
+            finish_reason: 'stop',
           },
-          finish_reason: 'stop'
-        }]
+        ],
       };
 
       const result = transformer.transformResponse(openaiResponse, {});
@@ -149,7 +158,8 @@ describe('GlmtTransformer', () => {
       assert.strictEqual(result.content[0].text, 'Simple answer');
     });
 
-    it.skip('handles errors in transformResponse gracefully', () => { // Skip: requires proper null safety mocking
+    it.skip('handles errors in transformResponse gracefully', () => {
+      // Skip: requires proper null safety mocking
       const transformer = new GlmtTransformer();
       const result = transformer.transformResponse({}, {});
 
@@ -219,9 +229,9 @@ describe('GlmtTransformer', () => {
         role: 'assistant',
         content: [
           { type: 'thinking', thinking: 'reasoning...' },
-          { type: 'text', text: 'answer' }
+          { type: 'text', text: 'answer' },
         ],
-        usage: { input_tokens: 10, output_tokens: 20 }
+        usage: { input_tokens: 10, output_tokens: 20 },
       };
 
       const validation = transformer.validateTransformation(validResponse);
@@ -241,7 +251,7 @@ describe('GlmtTransformer', () => {
         type: 'message',
         role: 'assistant',
         content: [{ type: 'text', text: 'answer' }],
-        usage: { input_tokens: 10, output_tokens: 20 }
+        usage: { input_tokens: 10, output_tokens: 20 },
       };
 
       const validation = transformer.validateTransformation(response);
@@ -257,7 +267,7 @@ describe('GlmtTransformer', () => {
       const input = {
         model: 'claude-sonnet-4.5',
         messages: [{ role: 'user', content: 'Test question' }],
-        thinking: { type: 'enabled', budget_tokens: 1024 }
+        thinking: { type: 'enabled', budget_tokens: 1024 },
       };
 
       const { openaiRequest, thinkingConfig } = transformer.transformRequest(input);
@@ -271,7 +281,7 @@ describe('GlmtTransformer', () => {
       const input = {
         model: 'claude-sonnet-4.5',
         messages: [{ role: 'user', content: 'Test question' }],
-        thinking: { type: 'disabled' }
+        thinking: { type: 'disabled' },
       };
 
       const { openaiRequest, thinkingConfig } = transformer.transformRequest(input);
@@ -285,7 +295,7 @@ describe('GlmtTransformer', () => {
       const input = {
         model: 'claude-sonnet-4.5',
         messages: [{ role: 'user', content: 'Test' }],
-        thinking: { type: 'enabled', budget_tokens: 2048 }
+        thinking: { type: 'enabled', budget_tokens: 2048 },
       };
 
       const { thinkingConfig, openaiRequest } = transformer.transformRequest(input);
@@ -299,7 +309,7 @@ describe('GlmtTransformer', () => {
       const input = {
         model: 'claude-sonnet-4.5',
         messages: [{ role: 'user', content: 'Test' }],
-        thinking: { type: 'enabled', budget_tokens: 4096 }
+        thinking: { type: 'enabled', budget_tokens: 4096 },
       };
 
       const { thinkingConfig } = transformer.transformRequest(input);
@@ -312,7 +322,7 @@ describe('GlmtTransformer', () => {
       const input = {
         model: 'claude-sonnet-4.5',
         messages: [{ role: 'user', content: 'Test' }],
-        thinking: { type: 'enabled' }
+        thinking: { type: 'enabled' },
       };
 
       const { thinkingConfig } = transformer.transformRequest(input);
@@ -325,11 +335,13 @@ describe('GlmtTransformer', () => {
       const transformer = new GlmtTransformer();
       const input = {
         model: 'claude-sonnet-4.5',
-        messages: [{
-          role: 'user',
-          content: '<Thinking:Off> <Effort:High> Test question'
-        }],
-        thinking: { type: 'enabled', budget_tokens: 1024 }
+        messages: [
+          {
+            role: 'user',
+            content: '<Thinking:Off> <Effort:High> Test question',
+          },
+        ],
+        thinking: { type: 'enabled', budget_tokens: 1024 },
       };
 
       const { thinkingConfig, openaiRequest } = transformer.transformRequest(input);
@@ -342,10 +354,12 @@ describe('GlmtTransformer', () => {
       const transformer = new GlmtTransformer();
       const input = {
         model: 'claude-sonnet-4.5',
-        messages: [{
-          role: 'user',
-          content: '<Thinking:On> <Effort:Medium> Test question'
-        }]
+        messages: [
+          {
+            role: 'user',
+            content: '<Thinking:On> <Effort:Medium> Test question',
+          },
+        ],
       };
 
       const { thinkingConfig } = transformer.transformRequest(input);
@@ -359,7 +373,7 @@ describe('GlmtTransformer', () => {
       const input = {
         model: 'claude-sonnet-4.5',
         messages: [{ role: 'user', content: 'Test' }],
-        thinking: { type: 'invalid' }
+        thinking: { type: 'invalid' },
       };
 
       const { thinkingConfig } = transformer.transformRequest(input);
@@ -372,7 +386,7 @@ describe('GlmtTransformer', () => {
     it('detects "think" keyword (low effort)', () => {
       const transformer = new GlmtTransformer();
       const result = transformer.detectThinkKeywords([
-        { role: 'user', content: 'think about the solution' }
+        { role: 'user', content: 'think about the solution' },
       ]);
 
       assert.strictEqual(result.thinking, true);
@@ -383,7 +397,7 @@ describe('GlmtTransformer', () => {
     it('detects "think hard" keyword (medium effort)', () => {
       const transformer = new GlmtTransformer();
       const result = transformer.detectThinkKeywords([
-        { role: 'user', content: 'think hard about edge cases' }
+        { role: 'user', content: 'think hard about edge cases' },
       ]);
 
       assert.strictEqual(result.thinking, true);
@@ -394,7 +408,7 @@ describe('GlmtTransformer', () => {
     it('detects "think harder" keyword (high effort)', () => {
       const transformer = new GlmtTransformer();
       const result = transformer.detectThinkKeywords([
-        { role: 'user', content: 'think harder about edge cases' }
+        { role: 'user', content: 'think harder about edge cases' },
       ]);
 
       assert.strictEqual(result.thinking, true);
@@ -405,7 +419,7 @@ describe('GlmtTransformer', () => {
     it('detects "ultrathink" keyword (max effort)', () => {
       const transformer = new GlmtTransformer();
       const result = transformer.detectThinkKeywords([
-        { role: 'user', content: 'ultrathink this complex problem' }
+        { role: 'user', content: 'ultrathink this complex problem' },
       ]);
 
       assert.strictEqual(result.thinking, true);
@@ -416,7 +430,7 @@ describe('GlmtTransformer', () => {
     it('ignores "thinking" word (not exact match)', () => {
       const transformer = new GlmtTransformer();
       const result = transformer.detectThinkKeywords([
-        { role: 'user', content: 'I am thinking about the solution' }
+        { role: 'user', content: 'I am thinking about the solution' },
       ]);
 
       assert.strictEqual(result, null);
@@ -425,7 +439,7 @@ describe('GlmtTransformer', () => {
     it('returns null when no keywords present', () => {
       const transformer = new GlmtTransformer();
       const result = transformer.detectThinkKeywords([
-        { role: 'user', content: 'fix the bug quickly' }
+        { role: 'user', content: 'fix the bug quickly' },
       ]);
 
       assert.strictEqual(result, null);
@@ -434,7 +448,7 @@ describe('GlmtTransformer', () => {
     it('ultrathink has highest priority when multiple keywords present', () => {
       const transformer = new GlmtTransformer();
       const result = transformer.detectThinkKeywords([
-        { role: 'user', content: 'think hard and think harder, or maybe ultrathink about this' }
+        { role: 'user', content: 'think hard and think harder, or maybe ultrathink about this' },
       ]);
 
       assert.strictEqual(result.thinking, true);
@@ -446,7 +460,7 @@ describe('GlmtTransformer', () => {
       const transformer = new GlmtTransformer();
       const input = {
         model: 'claude-sonnet-4.5',
-        messages: [{ role: 'user', content: 'think hard about this architecture problem' }]
+        messages: [{ role: 'user', content: 'think hard about this architecture problem' }],
       };
 
       const { thinkingConfig } = transformer.transformRequest(input);

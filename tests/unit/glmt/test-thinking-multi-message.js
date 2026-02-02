@@ -37,14 +37,14 @@ console.log('');
 const messages = [
   'Message 1: Calculate 15! (factorial)',
   'Message 2: What is the square root of 2 to 10 decimal places?',
-  'Message 3: Explain the Pythagorean theorem'
+  'Message 3: Explain the Pythagorean theorem',
 ];
 
 // Track results
 const results = {
   message1: { thinking: false, error: null },
   message2: { thinking: false, error: null },
-  message3: { thinking: false, error: null }
+  message3: { thinking: false, error: null },
 };
 
 async function runMessage(messageIndex) {
@@ -60,15 +60,15 @@ async function runMessage(messageIndex) {
     const startTime = Date.now();
 
     // Clear old logs for this test
-    const beforeFiles = fs.readdirSync(logDir).filter(f => f.endsWith('.json'));
+    const beforeFiles = fs.readdirSync(logDir).filter((f) => f.endsWith('.json'));
 
     // Use process.execPath for Windows compatibility (CVE-2024-27980)
     const child = spawn(process.execPath, [ccsPath, 'glmt', '--verbose', message], {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: {
         ...process.env,
-        CCS_DEBUG: '1'
-      }
+        CCS_DEBUG: '1',
+      },
     });
 
     let stdout = '';
@@ -96,13 +96,13 @@ async function runMessage(messageIndex) {
       console.log(`Process exited with code ${code} after ${duration}ms`);
 
       // Check logs
-      const afterFiles = fs.readdirSync(logDir).filter(f => f.endsWith('.json'));
-      const newFiles = afterFiles.filter(f => !beforeFiles.includes(f));
+      const afterFiles = fs.readdirSync(logDir).filter((f) => f.endsWith('.json'));
+      const newFiles = afterFiles.filter((f) => !beforeFiles.includes(f));
 
       console.log(`New log files: ${newFiles.length}`);
 
       // Check for reasoning_content in response logs
-      const responseFiles = newFiles.filter(f => f.includes('response-openai'));
+      const responseFiles = newFiles.filter((f) => f.includes('response-openai'));
       console.log(`Response log files: ${responseFiles.length}`);
 
       if (responseFiles.length > 0) {
@@ -160,7 +160,7 @@ async function main() {
       if (i < messages.length - 1) {
         console.log('Waiting 2s before next message...');
         console.log('');
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     }
 
@@ -182,7 +182,7 @@ async function main() {
 
     console.log('');
 
-    const passCount = Object.values(results).filter(r => r.thinking).length;
+    const passCount = Object.values(results).filter((r) => r.thinking).length;
     const failCount = 3 - passCount;
 
     console.log(`Summary: ${passCount}/3 messages showed thinking blocks`);
@@ -202,7 +202,6 @@ async function main() {
       console.log('');
       process.exit(0);
     }
-
   } catch (error) {
     console.error('');
     console.error('[X] Test failed:', error.message);

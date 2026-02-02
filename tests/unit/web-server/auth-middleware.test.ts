@@ -28,17 +28,13 @@ describe('Dashboard Auth', () => {
 
   describe('getDashboardAuthConfig', () => {
     it('returns disabled by default', async () => {
-      const { getDashboardAuthConfig } = await import(
-        '../../src/config/unified-config-loader'
-      );
+      const { getDashboardAuthConfig } = await import('../../src/config/unified-config-loader');
       const config = getDashboardAuthConfig();
       expect(config.enabled).toBe(false);
     });
 
     it('returns 24 hour default session timeout', async () => {
-      const { getDashboardAuthConfig } = await import(
-        '../../src/config/unified-config-loader'
-      );
+      const { getDashboardAuthConfig } = await import('../../src/config/unified-config-loader');
       const config = getDashboardAuthConfig();
       expect(config.session_timeout_hours).toBe(24);
     });
@@ -89,12 +85,7 @@ describe('Dashboard Auth', () => {
   });
 
   describe('public paths', () => {
-    const PUBLIC_PATHS = [
-      '/api/auth/login',
-      '/api/auth/check',
-      '/api/auth/setup',
-      '/api/health',
-    ];
+    const PUBLIC_PATHS = ['/api/auth/login', '/api/auth/check', '/api/auth/setup', '/api/health'];
 
     it('identifies public paths correctly', () => {
       const isPublicPath = (path: string) =>

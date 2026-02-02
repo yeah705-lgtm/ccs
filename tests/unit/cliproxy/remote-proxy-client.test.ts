@@ -2,7 +2,10 @@
  * Unit tests for remote-proxy-client module
  */
 import { describe, it, expect } from 'bun:test';
-import type { RemoteProxyClientConfig, RemoteProxyStatus } from '../../../src/cliproxy/remote-proxy-client';
+import type {
+  RemoteProxyClientConfig,
+  RemoteProxyStatus,
+} from '../../../src/cliproxy/remote-proxy-client';
 
 // We test the module's type exports and error handling logic
 // Actual HTTP calls are not mocked in this unit test - use integration tests for that
