@@ -427,6 +427,15 @@ async function fetchAvailableModels(accessToken: string, _projectId: string): Pr
       };
     }
 
+    if (response.status === 429) {
+      return {
+        success: false,
+        models: [],
+        lastUpdated: Date.now(),
+        error: 'Rate limited - try again later',
+      };
+    }
+
     if (!response.ok) {
       return {
         success: false,
