@@ -468,7 +468,7 @@ describe('Image Analyzer Hook', () => {
       resetMockState();
     });
 
-    it('should pass through when CLIProxy is unavailable', async () => {
+    it('should block when CLIProxy is unavailable to prevent context overflow', async () => {
       // Force hook to use a port that's definitely not running
       const result = invokeHook(
         {
@@ -483,9 +483,13 @@ describe('Image Analyzer Hook', () => {
         }
       );
 
-      // Should pass through (exit 0) when CLIProxy not available
-      expect(result.code).toBe(0);
-      expect(result.stderr).toContain('CLIProxy not available');
+      // Should block (exit 2) when CLIProxy not available to prevent context overflow
+      expect(result.code).toBe(2);
+      const output = JSON.parse(result.stdout);
+      expect(output.decision).toBe('block');
+      expect(output.hookSpecificOutput.permissionDecisionReason).toContain(
+        'CLIProxy unavailable'
+      );
     });
 
     it('should analyze PNG via mock CLIProxy and return analysis', () => {
@@ -634,7 +638,7 @@ describe('Image Analyzer Hook', () => {
 
       // Should output debug info to stderr
       expect(result.stderr).toContain('[CCS Hook]');
-      expect(result.stderr).toContain('Analyzing');
+      expect(result.stderr).toContain('Starting image analysis');
     });
 
     it('should handle API error response gracefully (pass through)', () => {
