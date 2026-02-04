@@ -36,7 +36,43 @@ function getProxyUrl(isHttps: boolean): string | undefined {
 }
 
 /**
+ * Check if a hostname should bypass the proxy based on NO_PROXY/no_proxy env var.
+ * Supports: exact match, wildcard (*), and domain suffix (.example.com)
+ * @param hostname The hostname to check
+ * @returns true if the hostname should bypass the proxy
+ */
+function shouldBypassProxy(hostname: string): boolean {
+  const noProxy = process.env.no_proxy || process.env.NO_PROXY;
+  if (!noProxy) return false;
+
+  const noProxyList = noProxy.split(',').map((s) => s.trim().toLowerCase());
+  const host = hostname.toLowerCase();
+
+  return noProxyList.some((pattern) => {
+    if (pattern === '*') return true;
+    if (pattern.startsWith('.')) {
+      return host.endsWith(pattern) || host === pattern.slice(1);
+    }
+    return host === pattern || host.endsWith('.' + pattern);
+  });
+}
+
+/**
+ * Extract hostname from URL.
+ * @param url The URL to parse
+ * @returns Hostname or empty string if invalid
+ */
+function getHostname(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Create appropriate proxy agent based on URL protocol.
+ * Respects NO_PROXY/no_proxy for bypassing specific hosts.
  * @param url Target URL to determine protocol
  * @returns Proxy agent or false (no agent/pooling disabled)
  */
@@ -48,11 +84,23 @@ function getProxyAgent(url: string): http.Agent | https.Agent | false {
     return false; // No proxy configured, disable connection pooling for clean exit
   }
 
-  // Use appropriate agent based on target URL protocol
-  if (isHttps) {
-    return new HttpsProxyAgent(proxyUrl);
+  // Check if this host should bypass the proxy
+  const hostname = getHostname(url);
+  if (hostname && shouldBypassProxy(hostname)) {
+    return false; // Bypass proxy for this host
   }
-  return new HttpProxyAgent(proxyUrl);
+
+  // Create proxy agent with error handling for malformed URLs
+  try {
+    if (isHttps) {
+      return new HttpsProxyAgent(proxyUrl);
+    }
+    return new HttpProxyAgent(proxyUrl);
+  } catch {
+    // Invalid proxy URL, fall back to direct connection
+    console.error(`[cliproxy] Invalid proxy URL: ${proxyUrl}`);
+    return false;
+  }
 }
 
 /** Default configuration for downloader */
