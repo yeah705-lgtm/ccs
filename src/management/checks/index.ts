@@ -49,3 +49,6 @@ export {
 
 // OAuth checks
 export { OAuthPortsChecker, runOAuthChecks } from './oauth-check';
+
+// Image Analysis checks
+export { runImageAnalysisCheck, fixImageAnalysisConfig } from './image-analysis-check';

@@ -37,6 +37,8 @@ import { DEFAULT_BACKEND } from './platform-detector';
 import { configureProviderModel, getCurrentModel } from './model-config';
 import { resolveProxyConfig, PROXY_CLI_FLAGS } from './proxy-config-resolver';
 import { getWebSearchHookEnv } from '../utils/websearch-manager';
+import { getImageReadBlockHookEnv } from '../utils/hooks/image-read-block-hook-env';
+import { getImageAnalysisHookEnv } from '../utils/hooks/get-image-analysis-hook-env';
 import { supportsModelConfig, isModelBroken, getModelIssueUrl, findModel } from './model-catalog';
 import { CodexReasoningProxy } from './codex-reasoning-proxy';
 import { ToolSanitizationProxy } from './tool-sanitization-proxy';
@@ -284,6 +286,29 @@ export async function execClaudeWithCLIProxy(
       spinner.succeed('CLIProxy binary ready');
     } catch (error) {
       spinner.fail('Failed to prepare CLIProxy');
+      const err = error as Error;
+
+      // Check if network offline (DNS, connection, or timeout failure)
+      const networkErrors = [
+        'getaddrinfo',
+        'ENOTFOUND',
+        'ETIMEDOUT',
+        'ECONNREFUSED',
+        'ENETUNREACH',
+        'EAI_AGAIN',
+      ];
+      const isNetworkError = networkErrors.some((errCode) => err.message.includes(errCode));
+
+      if (isNetworkError) {
+        console.error('');
+        console.error(fail('No network connection detected'));
+        console.error('');
+        console.error('CLIProxy binary download requires internet access.');
+        console.error('Please check your network connection and try again.');
+        console.error('');
+        process.exit(1);
+      }
+
       throw error;
     }
   }
@@ -944,10 +969,14 @@ export async function execClaudeWithCLIProxy(
     ANTHROPIC_BASE_URL: finalBaseUrl,
   };
   const webSearchEnv = getWebSearchHookEnv();
+  const imageReadBlockEnv = getImageReadBlockHookEnv();
+  const imageAnalysisEnv = getImageAnalysisHookEnv(provider);
   const env = {
     ...process.env,
     ...effectiveEnvVars,
     ...webSearchEnv,
+    ...imageReadBlockEnv,
+    ...imageAnalysisEnv,
     CCS_PROFILE_TYPE: 'cliproxy', // Signal to WebSearch hook this is a third-party provider
   };
 

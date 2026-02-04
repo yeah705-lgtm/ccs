@@ -115,7 +115,25 @@ function SettingsPageInner() {
 
   return (
     <div className="h-[calc(100vh-100px)]">
-      <PanelGroup direction="horizontal" className="h-full">
+      {/* Mobile View - Stacked vertically */}
+      <div className="md:hidden h-full flex flex-col">
+        <div className="border-b bg-background p-4">
+          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
+        </div>
+        <SectionErrorBoundary>
+          <Suspense fallback={<SectionSkeleton />}>
+            {activeTab === 'websearch' && <WebSearchSection />}
+            {activeTab === 'globalenv' && <GlobalEnvSection />}
+            {activeTab === 'thinking' && <ThinkingSection />}
+            {activeTab === 'proxy' && <ProxySection />}
+            {activeTab === 'auth' && <AuthSection />}
+            {activeTab === 'backups' && <BackupsSection />}
+          </Suspense>
+        </SectionErrorBoundary>
+      </div>
+
+      {/* Desktop View - Side-by-side panels */}
+      <PanelGroup direction="horizontal" className="h-full hidden md:flex">
         {/* Left Panel - Settings Controls */}
         <Panel defaultSize={40} minSize={30} maxSize={55}>
           <div className="h-full border-r flex flex-col bg-muted/30 relative">

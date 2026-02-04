@@ -242,6 +242,8 @@ Run ${color('ccs config', 'command')} for web dashboard`.trim();
     ['ccs config', 'Open web configuration dashboard'],
     ['ccs config auth setup', 'Configure dashboard login'],
     ['ccs config auth show', 'Show dashboard auth status'],
+    ['ccs config image-analysis', 'Show image analysis settings'],
+    ['ccs config image-analysis --enable', 'Enable image analysis'],
     ['ccs config --port 3000', 'Use specific port'],
     ['ccs persist <profile>', 'Write profile env to ~/.claude/settings.json'],
     ['ccs persist --list-backups', 'List available settings.json backups'],
@@ -304,6 +306,19 @@ Run ${color('ccs config', 'command')} for web dashboard`.trim();
     ['', ''],
     ['Note:', 'Extended thinking allocates compute for step-by-step reasoning'],
     ['', 'before responding. Supported: agy, gemini (thinking models).'],
+  ]);
+
+  // Image Analysis
+  printSubSection('Image Analysis (CLIProxy vision)', [
+    ['ccs config image-analysis', 'Show current settings'],
+    ['ccs config image-analysis --enable', 'Enable for CLIProxy providers'],
+    ['ccs config image-analysis --disable', 'Disable (use native Read)'],
+    ['ccs config image-analysis --timeout 120', 'Set analysis timeout'],
+    ['ccs config image-analysis --set-model <p> <m>', 'Set provider model'],
+    ['', ''],
+    ['Note:', 'When enabled, images/PDFs are analyzed via vision models'],
+    ['', 'instead of passing raw data to Claude. Works with CLIProxy'],
+    ['', 'providers (agy, gemini, codex, kiro, ghcp).'],
   ]);
 
   // CLI Proxy env vars

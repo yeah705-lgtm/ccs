@@ -62,6 +62,12 @@ function showHelp(): void {
   console.log('    auth show        Display current auth status');
   console.log('    auth disable     Disable authentication');
   console.log('');
+  console.log('  image-analysis     Manage image analysis settings');
+  console.log('    --enable         Enable image analysis via CLIProxy');
+  console.log('    --disable        Disable image analysis');
+  console.log('    --timeout <s>    Set analysis timeout (seconds)');
+  console.log('    --set-model <p> <m>  Set model for provider');
+  console.log('');
   console.log('Options:');
   console.log('  --port, -p PORT    Specify server port (default: auto-detect)');
   console.log('  --dev              Development mode with Vite HMR');
@@ -72,6 +78,8 @@ function showHelp(): void {
   console.log('  ccs config --port 3000  Use specific port');
   console.log('  ccs config --dev        Development mode with hot reload');
   console.log('  ccs config auth setup   Configure dashboard login');
+  console.log('  ccs config image-analysis          Show image settings');
+  console.log('  ccs config image-analysis --enable Enable feature');
   console.log('');
 }
 
@@ -83,6 +91,13 @@ export async function handleConfigCommand(args: string[]): Promise<void> {
   if (args[0] === 'auth') {
     const { handleConfigAuthCommand } = await import('./config-auth');
     await handleConfigAuthCommand(args.slice(1));
+    return;
+  }
+
+  // Route image-analysis subcommand
+  if (args[0] === 'image-analysis') {
+    const { handleConfigImageAnalysisCommand } = await import('./config-image-analysis-command');
+    await handleConfigImageAnalysisCommand(args.slice(1));
     return;
   }
 

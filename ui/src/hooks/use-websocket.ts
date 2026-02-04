@@ -18,6 +18,7 @@ type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 
 export function useWebSocket() {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const queryClient = useQueryClient();
   const reconnectAttempts = useRef(0);
@@ -75,6 +76,7 @@ export function useWebSocket() {
 
     ws.onopen = () => {
       setStatus('connected');
+      setIsReconnecting(false);
       reconnectAttempts.current = 0;
       console.log('[WS] Connected');
     };
@@ -97,6 +99,7 @@ export function useWebSocket() {
 
       // Attempt reconnect with exponential backoff
       if (reconnectAttempts.current < maxReconnectAttempts) {
+        setIsReconnecting(true);
         const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
         reconnectAttempts.current++;
         console.log(`[WS] Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current})`);
@@ -104,6 +107,8 @@ export function useWebSocket() {
         reconnectTimeoutRef.current = setTimeout(() => {
           connectRef.current();
         }, delay);
+      } else {
+        setIsReconnecting(false);
       }
     };
 
@@ -117,6 +122,7 @@ export function useWebSocket() {
 
   const disconnect = useCallback(() => {
     reconnectAttempts.current = maxReconnectAttempts; // Prevent reconnect
+    setIsReconnecting(false);
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
@@ -142,5 +148,8 @@ export function useWebSocket() {
     return () => clearInterval(interval);
   }, []);
 
-  return useMemo(() => ({ status, connect, disconnect }), [status, connect, disconnect]);
+  return useMemo(
+    () => ({ status, isReconnecting, connect, disconnect }),
+    [status, isReconnecting, connect, disconnect]
+  );
 }

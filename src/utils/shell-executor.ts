@@ -7,12 +7,37 @@
 import { spawn, ChildProcess } from 'child_process';
 import { ErrorManager } from './error-manager';
 import { getWebSearchHookEnv } from './websearch-manager';
+import { getImageReadBlockHookEnv } from './hooks/image-read-block-hook-env';
 
 /**
  * Escape arguments for shell execution (Windows compatibility)
+ * Handles PowerShell special characters: backticks, $variables, double quotes
  */
 export function escapeShellArg(arg: string): string {
-  return '"' + String(arg).replace(/"/g, '""') + '"';
+  const isWindows = process.platform === 'win32';
+
+  if (isWindows) {
+    // PowerShell: Use single quotes for literal strings to prevent variable expansion
+    // Escape single quotes by doubling them (PowerShell syntax)
+    // Fallback to double quotes with escapes if single quotes present
+    if (arg.includes("'")) {
+      // Contains single quote - use double quotes with escape sequences
+      return (
+        '"' +
+        String(arg)
+          .replace(/\$/g, '`$') // Escape $ to prevent variable expansion
+          .replace(/`/g, '``') // Escape backticks
+          .replace(/"/g, '`"') + // Escape double quotes
+        '"'
+      );
+    } else {
+      // No single quotes - use single quotes for literal string (safest)
+      return "'" + String(arg) + "'";
+    }
+  } else {
+    // Unix/macOS: Double quotes with escaped inner quotes
+    return '"' + String(arg).replace(/"/g, '""') + '"';
+  }
 }
 
 /**
@@ -28,11 +53,12 @@ export function execClaude(
 
   // Get WebSearch hook config env vars
   const webSearchEnv = getWebSearchHookEnv();
+  const imageReadBlockEnv = getImageReadBlockHookEnv();
 
   // Prepare environment (merge with process.env if envVars provided)
   const env = envVars
-    ? { ...process.env, ...envVars, ...webSearchEnv }
-    : { ...process.env, ...webSearchEnv };
+    ? { ...process.env, ...envVars, ...webSearchEnv, ...imageReadBlockEnv }
+    : { ...process.env, ...webSearchEnv, ...imageReadBlockEnv };
 
   let child: ChildProcess;
   if (needsShell) {

@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { RefreshCw, CheckCircle2, AlertCircle, Package } from 'lucide-react';
 import { useWebSearchConfig, useRawConfig } from '../../hooks';
 import { ProviderCard } from './provider-card';
 
@@ -140,6 +140,21 @@ export default function WebSearchSection() {
           {/* CLI Providers */}
           <div className="space-y-3">
             <h3 className="text-base font-medium">Providers</h3>
+
+            {/* Empty state when no providers available */}
+            {!status?.geminiCli && !status?.opencodeCli && !status?.grokCli && !statusLoading && (
+              <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg text-center bg-muted/30">
+                <Package className="w-12 h-12 text-muted-foreground mb-3 opacity-30" />
+                <p className="font-medium text-foreground mb-1">No providers configured</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Install CLI tools to enable web search providers
+                </p>
+                <Button variant="outline" size="sm" onClick={fetchStatus}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Check for providers
+                </Button>
+              </div>
+            )}
 
             <ProviderCard
               name="gemini"
