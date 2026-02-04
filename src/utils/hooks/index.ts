@@ -6,7 +6,6 @@
  * @module utils/hooks
  */
 
-export { getImageReadBlockHookEnv, getImageReadBlockConfig } from './image-read-block-hook-env';
 export { getImageAnalysisHookEnv } from './get-image-analysis-hook-env';
 export {
   getImageAnalyzerHookPath,

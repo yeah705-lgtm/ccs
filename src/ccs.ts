@@ -13,7 +13,7 @@ import {
   ensureProfileHooks,
 } from './utils/websearch-manager';
 import { getGlobalEnvConfig } from './config/unified-config-loader';
-import { getImageReadBlockHookEnv } from './utils/hooks/image-read-block-hook-env';
+import { ensureProfileHooks as ensureImageAnalyzerHooks } from './utils/hooks/image-analyzer-profile-hook-injector';
 import { fail, info } from './utils/ui';
 
 // Import centralized error handling
@@ -165,12 +165,10 @@ async function execClaudeWithProxy(
   const isWindows = process.platform === 'win32';
   const needsShell = isWindows && /\.(cmd|bat|ps1)$/i.test(claudeCli);
   const webSearchEnv = getWebSearchHookEnv();
-  const imageReadBlockEnv = getImageReadBlockHookEnv();
   const env = {
     ...process.env,
     ...envVars,
     ...webSearchEnv,
-    ...imageReadBlockEnv,
     CCS_PROFILE_TYPE: 'settings', // Signal to WebSearch hook this is a third-party provider
   };
 
@@ -523,6 +521,8 @@ async function main(): Promise<void> {
       // CLIPROXY FLOW: OAuth-based profiles (gemini, codex, agy, qwen) or user-defined variants
       // Inject WebSearch hook into profile settings before launch
       ensureProfileHooks(profileInfo.name);
+      // Inject Image Analyzer hook into profile settings before launch
+      ensureImageAnalyzerHooks(profileInfo.name);
 
       const provider = profileInfo.provider || (profileInfo.name as CLIProxyProvider);
       const customSettingsPath = profileInfo.settingsPath; // undefined for hardcoded profiles
@@ -535,6 +535,8 @@ async function main(): Promise<void> {
       // COPILOT FLOW: GitHub Copilot subscription via copilot-api proxy
       // Inject WebSearch hook into profile settings before launch
       ensureProfileHooks(profileInfo.name);
+      // Inject Image Analyzer hook into profile settings before launch
+      ensureImageAnalyzerHooks(profileInfo.name);
 
       const { executeCopilotProfile } = await import('./copilot');
       const copilotConfig = profileInfo.copilotConfig;
@@ -549,6 +551,8 @@ async function main(): Promise<void> {
       // WebSearch is server-side tool - third-party providers have no access
       // Inject WebSearch hook into profile settings before launch
       ensureProfileHooks(profileInfo.name);
+      // Inject Image Analyzer hook into profile settings before launch
+      ensureImageAnalyzerHooks(profileInfo.name);
 
       ensureMcpWebSearch();
 
@@ -615,7 +619,6 @@ async function main(): Promise<void> {
         // Use --settings flag (backward compatible)
         const expandedSettingsPath = getSettingsPath(profileInfo.name);
         const webSearchEnv = getWebSearchHookEnv();
-        const imageReadBlockEnv = getImageReadBlockHookEnv();
         // Get global env vars (DISABLE_TELEMETRY, etc.) for third-party profiles
         const globalEnvConfig = getGlobalEnvConfig();
         const globalEnv = globalEnvConfig.enabled ? globalEnvConfig.env : {};
@@ -637,7 +640,6 @@ async function main(): Promise<void> {
           ...globalEnv,
           ...settingsEnv, // Explicitly inject all settings env vars
           ...webSearchEnv,
-          ...imageReadBlockEnv,
           CCS_PROFILE_TYPE: 'settings', // Signal to WebSearch hook this is a third-party provider
         };
         execClaude(claudeCli, ['--settings', expandedSettingsPath, ...remainingArgs], envVars);
@@ -660,18 +662,22 @@ async function main(): Promise<void> {
 
       // Execute Claude with instance isolation
       // Skip WebSearch hook - account profiles use native server-side WebSearch
+      // Skip Image Analyzer hook - account profiles have native vision support
       const envVars: NodeJS.ProcessEnv = {
         CLAUDE_CONFIG_DIR: instancePath,
         CCS_PROFILE_TYPE: 'account',
         CCS_WEBSEARCH_SKIP: '1',
+        CCS_IMAGE_ANALYSIS_SKIP: '1',
       };
       execClaude(claudeCli, remainingArgs, envVars);
     } else {
       // DEFAULT: No profile configured, use Claude's own defaults
       // Skip WebSearch hook - native Claude has server-side WebSearch
+      // Skip Image Analyzer hook - native Claude has native vision support
       const envVars: NodeJS.ProcessEnv = {
         CCS_PROFILE_TYPE: 'default',
         CCS_WEBSEARCH_SKIP: '1',
+        CCS_IMAGE_ANALYSIS_SKIP: '1',
       };
       execClaude(claudeCli, remainingArgs, envVars);
     }

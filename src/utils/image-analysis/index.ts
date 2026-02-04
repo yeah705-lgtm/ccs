@@ -1,15 +1,7 @@
 /**
  * Image Analysis Utilities
  *
- * Exports hook installer functions for image blocking and prompt management
+ * Exports hook installer functions for prompt management
  */
 
-export {
-  getHookPath,
-  getCcsHooksDir,
-  getPromptsDir,
-  hasImageBlockHook,
-  installImageBlockHook,
-  installImageAnalysisPrompts,
-  uninstallImageBlockHook,
-} from './hook-installer';
+export { getCcsHooksDir, getPromptsDir, installImageAnalysisPrompts } from './hook-installer';

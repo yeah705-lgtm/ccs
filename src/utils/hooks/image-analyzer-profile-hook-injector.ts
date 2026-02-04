@@ -4,7 +4,7 @@
  * Injects image analyzer hooks into per-profile settings files.
  * This replaces the global ~/.claude/settings.json approach.
  *
- * Only injects for CLIProxy profiles (agy, gemini) that support vision analysis.
+ * Injects for profiles configured in image_analysis.provider_models.
  *
  * @module utils/hooks/image-analyzer-profile-injector
  */
@@ -94,13 +94,14 @@ export function ensureProfileHooks(profileName: string): boolean {
       return false;
     }
 
-    // Only inject for CLIProxy profiles with vision support
-    const visionProfiles = ['agy', 'gemini'];
-    if (!visionProfiles.includes(profileName)) {
+    const imageConfig = getImageAnalysisConfig();
+
+    // Only inject for profiles that have a model mapping in provider_models
+    // This allows dynamic extension without hardcoding profile names
+    const configuredProviders = Object.keys(imageConfig.provider_models);
+    if (!configuredProviders.includes(profileName)) {
       return false;
     }
-
-    const imageConfig = getImageAnalysisConfig();
 
     // Skip if image analysis is disabled
     if (!imageConfig.enabled) {
