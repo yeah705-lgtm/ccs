@@ -447,9 +447,11 @@ export class GlmtProxy {
         lastError = err;
         const delay = this.calculateRetryDelay(attempt, retryAfter);
 
-        console.error(
-          `[glmt-proxy] Rate limited, retry ${attempt + 1}/${this.retryConfig.maxRetries} after ${Math.round(delay)}ms`
-        );
+        if (this.verbose) {
+          console.error(
+            `[glmt-proxy] Rate limited, retry ${attempt + 1}/${this.retryConfig.maxRetries} after ${Math.round(delay)}ms`
+          );
+        }
 
         await this.sleep(delay);
       }
@@ -507,9 +509,11 @@ export class GlmtProxy {
         lastError = err;
         const delay = this.calculateRetryDelay(attempt, retryAfter);
 
-        console.error(
-          `[glmt-proxy] Rate limited, retry ${attempt + 1}/${this.retryConfig.maxRetries} after ${Math.round(delay)}ms`
-        );
+        if (this.verbose) {
+          console.error(
+            `[glmt-proxy] Rate limited, retry ${attempt + 1}/${this.retryConfig.maxRetries} after ${Math.round(delay)}ms`
+          );
+        }
 
         await this.sleep(delay);
       }
