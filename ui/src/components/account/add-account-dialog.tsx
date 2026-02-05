@@ -1,7 +1,8 @@
 /**
  * Add Account Dialog Component
  * Uses /start-url to get OAuth URL + polls for completion via management API.
- * Does NOT call /start (which spawns a CLIProxy binary and kills running instances).
+ * For Device Code flows (ghcp, qwen): Uses /start endpoint which spawns CLIProxy
+ * binary and emits WebSocket events. DeviceCodeDialog handles user code display.
  * Shows auth URL + callback paste field. Polling auto-closes on success.
  * For Kiro: Also shows "Import from IDE" option.
  */
@@ -21,6 +22,7 @@ import { Loader2, ExternalLink, User, Download, Copy, Check } from 'lucide-react
 import { useKiroImport } from '@/hooks/use-cliproxy';
 import { useCliproxyAuthFlow } from '@/hooks/use-cliproxy-auth-flow';
 import { applyDefaultPreset } from '@/lib/preset-utils';
+import { isDeviceCodeProvider } from '@/lib/provider-config';
 import { toast } from 'sonner';
 
 interface AddAccountDialogProps {
@@ -47,6 +49,7 @@ export function AddAccountDialog({
   const kiroImportMutation = useKiroImport();
 
   const isKiro = provider === 'kiro';
+  const isDeviceCode = isDeviceCodeProvider(provider);
   const isPending = authFlow.isAuthenticating || kiroImportMutation.isPending;
 
   const resetAndClose = () => {
@@ -144,7 +147,9 @@ export function AddAccountDialog({
           <DialogDescription>
             {isKiro
               ? 'Authenticate via browser or import an existing token from Kiro IDE.'
-              : 'Click Authenticate to get an OAuth URL. Open it in any browser to sign in.'}
+              : isDeviceCode
+                ? 'Click Authenticate. A verification code will appear for you to enter on the provider website.'
+                : 'Click Authenticate to get an OAuth URL. Open it in any browser to sign in.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -180,17 +185,19 @@ export function AddAccountDialog({
                   Waiting for authentication...
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Complete the authentication in your browser. This dialog closes automatically.
+                  {authFlow.isDeviceCodeFlow
+                    ? 'A verification code dialog will appear shortly. Enter the code on the provider website.'
+                    : 'Complete the authentication in your browser. This dialog closes automatically.'}
                 </p>
               </div>
 
-              {/* Error from /start-url - fallback URL not available */}
+              {/* Error display */}
               {authFlow.error && !authFlow.authUrl && (
                 <p className="text-xs text-center text-destructive">{authFlow.error}</p>
               )}
 
-              {/* Auth URL section - appears once /start-url returns */}
-              {authFlow.authUrl && (
+              {/* Auth URL section - only for Authorization Code flows, NOT Device Code */}
+              {authFlow.authUrl && !authFlow.isDeviceCodeFlow && (
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <Label className="text-xs">Open this URL in any browser to sign in:</Label>
