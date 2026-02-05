@@ -155,6 +155,8 @@ export default function ProxySection() {
   }
 
   const isRemoteMode = config.remote.enabled ?? false;
+  // Only block backend switching in local mode when proxy is running
+  const isBackendSwitchBlocked = !isRemoteMode && isProxyRunning;
   const remoteConfig = config.remote;
   const fallbackConfig = config.fallback;
 
@@ -318,8 +320,8 @@ export default function ProxySection() {
               <Box className="w-4 h-4" />
               Backend Binary
             </h3>
-            {/* Warning when proxy is running - must stop to change backend */}
-            {isProxyRunning && (
+            {/* Warning when local proxy is running - must stop to change backend (not applicable in remote mode) */}
+            {!isRemoteMode && isProxyRunning && (
               <Alert className="py-2 border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-900/20 [&>svg]:top-2.5">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-700 dark:text-amber-400">
@@ -331,12 +333,12 @@ export default function ProxySection() {
               {/* Plus Backend Card */}
               <button
                 onClick={() => handleBackendChange('plus')}
-                disabled={updateBackendMutation.isPending || isProxyRunning}
+                disabled={updateBackendMutation.isPending || isBackendSwitchBlocked}
                 className={`p-4 rounded-lg border-2 text-left transition-all ${
                   backend === 'plus'
                     ? 'border-primary bg-primary/5'
                     : 'border-border hover:border-muted-foreground/50'
-                } ${isProxyRunning ? 'opacity-60 cursor-not-allowed' : ''}`}
+                } ${isBackendSwitchBlocked ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
                 <div className="flex items-center gap-3 mb-2">
                   <span className="font-medium">CLIProxyAPIPlus</span>
@@ -352,12 +354,12 @@ export default function ProxySection() {
               {/* Original Backend Card */}
               <button
                 onClick={() => handleBackendChange('original')}
-                disabled={updateBackendMutation.isPending || isProxyRunning}
+                disabled={updateBackendMutation.isPending || isBackendSwitchBlocked}
                 className={`p-4 rounded-lg border-2 text-left transition-all ${
                   backend === 'original'
                     ? 'border-primary bg-primary/5'
                     : 'border-border hover:border-muted-foreground/50'
-                } ${isProxyRunning ? 'opacity-60 cursor-not-allowed' : ''}`}
+                } ${isBackendSwitchBlocked ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
                 <div className="flex items-center gap-3 mb-2">
                   <span className="font-medium">CLIProxyAPI</span>
