@@ -59,6 +59,55 @@ async function promptAddAccount(): Promise<boolean> {
 }
 
 /**
+ * Prompt user to choose OAuth mode for headless environment
+ * Returns 'paste' for paste-callback mode or 'forward' for port-forwarding
+ */
+async function promptOAuthModeChoice(callbackPort: number | null): Promise<'paste' | 'forward'> {
+  const readline = await import('readline');
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  console.log('');
+  console.log(info('Headless environment detected (SSH session)'));
+  console.log('    OAuth requires choosing a mode:');
+  console.log('');
+  console.log('    [1] Paste-callback (recommended for VPS)');
+  console.log('        Open URL in any browser, paste redirect URL back');
+  console.log('');
+  console.log('    [2] Port forwarding (advanced)');
+  if (callbackPort) {
+    console.log(`        Requires: ssh -L ${callbackPort}:localhost:${callbackPort} <USER>@<HOST>`);
+  } else {
+    console.log('        Requires SSH tunnel to callback port');
+  }
+  console.log('');
+
+  return new Promise<'paste' | 'forward'>((resolve) => {
+    let resolved = false;
+
+    // Handle Ctrl+C gracefully
+    rl.on('close', () => {
+      if (!resolved) {
+        resolved = true;
+        resolve('paste'); // Safe default on cancel
+      }
+    });
+
+    rl.question('[?] Which mode? (1/2): ', (answer) => {
+      const choice = answer.trim();
+      if (choice !== '1' && choice !== '2') {
+        console.log(info('Invalid choice, using paste-callback mode'));
+      }
+      resolved = true;
+      rl.close();
+      resolve(choice === '2' ? 'forward' : 'paste');
+    });
+  });
+}
+
+/**
  * Prompt user for account nickname (required for kiro/ghcp)
  * Returns null if user cancels
  */
@@ -388,6 +437,22 @@ export async function triggerOAuth(
   const isCLI = !fromUI;
   const headless = options.headless ?? isHeadlessEnvironment();
   const isDeviceCodeFlow = callbackPort === null;
+
+  // Interactive mode selection for headless environments
+  // Skip if explicit mode flag provided or device code flow (no callback needed)
+  if (headless && !options.pasteCallback && !options.portForward && !isDeviceCodeFlow) {
+    // Non-interactive environment (piped input) - default to paste mode
+    if (!process.stdin.isTTY) {
+      const tokenDir = getProviderTokenDir(provider);
+      return handlePasteCallbackMode(provider, oauthConfig, verbose, tokenDir, nickname);
+    }
+    const mode = await promptOAuthModeChoice(callbackPort);
+    if (mode === 'paste') {
+      const tokenDir = getProviderTokenDir(provider);
+      return handlePasteCallbackMode(provider, oauthConfig, verbose, tokenDir, nickname);
+    }
+    // mode === 'forward' continues to existing port-forwarding flow below
+  }
 
   if (existingAccounts.length > 0 && !add) {
     console.log('');

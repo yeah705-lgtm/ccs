@@ -9,33 +9,32 @@ import { ErrorManager } from './error-manager';
 import { getWebSearchHookEnv } from './websearch-manager';
 
 /**
- * Escape arguments for shell execution (Windows compatibility)
- * Handles PowerShell special characters: backticks, $variables, double quotes
+ * Escape arguments for shell execution (cross-platform)
+ *
+ * IMPORTANT: On Windows, spawn({ shell: true }) uses cmd.exe by default,
+ * NOT PowerShell. cmd.exe does NOT recognize single quotes as string delimiters.
+ * We must use double quotes for cmd.exe compatibility.
  */
 export function escapeShellArg(arg: string): string {
   const isWindows = process.platform === 'win32';
 
   if (isWindows) {
-    // PowerShell: Use single quotes for literal strings to prevent variable expansion
-    // Escape single quotes by doubling them (PowerShell syntax)
-    // Fallback to double quotes with escapes if single quotes present
-    if (arg.includes("'")) {
-      // Contains single quote - use double quotes with escape sequences
-      return (
-        '"' +
-        String(arg)
-          .replace(/\$/g, '`$') // Escape $ to prevent variable expansion
-          .replace(/`/g, '``') // Escape backticks
-          .replace(/"/g, '`"') + // Escape double quotes
-        '"'
-      );
-    } else {
-      // No single quotes - use single quotes for literal string (safest)
-      return "'" + String(arg) + "'";
-    }
+    // cmd.exe: Use double quotes, escape inner double quotes by doubling them
+    // cmd.exe interprets "" as escaped double quote inside quoted string
+    // Strip newlines/tabs that can break cmd.exe parsing
+    return (
+      '"' +
+      String(arg)
+        .replace(/[\r\n\t]/g, ' ') // Replace newlines/tabs with space
+        .replace(/%/g, '%%') // Escape percent signs
+        .replace(/\^/g, '^^') // Escape carets
+        .replace(/!/g, '^^!') // Escape exclamation marks (delayed expansion)
+        .replace(/"/g, '""') + // Escape quotes
+      '"'
+    );
   } else {
     // Unix/macOS: Double quotes with escaped inner quotes
-    return '"' + String(arg).replace(/"/g, '""') + '"';
+    return '"' + String(arg).replace(/"/g, '\\"') + '"';
   }
 }
 

@@ -205,8 +205,21 @@ router.delete('/:name', (req: Request, res: Response): void => {
       return;
     }
 
-    // Delete the profile (legacy/unified)
-    registry.deleteProfile(name);
+    // Delete from appropriate config (unified and/or legacy)
+    let deleted = false;
+    if (isUnifiedMode() && registry.hasAccountUnified(name)) {
+      registry.removeAccountUnified(name);
+      deleted = true;
+    }
+    if (registry.hasProfile(name)) {
+      registry.deleteProfile(name);
+      deleted = true;
+    }
+
+    if (!deleted) {
+      res.status(404).json({ error: `Account not found: ${name}` });
+      return;
+    }
 
     res.json({ success: true, deleted: name });
   } catch (error) {

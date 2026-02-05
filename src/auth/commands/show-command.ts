@@ -26,8 +26,13 @@ export async function handleShow(ctx: CommandContext, args: string[]): Promise<v
   }
 
   try {
-    const profile = ctx.registry.getProfile(profileName);
-    const defaultProfile = ctx.registry.getDefaultProfile();
+    // Use merged profiles (checks unified config first, falls back to legacy)
+    const allProfiles = ctx.registry.getAllProfilesMerged();
+    const profile = allProfiles[profileName];
+    if (!profile) {
+      exitWithError(`Profile not found: ${profileName}`, ExitCode.PROFILE_ERROR);
+    }
+    const defaultProfile = ctx.registry.getDefaultResolved();
     const isDefault = profileName === defaultProfile;
     const instancePath = ctx.instanceMgr.getInstancePath(profileName);
 
