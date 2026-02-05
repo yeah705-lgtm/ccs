@@ -402,6 +402,9 @@ export function discoverExistingAccounts(): void {
   const registry = loadAccountsRegistry();
   const files = fs.readdirSync(authDir);
 
+  // Track whether any accounts were discovered (to avoid saving empty registry)
+  let discoveredCount = 0;
+
   for (const file of files) {
     if (!file.endsWith('.json')) continue;
 
@@ -467,6 +470,7 @@ export function discoverExistingAccounts(): void {
           // Update if missing or changed
           if (existingEntry && existingEntry[1].projectId !== projectIdValue) {
             existingEntry[1].projectId = projectIdValue;
+            discoveredCount++; // Count projectId updates as changes
           }
         }
         continue;
@@ -529,10 +533,17 @@ export function discoverExistingAccounts(): void {
       }
 
       providerAccounts.accounts[accountId] = accountMeta;
+      discoveredCount++;
     } catch {
       // Skip invalid files
       continue;
     }
+  }
+
+  // Only save if at least one account was discovered or updated
+  // This prevents creating accounts.json with empty provider sections
+  if (discoveredCount === 0) {
+    return;
   }
 
   // Reload-merge pattern: reduce race condition with concurrent OAuth registration
@@ -540,6 +551,9 @@ export function discoverExistingAccounts(): void {
   const freshRegistry = loadAccountsRegistry();
   for (const [providerName, discovered] of Object.entries(registry.providers)) {
     if (!discovered) continue;
+    // Skip empty provider sections (no accounts discovered)
+    if (Object.keys(discovered.accounts).length === 0) continue;
+
     const prov = providerName as CLIProxyProvider;
     if (!freshRegistry.providers[prov]) {
       freshRegistry.providers[prov] = discovered;
