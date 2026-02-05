@@ -1,3 +1,15 @@
+## [7.37.1](https://github.com/kaitranntt/ccs/compare/v7.37.0...v7.37.1) (2026-02-05)
+
+### Bug Fixes
+
+* **cliproxy:** fix discoverExistingAccounts test failures ([759f289](https://github.com/kaitranntt/ccs/commit/759f28911958689ff2b56f03409545b6fec81dec))
+* **ui:** display device code for GitHub Copilot OAuth in Dashboard ([13f6c3f](https://github.com/kaitranntt/ccs/commit/13f6c3f14bd0d1c920e339b2486dcd6e37ce50f4)), closes [#460](https://github.com/kaitranntt/ccs/issues/460)
+
+### Code Refactoring
+
+* **cliproxy:** modularize top 4 giant files ([b149e25](https://github.com/kaitranntt/ccs/commit/b149e252ebe3fc355e3e47772de4820810b8000f))
+* **ui:** address PR review feedback for device code auth ([a08d0cf](https://github.com/kaitranntt/ccs/commit/a08d0cfece85ebb8c5960ad66ee48131af6ded05))
+
 ## [7.37.0](https://github.com/kaitranntt/ccs/compare/v7.36.0...v7.37.0) (2026-02-05)
 
 ### Features
