@@ -1,10 +1,8 @@
 /**
- * Account Manager for CLIProxyAPI Multi-Account Support
+ * Account Manager Module
+ * Barrel export for all account management functionality
  *
- * DEPRECATED: This file is now a re-export shim for backwards compatibility.
- * New code should import directly from './accounts/' module.
- *
- * Manages multiple OAuth accounts per provider (Gemini, Codex, etc.).
+ * This module manages multiple OAuth accounts per provider (Gemini, Codex, etc.).
  * Each provider can have multiple accounts, with one designated as default.
  *
  * Account storage: ~/.ccs/cliproxy/accounts.json
@@ -12,18 +10,13 @@
  * Paused tokens: ~/.ccs/cliproxy/auth-paused/ (sibling dir, outside CLIProxyAPI scan path)
  */
 
-// Re-export everything from the accounts module
-export type {
-  AccountInfo,
-  AccountTier,
-  AccountsRegistry,
-  ProviderAccounts,
-  BulkOperationResult,
-  SoloOperationResult,
-} from './accounts';
+// Types and constants
+export type { AccountInfo, AccountTier, AccountsRegistry, ProviderAccounts } from './types';
+export type { BulkOperationResult, SoloOperationResult } from './types';
+export { PROVIDERS_WITHOUT_EMAIL } from './types';
 
+// Token file operations
 export {
-  PROVIDERS_WITHOUT_EMAIL,
   getAccountsRegistryPath,
   getPausedDir,
   getAccountTokenPath,
@@ -31,6 +24,10 @@ export {
   generateNickname,
   validateNickname,
   tokenFileExists,
+} from './token-file-ops';
+
+// Registry operations (CRUD)
+export {
   loadAccountsRegistry,
   saveAccountsRegistry,
   syncRegistryWithTokenFiles,
@@ -43,6 +40,10 @@ export {
   touchAccount,
   setAccountTier,
   discoverExistingAccounts,
+} from './registry';
+
+// Query operations
+export {
   getProviderAccounts,
   getDefaultAccount,
   getAccount,
@@ -50,7 +51,7 @@ export {
   getActiveAccounts,
   isAccountPaused,
   getAllAccountsSummary,
-  bulkPauseAccounts,
-  bulkResumeAccounts,
-  soloAccount,
-} from './accounts';
+} from './query';
+
+// Bulk operations
+export { bulkPauseAccounts, bulkResumeAccounts, soloAccount } from './bulk-ops';

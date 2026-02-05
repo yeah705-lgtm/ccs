@@ -54,7 +54,11 @@ export function getTokenExpiryInfo(
   provider: CLIProxyProvider,
   accountId: string
 ): TokenExpiryInfo | null {
-  const tokenPath = getAccountTokenPath(provider, accountId);
+  const account = getProviderAccounts(provider).find((a) => a.id === accountId);
+  if (!account) {
+    return null;
+  }
+  const tokenPath = getAccountTokenPath(account);
   if (!tokenPath || !fs.existsSync(tokenPath)) {
     return null;
   }
