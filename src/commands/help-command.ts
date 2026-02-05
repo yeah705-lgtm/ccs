@@ -184,6 +184,7 @@ Run ${color('ccs config', 'command')} for web dashboard`.trim();
       ],
       ['ccs <provider> --logout', 'Clear authentication'],
       ['ccs <provider> --headless', 'Headless auth (for SSH)'],
+      ['ccs <provider> --port-forward', 'Force port-forwarding mode (skip prompt)'],
       ['ccs kiro --import', 'Import token from Kiro IDE'],
       ['ccs kiro --incognito', 'Use incognito browser (default: normal)'],
       ['ccs codex "explain code"', 'Use with prompt'],

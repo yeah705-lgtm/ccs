@@ -316,7 +316,17 @@ export async function execClaudeWithCLIProxy(
   // 2. Handle special flags (use argsWithoutProxy - proxy flags already stripped)
   const forceAuth = argsWithoutProxy.includes('--auth');
   const pasteCallback = argsWithoutProxy.includes('--paste-callback');
+  const portForward = argsWithoutProxy.includes('--port-forward');
   const forceHeadless = argsWithoutProxy.includes('--headless');
+
+  // Validate conflicting flags
+  if (pasteCallback && portForward) {
+    console.error(fail('Cannot use --paste-callback with --port-forward'));
+    console.error('    --paste-callback: Manually paste OAuth redirect URL');
+    console.error('    --port-forward: Use SSH port forwarding for callback');
+    process.exit(1);
+  }
+
   const forceLogout = argsWithoutProxy.includes('--logout');
   const forceConfig = argsWithoutProxy.includes('--config');
   const addAccount = argsWithoutProxy.includes('--add');
@@ -548,6 +558,7 @@ export async function execClaudeWithCLIProxy(
         ...(setNickname ? { nickname: setNickname } : {}),
         ...(noIncognito ? { noIncognito: true } : {}),
         ...(pasteCallback ? { pasteCallback: true } : {}),
+        ...(portForward ? { portForward: true } : {}),
       });
       if (!authSuccess) {
         throw new Error(`Authentication required for ${providerConfig.displayName}`);
@@ -991,6 +1002,7 @@ export async function execClaudeWithCLIProxy(
   const ccsFlags = [
     '--auth',
     '--paste-callback',
+    '--port-forward',
     '--headless',
     '--logout',
     '--config',

@@ -221,4 +221,6 @@ export interface OAuthOptions {
   import?: boolean;
   /** Enable paste-callback mode: show auth URL and prompt for callback paste */
   pasteCallback?: boolean;
+  /** If true, use port-forwarding mode (skip interactive prompt in headless) */
+  portForward?: boolean;
 }
