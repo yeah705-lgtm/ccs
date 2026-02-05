@@ -32,16 +32,19 @@ const POLL_INTERVAL = 3000;
 /** Maximum polling duration (5 minutes) */
 const MAX_POLL_DURATION = 5 * 60 * 1000;
 
+/** Initial state for auth flow - extracted for DRY */
+const INITIAL_STATE: AuthFlowState = {
+  provider: null,
+  isAuthenticating: false,
+  error: null,
+  authUrl: null,
+  oauthState: null,
+  isSubmittingCallback: false,
+  isDeviceCodeFlow: false,
+};
+
 export function useCliproxyAuthFlow() {
-  const [state, setState] = useState<AuthFlowState>({
-    provider: null,
-    isAuthenticating: false,
-    error: null,
-    authUrl: null,
-    oauthState: null,
-    isSubmittingCallback: false,
-    isDeviceCodeFlow: false,
-  });
+  const [state, setState] = useState<AuthFlowState>(INITIAL_STATE);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -89,15 +92,7 @@ export function useCliproxyAuthFlow() {
           queryClient.invalidateQueries({ queryKey: ['cliproxy-auth'] });
           queryClient.invalidateQueries({ queryKey: ['account-quota'] });
           toast.success(`${provider} authentication successful`);
-          setState({
-            provider: null,
-            isAuthenticating: false,
-            error: null,
-            authUrl: null,
-            oauthState: null,
-            isSubmittingCallback: false,
-            isDeviceCodeFlow: false,
-          });
+          setState(INITIAL_STATE);
         } else if (data.status === 'error') {
           stopPolling();
           const errorMsg = data.error || 'Authentication failed';
@@ -120,13 +115,8 @@ export function useCliproxyAuthFlow() {
     async (provider: string, options?: StartAuthOptions) => {
       if (!isValidProvider(provider)) {
         setState({
-          provider: null,
-          isAuthenticating: false,
+          ...INITIAL_STATE,
           error: `Unknown provider: ${provider}`,
-          authUrl: null,
-          oauthState: null,
-          isSubmittingCallback: false,
-          isDeviceCodeFlow: false,
         });
         return;
       }
@@ -167,16 +157,9 @@ export function useCliproxyAuthFlow() {
               if (response.ok && data.success) {
                 queryClient.invalidateQueries({ queryKey: ['cliproxy-auth'] });
                 queryClient.invalidateQueries({ queryKey: ['account-quota'] });
-                toast.success(`${provider} authentication successful`);
-                setState({
-                  provider: null,
-                  isAuthenticating: false,
-                  error: null,
-                  authUrl: null,
-                  oauthState: null,
-                  isSubmittingCallback: false,
-                  isDeviceCodeFlow: false,
-                });
+                // Note: No toast here - DeviceCodeDialog's useDeviceCode hook handles success toast
+                // via deviceCodeCompleted WebSocket event to avoid duplicate toasts
+                setState(INITIAL_STATE);
               } else {
                 const errorMsg = data.error || 'Authentication failed';
                 toast.error(errorMsg);
@@ -238,15 +221,7 @@ export function useCliproxyAuthFlow() {
         }
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
-          setState({
-            provider: null,
-            isAuthenticating: false,
-            error: null,
-            authUrl: null,
-            oauthState: null,
-            isSubmittingCallback: false,
-            isDeviceCodeFlow: false,
-          });
+          setState(INITIAL_STATE);
           return;
         }
         const message = error instanceof Error ? error.message : 'Authentication failed';
@@ -265,15 +240,7 @@ export function useCliproxyAuthFlow() {
     const currentProvider = state.provider;
     abortControllerRef.current?.abort();
     stopPolling();
-    setState({
-      provider: null,
-      isAuthenticating: false,
-      error: null,
-      authUrl: null,
-      oauthState: null,
-      isSubmittingCallback: false,
-      isDeviceCodeFlow: false,
-    });
+    setState(INITIAL_STATE);
     // Also cancel on backend
     if (currentProvider) {
       api.cliproxy.auth.cancel(currentProvider).catch(() => {
@@ -302,15 +269,7 @@ export function useCliproxyAuthFlow() {
           queryClient.invalidateQueries({ queryKey: ['cliproxy-auth'] });
           queryClient.invalidateQueries({ queryKey: ['account-quota'] });
           toast.success(`${state.provider} authentication successful`);
-          setState({
-            provider: null,
-            isAuthenticating: false,
-            error: null,
-            authUrl: null,
-            oauthState: null,
-            isSubmittingCallback: false,
-            isDeviceCodeFlow: false,
-          });
+          setState(INITIAL_STATE);
         } else {
           throw new Error(data.error || 'Callback submission failed');
         }
