@@ -8,28 +8,45 @@
 import { moduleCache, initialized, setInitialized } from './types';
 
 /**
+ * Native dynamic import that bypasses TypeScript's require() transformation.
+ * This preserves ESM import() at runtime, fixing Node 24 ESM/CJS interop issues.
+ *
+ * TypeScript compiles `import('x')` to `require('x')` when targeting CommonJS,
+ * which breaks ESM packages like ora that depend on other ESM-only modules.
+ */
+
+const dynamicImport = new Function('specifier', 'return import(specifier)') as (
+  specifier: string
+) => Promise<unknown>;
+
+/**
  * Initialize UI dependencies (call once at startup)
- * Uses dynamic imports for ESM packages in CommonJS project
+ * Uses native dynamic imports for ESM packages in CommonJS project
  */
 export async function initUI(): Promise<void> {
   if (initialized) return;
 
   try {
-    // Dynamic import for ESM-only packages
+    // Use native dynamic import to avoid TypeScript's require() transformation
     const [chalkImport, boxenImport, gradientImport, oraImport, listrImport] = await Promise.all([
-      import('chalk'),
-      import('boxen'),
-      import('gradient-string'),
-      import('ora'),
-      import('listr2'),
+      dynamicImport('chalk'),
+      dynamicImport('boxen'),
+      dynamicImport('gradient-string'),
+      dynamicImport('ora'),
+      dynamicImport('listr2'),
     ]);
 
-    // CJS modules: use .default if available (ESM interop), otherwise use module directly
-    moduleCache.chalk = chalkImport.default || chalkImport;
-    moduleCache.boxen = boxenImport.default || boxenImport;
-    moduleCache.gradient = gradientImport.default || gradientImport;
-    moduleCache.ora = oraImport.default || oraImport;
-    moduleCache.listr = listrImport.Listr || listrImport.default?.Listr;
+    // ESM modules: use .default for the actual export
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const getDefault = (mod: any) => mod.default || mod;
+
+    moduleCache.chalk = getDefault(chalkImport);
+    moduleCache.boxen = getDefault(boxenImport);
+    moduleCache.gradient = getDefault(gradientImport);
+    moduleCache.ora = getDefault(oraImport);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const listr = listrImport as any;
+    moduleCache.listr = listr.Listr || listr.default?.Listr;
     setInitialized(true);
   } catch (_e) {
     // Fallback: UI works without colors if imports fail
