@@ -14,12 +14,7 @@ import {
 } from '@/lib/extended-context-utils';
 
 /** Model env keys that should have [1m] suffix applied */
-const MODEL_ENV_KEYS = [
-  'ANTHROPIC_MODEL',
-  'ANTHROPIC_DEFAULT_OPUS_MODEL',
-  'ANTHROPIC_DEFAULT_SONNET_MODEL',
-  'ANTHROPIC_DEFAULT_HAIKU_MODEL',
-] as const;
+const MODEL_ENV_KEYS = ['ANTHROPIC_MODEL'] as const;
 import type { SettingsResponse, UseProviderEditorReturn } from './types';
 
 /** Required env vars for CLIProxy providers (informational only - runtime fills defaults) */

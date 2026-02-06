@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Sparkles, Zap, Star, X, Plus } from 'lucide-react';
 import { FlexibleModelSelector } from '../provider-model-selector';
 import { ExtendedContextToggle } from '../extended-context-toggle';
+import { stripExtendedContextSuffix } from '@/lib/extended-context-utils';
 import type { ModelConfigSectionProps } from './types';
 
 export function ModelConfigSection({
@@ -31,9 +32,11 @@ export function ModelConfigSection({
   const showPresets = (catalog && catalog.models.length > 0) || savedPresets.length > 0;
 
   // Find current model entry to check for extended context support
+  // Strip [1m] suffix when looking up in catalog since catalog IDs don't have suffix
   const currentModelEntry = useMemo(() => {
     if (!catalog || !currentModel) return undefined;
-    return catalog.models.find((m) => m.id === currentModel);
+    const baseModelId = stripExtendedContextSuffix(currentModel);
+    return catalog.models.find((m) => m.id === baseModelId);
   }, [catalog, currentModel]);
 
   return (
