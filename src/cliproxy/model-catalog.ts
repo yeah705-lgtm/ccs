@@ -177,7 +177,7 @@ export const MODEL_CATALOG: Partial<Record<CLIProxyProvider, ProviderCatalog>> =
     defaultModel: 'claude-sonnet-4-5-20250929',
     models: [
       {
-        id: 'claude-opus-4-6-20260203',
+        id: 'claude-opus-4-6',
         name: 'Claude Opus 4.6',
         description: 'Latest flagship model',
         thinking: {

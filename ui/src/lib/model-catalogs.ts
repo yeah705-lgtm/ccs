@@ -322,13 +322,13 @@ export const MODEL_CATALOGS: Record<string, ProviderCatalog> = {
     defaultModel: 'claude-sonnet-4-5-20250929',
     models: [
       {
-        id: 'claude-opus-4-6-20260203',
+        id: 'claude-opus-4-6',
         name: 'Claude Opus 4.6',
         description: 'Latest flagship model',
         extendedContext: true,
         presetMapping: {
-          default: 'claude-opus-4-6-20260203',
-          opus: 'claude-opus-4-6-20260203',
+          default: 'claude-opus-4-6',
+          opus: 'claude-opus-4-6',
           sonnet: 'claude-sonnet-4-5-20250929',
           haiku: 'claude-haiku-4-5-20251001',
         },
