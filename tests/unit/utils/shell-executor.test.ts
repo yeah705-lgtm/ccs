@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { stripAnthropicEnv } from '../../../src/utils/shell-executor';
 
 // We need to mock process.platform for cross-platform testing
 const originalPlatform = process.platform;
@@ -80,5 +81,60 @@ describe('escapeShellArg', () => {
       const { escapeShellArg } = await import('../../../src/utils/shell-executor');
       expect(escapeShellArg('hello!')).toBe('"hello^^!"');
     });
+  });
+});
+
+describe('stripAnthropicEnv', () => {
+  it('removes all ANTHROPIC_* keys', () => {
+    const input = {
+      PATH: '/usr/bin',
+      ANTHROPIC_BASE_URL: 'http://localhost:3000',
+      ANTHROPIC_MODEL: 'claude-3',
+      HOME: '/home/user',
+    };
+    const result = stripAnthropicEnv(input);
+    expect(result).toEqual({ PATH: '/usr/bin', HOME: '/home/user' });
+  });
+
+  it('preserves non-ANTHROPIC keys', () => {
+    const input = { FOO: 'bar', ANTHROPIC_KEY: 'secret' };
+    const result = stripAnthropicEnv(input);
+    expect(result).toEqual({ FOO: 'bar' });
+  });
+
+  it('handles empty object', () => {
+    expect(stripAnthropicEnv({})).toEqual({});
+  });
+
+  it('preserves undefined values', () => {
+    const input: NodeJS.ProcessEnv = { FOO: 'bar', BAZ: undefined };
+    const result = stripAnthropicEnv(input);
+    expect(result.FOO).toBe('bar');
+    expect(result.BAZ).toBeUndefined();
+    expect('BAZ' in result).toBe(true);
+  });
+
+  it('is case-sensitive (only uppercase ANTHROPIC_)', () => {
+    const input = {
+      anthropic_base_url: 'lowercase',
+      Anthropic_Model: 'mixed',
+      ANTHROPIC_API_KEY: 'uppercase',
+    };
+    const result = stripAnthropicEnv(input);
+    expect(result).toEqual({
+      anthropic_base_url: 'lowercase',
+      Anthropic_Model: 'mixed',
+    });
+  });
+
+  it('strips all ANTHROPIC_ prefixed vars including nested names', () => {
+    const input = {
+      ANTHROPIC_: 'empty suffix',
+      ANTHROPIC_V2_SETTING: 'v2',
+      ANTHROPIC_INTERNAL_DEBUG: 'internal',
+      PATH: '/bin',
+    };
+    const result = stripAnthropicEnv(input);
+    expect(result).toEqual({ PATH: '/bin' });
   });
 });

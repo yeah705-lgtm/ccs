@@ -9,6 +9,21 @@ import { ErrorManager } from './error-manager';
 import { getWebSearchHookEnv } from './websearch-manager';
 
 /**
+ * Strip ANTHROPIC_* env vars from an environment object.
+ * Used for account/default profiles to prevent stale proxy config from
+ * interfering with native Claude API routing.
+ */
+export function stripAnthropicEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const result: NodeJS.ProcessEnv = {};
+  for (const key of Object.keys(env)) {
+    if (!key.startsWith('ANTHROPIC_')) {
+      result[key] = env[key];
+    }
+  }
+  return result;
+}
+
+/**
  * Escape arguments for shell execution (cross-platform)
  *
  * IMPORTANT: On Windows, spawn({ shell: true }) uses cmd.exe by default,
@@ -52,10 +67,20 @@ export function execClaude(
   // Get WebSearch hook config env vars
   const webSearchEnv = getWebSearchHookEnv();
 
-  // Prepare environment (merge with process.env if envVars provided)
+  // For account/default profiles, strip ANTHROPIC_* from parent env to prevent
+  // stale proxy config (e.g., from prior CLIProxy sessions) from interfering
+  // with native Claude API routing. Settings-based profiles explicitly inject
+  // their own ANTHROPIC_* values, so they don't need this protection.
+  const profileType = envVars?.CCS_PROFILE_TYPE;
+  const baseEnv =
+    profileType === 'account' || profileType === 'default'
+      ? stripAnthropicEnv(process.env)
+      : process.env;
+
+  // Prepare environment (merge with base env if envVars provided)
   const env = envVars
-    ? { ...process.env, ...envVars, ...webSearchEnv }
-    : { ...process.env, ...webSearchEnv };
+    ? { ...baseEnv, ...envVars, ...webSearchEnv }
+    : { ...baseEnv, ...webSearchEnv };
 
   let child: ChildProcess;
   if (needsShell) {
