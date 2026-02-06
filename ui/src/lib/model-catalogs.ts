@@ -170,17 +170,66 @@ export const MODEL_CATALOGS: Record<string, ProviderCatalog> = {
   qwen: {
     provider: 'qwen',
     displayName: 'Qwen',
-    defaultModel: 'qwen-coder-plus',
+    defaultModel: 'qwen3-coder-plus',
     models: [
       {
-        id: 'qwen-coder-plus',
-        name: 'Qwen Coder Plus',
-        description: 'Alibaba code-focused model',
+        id: 'qwen3-coder-plus',
+        name: 'Qwen3 Coder Plus',
+        description: 'Code-focused model (1M context)',
+        presetMapping: {
+          default: 'qwen3-coder-plus',
+          opus: 'qwen3-max',
+          sonnet: 'qwen3-coder-plus',
+          haiku: 'qwen3-coder-flash',
+        },
       },
       {
-        id: 'qwen-max',
-        name: 'Qwen Max',
-        description: 'Most capable Qwen model',
+        id: 'qwen3-max',
+        name: 'Qwen3 Max',
+        description: 'Flagship model (256K context)',
+        presetMapping: {
+          default: 'qwen3-max',
+          opus: 'qwen3-max',
+          sonnet: 'qwen3-coder-plus',
+          haiku: 'qwen3-coder-flash',
+        },
+      },
+      {
+        id: 'qwen3-max-preview',
+        name: 'Qwen3 Max Preview',
+        description: 'Preview with thinking support (256K)',
+        presetMapping: {
+          default: 'qwen3-max-preview',
+          opus: 'qwen3-max-preview',
+          sonnet: 'qwen3-max',
+          haiku: 'qwen3-coder-flash',
+        },
+      },
+      {
+        id: 'qwen3-235b',
+        name: 'Qwen3 235B',
+        description: 'Large 235B A22B model',
+        presetMapping: {
+          default: 'qwen3-235b',
+          opus: 'qwen3-max',
+          sonnet: 'qwen3-235b',
+          haiku: 'qwen3-coder-flash',
+        },
+      },
+      {
+        id: 'qwen3-vl-plus',
+        name: 'Qwen3 VL Plus',
+        description: 'Vision-language multimodal',
+      },
+      {
+        id: 'qwen3-coder-flash',
+        name: 'Qwen3 Coder Flash',
+        description: 'Fast code generation',
+      },
+      {
+        id: 'qwen3-32b',
+        name: 'Qwen3 32B',
+        description: 'Qwen3 32B model',
       },
     ],
   },
