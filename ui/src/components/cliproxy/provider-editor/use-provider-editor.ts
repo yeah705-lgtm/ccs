@@ -15,7 +15,6 @@ import {
 
 /** Model env keys that should have [1m] suffix applied */
 const MODEL_ENV_KEYS = ['ANTHROPIC_MODEL'] as const;
-import type { SettingsResponse, UseProviderEditorReturn } from './types';
 
 /** Required env vars for CLIProxy providers (informational only - runtime fills defaults) */
 const REQUIRED_ENV_KEYS = ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN'] as const;
