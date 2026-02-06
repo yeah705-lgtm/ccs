@@ -8,6 +8,7 @@ import { Zap, Info } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { isNativeGeminiModel } from '@/lib/extended-context-utils';
 import type { ModelEntry } from './provider-model-selector';
 
 interface ExtendedContextToggleProps {
@@ -23,15 +24,6 @@ interface ExtendedContextToggleProps {
   disabled?: boolean;
   /** Additional className */
   className?: string;
-}
-
-/**
- * Check if model is a native Gemini model (auto-enabled behavior).
- * Native Gemini models: gemini-* but NOT gemini-claude-*
- */
-function isNativeGeminiModel(modelId: string): boolean {
-  const lower = modelId.toLowerCase();
-  return lower.startsWith('gemini-') && !lower.startsWith('gemini-claude-');
 }
 
 export function ExtendedContextToggle({

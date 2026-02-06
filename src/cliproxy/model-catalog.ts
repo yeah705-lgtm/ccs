@@ -110,6 +110,7 @@ export const MODEL_CATALOG: Partial<Record<CLIProxyProvider, ProviderCatalog>> =
         name: 'Gemini 3 Pro',
         description: 'Google latest model via Antigravity',
         thinking: { type: 'levels', levels: ['low', 'high'], dynamicAllowed: true },
+        extendedContext: true,
       },
     ],
   },

@@ -146,6 +146,7 @@ export function ModelConfigTab({
           sonnetModel={sonnetModel}
           haikuModel={haikuModel}
           providerModels={providerModels}
+          provider={provider}
           onApplyPreset={onApplyPreset}
           onUpdateEnvValue={onUpdateEnvValue}
           onOpenCustomPreset={onOpenCustomPreset}

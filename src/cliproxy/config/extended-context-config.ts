@@ -11,6 +11,7 @@
 
 import { CLIProxyProvider } from '../types';
 import { supportsExtendedContext, isNativeGeminiModel } from '../model-catalog';
+import { warn } from '../../utils/ui';
 
 /** Extended context suffix recognized by Claude Code */
 const EXTENDED_CONTEXT_SUFFIX = '[1m]';
@@ -23,7 +24,9 @@ const EXTENDED_CONTEXT_SUFFIX = '[1m]';
  * @returns Model name with [1m] suffix, e.g., "gemini-2.5-pro[1m]" or "gemini-2.5-pro(high)[1m]"
  */
 export function applyExtendedContextSuffix(model: string): string {
-  if (model.endsWith(EXTENDED_CONTEXT_SUFFIX)) {
+  if (!model) return model;
+  // Case-insensitive check to avoid double suffix (handles [1M], [1m], etc.)
+  if (model.toLowerCase().endsWith(EXTENDED_CONTEXT_SUFFIX.toLowerCase())) {
     return model;
   }
   return `${model}${EXTENDED_CONTEXT_SUFFIX}`;
@@ -45,7 +48,11 @@ export function shouldApplyExtendedContext(
   // Explicit override takes priority
   if (extendedContextOverride === true) {
     // User explicitly requested --1m
-    return supportsExtendedContext(provider, modelId);
+    const supported = supportsExtendedContext(provider, modelId);
+    if (!supported) {
+      console.error(warn(`Model "${modelId}" does not support 1M extended context. Flag ignored.`));
+    }
+    return supported;
   }
   if (extendedContextOverride === false) {
     // User explicitly disabled with --no-1m
@@ -114,6 +121,7 @@ export function applyExtendedContextConfig(
  */
 function stripModelSuffixes(modelId: string): string {
   return modelId
+    .trim()
     .replace(/\[1m\]$/i, '') // Remove [1m] suffix
     .replace(/\([^)]+\)$/, ''); // Remove thinking suffix like (high) or (8192)
 }
