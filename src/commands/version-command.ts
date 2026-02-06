@@ -8,7 +8,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { initUI, header, subheader, color, warn } from '../utils/ui';
-import { getConfigPath } from '../utils/config-manager';
+import { getActiveConfigPath } from '../utils/config-manager';
 import { getVersion } from '../utils/version';
 
 /**
@@ -26,7 +26,7 @@ export async function handleVersionCommand(): Promise<void> {
   const ccsDir = path.join(os.homedir(), '.ccs');
   console.log(`  ${color('CCS Directory:'.padEnd(17), 'info')} ${ccsDir}`);
 
-  const configPath = getConfigPath();
+  const configPath = getActiveConfigPath();
   console.log(`  ${color('Config:'.padEnd(17), 'info')} ${configPath}`);
 
   const profilesJson = path.join(os.homedir(), '.ccs', 'profiles.json');
