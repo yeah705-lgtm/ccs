@@ -7,6 +7,14 @@ import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { SettingsResponse, UseProviderEditorReturn } from './types';
+import {
+  applyExtendedContextSuffix,
+  stripExtendedContextSuffix,
+  hasExtendedContextSuffix,
+} from '@/lib/extended-context-utils';
+
+/** Model env keys that should have [1m] suffix applied */
+const MODEL_ENV_KEYS = ['ANTHROPIC_MODEL'] as const;
 
 /** Required env vars for CLIProxy providers (informational only - runtime fills defaults) */
 const REQUIRED_ENV_KEYS = ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN'] as const;
@@ -68,10 +76,44 @@ export function useProviderEditor(provider: string): UseProviderEditorReturn {
   const sonnetModel = currentSettings?.env?.ANTHROPIC_DEFAULT_SONNET_MODEL;
   const haikuModel = currentSettings?.env?.ANTHROPIC_DEFAULT_HAIKU_MODEL;
 
+  // Extended context is enabled if any model has [1m] suffix
+  const extendedContextEnabled = useMemo(() => {
+    const env = currentSettings?.env || {};
+    return MODEL_ENV_KEYS.some((key) => {
+      const value = env[key];
+      return value && hasExtendedContextSuffix(value);
+    });
+  }, [currentSettings]);
+
   // Update a single setting value
   const updateEnvValue = useCallback(
     (key: string, value: string) => {
       const newEnv = { ...(currentSettings?.env || {}), [key]: value };
+      const newSettings = { ...currentSettings, env: newEnv };
+      setRawJsonEdits(JSON.stringify(newSettings, null, 2));
+    },
+    [currentSettings]
+  );
+
+  // Toggle extended context - applies/strips [1m] suffix to all model env vars
+  const toggleExtendedContext = useCallback(
+    (enabled: boolean) => {
+      const env = currentSettings?.env || {};
+      const updates: Record<string, string> = {};
+
+      for (const key of MODEL_ENV_KEYS) {
+        const value = env[key];
+        if (value) {
+          updates[key] = enabled
+            ? applyExtendedContextSuffix(value)
+            : stripExtendedContextSuffix(value);
+        }
+      }
+
+      // Remove the legacy flag if present
+      const newEnv = { ...env, ...updates };
+      delete newEnv['CCS_EXTENDED_CONTEXT'];
+
       const newSettings = { ...currentSettings, env: newEnv };
       setRawJsonEdits(JSON.stringify(newSettings, null, 2));
     },
@@ -169,6 +211,8 @@ export function useProviderEditor(provider: string): UseProviderEditorReturn {
     opusModel,
     sonnetModel,
     haikuModel,
+    extendedContextEnabled,
+    toggleExtendedContext,
     handleRawJsonChange,
     updateEnvValue,
     updateEnvValues,

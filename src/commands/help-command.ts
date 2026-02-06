@@ -182,6 +182,8 @@ Run ${color('ccs config', 'command')} for web dashboard`.trim();
         'ccs <provider> --thinking <value>',
         'Set thinking budget (low/medium/high/xhigh/auto/off or number)',
       ],
+      ['ccs <provider> --1m', 'Enable 1M token context window'],
+      ['ccs <provider> --no-1m', 'Disable 1M context (use 200K default)'],
       ['ccs <provider> --logout', 'Clear authentication'],
       ['ccs <provider> --headless', 'Headless auth (for SSH)'],
       ['ccs <provider> --port-forward', 'Force port-forwarding mode (skip prompt)'],
@@ -307,6 +309,18 @@ Run ${color('ccs config', 'command')} for web dashboard`.trim();
     ['', ''],
     ['Note:', 'Extended thinking allocates compute for step-by-step reasoning'],
     ['', 'before responding. Supported: agy, gemini (thinking models).'],
+  ]);
+
+  // Extended Context (1M)
+  printSubSection('Extended Context (--1m)', [
+    ['--1m', 'Enable 1M token context window'],
+    ['--no-1m', 'Disable 1M context (use 200K default)'],
+    ['', ''],
+    ['Auto behavior:', 'Gemini models: auto-enabled by default'],
+    ['', 'Claude models: opt-in with --1m flag'],
+    ['', ''],
+    ['Note:', 'Extended context enables 1M token window via [1m] suffix.'],
+    ['', 'Premium pricing: 2x input for >200K tokens.'],
   ]);
 
   // Image Analysis

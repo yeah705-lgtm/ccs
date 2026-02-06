@@ -329,6 +329,24 @@ export async function execClaudeWithCLIProxy(
     }
   }
 
+  // Parse --1m / --no-1m flags for extended context (1M token window)
+  let extendedContextOverride: boolean | undefined;
+  const has1mFlag =
+    argsWithoutProxy.includes('--1m') || argsWithoutProxy.some((arg) => arg.startsWith('--1m='));
+  const hasNo1mFlag =
+    argsWithoutProxy.includes('--no-1m') ||
+    argsWithoutProxy.some((arg) => arg.startsWith('--no-1m='));
+
+  if (has1mFlag && hasNo1mFlag) {
+    console.error(fail('Cannot use both --1m and --no-1m flags'));
+    process.exit(1);
+  } else if (has1mFlag) {
+    extendedContextOverride = true;
+  } else if (hasNo1mFlag) {
+    extendedContextOverride = false;
+  }
+  // undefined = auto behavior (Gemini: on, others: off)
+
   // Handle --accounts
   if (showAccounts) {
     const accounts = getProviderAccounts(provider);
@@ -593,6 +611,7 @@ export async function execClaudeWithCLIProxy(
     localPort: cfg.port,
     customSettingsPath: cfg.customSettingsPath,
     thinkingOverride,
+    extendedContextOverride,
     verbose,
   });
 
@@ -681,6 +700,7 @@ export async function execClaudeWithCLIProxy(
     localPort: cfg.port,
     customSettingsPath: cfg.customSettingsPath,
     thinkingOverride,
+    extendedContextOverride,
     verbose,
   });
 
@@ -700,6 +720,8 @@ export async function execClaudeWithCLIProxy(
     '--use',
     '--nickname',
     '--thinking',
+    '--1m',
+    '--no-1m',
     '--incognito',
     '--no-incognito',
     '--import',
@@ -709,6 +731,7 @@ export async function execClaudeWithCLIProxy(
   const claudeArgs = argsWithoutProxy.filter((arg, idx) => {
     if (ccsFlags.includes(arg)) return false;
     if (arg.startsWith('--thinking=')) return false;
+    if (arg.startsWith('--1m=') || arg.startsWith('--no-1m=')) return false;
     if (
       argsWithoutProxy[idx - 1] === '--use' ||
       argsWithoutProxy[idx - 1] === '--nickname' ||

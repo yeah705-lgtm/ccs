@@ -29,6 +29,8 @@ export interface ModelEntry {
   issueUrl?: string;
   deprecated?: boolean;
   deprecationReason?: string;
+  /** Whether model supports 1M extended context window */
+  extendedContext?: boolean;
   /** Optional preset mapping for different tiers (if different from id) */
   presetMapping?: {
     default: string;

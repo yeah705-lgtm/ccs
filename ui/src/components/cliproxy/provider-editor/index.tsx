@@ -91,6 +91,8 @@ export function ProviderEditor({
     opusModel,
     sonnetModel,
     haikuModel,
+    extendedContextEnabled,
+    toggleExtendedContext,
     handleRawJsonChange,
     updateEnvValue,
     updateEnvValues,
@@ -197,6 +199,8 @@ export function ProviderEditor({
                     sonnetModel={sonnetModel}
                     haikuModel={haikuModel}
                     providerModels={providerModels}
+                    extendedContextEnabled={extendedContextEnabled}
+                    onExtendedContextToggle={toggleExtendedContext}
                     onApplyPreset={handleApplyPreset}
                     onUpdateEnvValue={updateEnvValue}
                     onOpenCustomPreset={() => setCustomPresetOpen(true)}
