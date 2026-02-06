@@ -50,6 +50,8 @@ export interface ModelEntry {
   deprecationReason?: string;
   /** Thinking/reasoning support configuration */
   thinking?: ThinkingSupport;
+  /** Whether model supports 1M extended context window (appends [1m] suffix) */
+  extendedContext?: boolean;
 }
 
 /**
@@ -122,6 +124,7 @@ export const MODEL_CATALOG: Partial<Record<CLIProxyProvider, ProviderCatalog>> =
         tier: 'pro',
         description: 'Latest model, requires paid Google account',
         thinking: { type: 'levels', levels: ['low', 'high'], dynamicAllowed: true },
+        extendedContext: true,
       },
       {
         id: 'gemini-2.5-pro',
@@ -134,6 +137,7 @@ export const MODEL_CATALOG: Partial<Record<CLIProxyProvider, ProviderCatalog>> =
           zeroAllowed: false,
           dynamicAllowed: true,
         },
+        extendedContext: true,
       },
     ],
   },
@@ -172,6 +176,19 @@ export const MODEL_CATALOG: Partial<Record<CLIProxyProvider, ProviderCatalog>> =
     defaultModel: 'claude-sonnet-4-5-20250929',
     models: [
       {
+        id: 'claude-opus-4-6-20260101',
+        name: 'Claude Opus 4.6',
+        description: 'Latest flagship model',
+        thinking: {
+          type: 'budget',
+          min: 1024,
+          max: 128000,
+          zeroAllowed: false,
+          dynamicAllowed: true,
+        },
+        extendedContext: true,
+      },
+      {
         id: 'claude-opus-4-5-20251101',
         name: 'Claude Opus 4.5',
         description: 'Most capable Claude model',
@@ -182,6 +199,7 @@ export const MODEL_CATALOG: Partial<Record<CLIProxyProvider, ProviderCatalog>> =
           zeroAllowed: false,
           dynamicAllowed: true,
         },
+        extendedContext: true,
       },
       {
         id: 'claude-sonnet-4-5-20250929',
@@ -194,6 +212,7 @@ export const MODEL_CATALOG: Partial<Record<CLIProxyProvider, ProviderCatalog>> =
           zeroAllowed: false,
           dynamicAllowed: true,
         },
+        extendedContext: true,
       },
       {
         id: 'claude-sonnet-4-20250514',
@@ -206,6 +225,7 @@ export const MODEL_CATALOG: Partial<Record<CLIProxyProvider, ProviderCatalog>> =
           zeroAllowed: false,
           dynamicAllowed: true,
         },
+        extendedContext: true,
       },
       {
         id: 'claude-haiku-4-5-20251001',
@@ -306,4 +326,22 @@ export function getModelMaxLevel(
 export function supportsThinking(provider: CLIProxyProvider, modelId: string): boolean {
   const thinking = getModelThinkingSupport(provider, modelId);
   return thinking !== undefined && thinking.type !== 'none';
+}
+
+/**
+ * Check if model supports extended context (1M tokens).
+ * Returns true if model has extendedContext: true in catalog.
+ */
+export function supportsExtendedContext(provider: CLIProxyProvider, modelId: string): boolean {
+  const model = findModel(provider, modelId);
+  return model?.extendedContext === true;
+}
+
+/**
+ * Check if model is a native Gemini model (not gemini-claude-*).
+ * Native Gemini models get extended context auto-enabled.
+ */
+export function isNativeGeminiModel(modelId: string): boolean {
+  const lower = modelId.toLowerCase();
+  return lower.startsWith('gemini-') && !lower.startsWith('gemini-claude-');
 }

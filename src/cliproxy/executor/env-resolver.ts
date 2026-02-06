@@ -10,6 +10,7 @@
  */
 
 import { getEffectiveEnvVars, getRemoteEnvVars, applyThinkingConfig } from '../config-generator';
+import { applyExtendedContextConfig } from '../config/extended-context-config';
 import { CLIProxyProvider } from '../types';
 import { getWebSearchHookEnv } from '../../utils/websearch-manager';
 import { getImageAnalysisHookEnv } from '../../utils/hooks/get-image-analysis-hook-env';
@@ -37,6 +38,8 @@ export interface ProxyChainConfig {
   localPort: number;
   customSettingsPath?: string;
   thinkingOverride?: string | number;
+  /** Extended context override: true = force on, false = force off, undefined = auto */
+  extendedContextOverride?: boolean;
   verbose: boolean;
 }
 
@@ -54,6 +57,7 @@ export function buildClaudeEnvironment(config: ProxyChainConfig): Record<string,
     localPort,
     customSettingsPath,
     thinkingOverride,
+    extendedContextOverride,
     codexReasoningPort,
     toolSanitizationPort,
   } = config;
@@ -103,6 +107,10 @@ export function buildClaudeEnvironment(config: ProxyChainConfig): Record<string,
 
   // Apply thinking configuration to model (auto tier-based or manual override)
   applyThinkingConfig(envVars, provider, thinkingOverride);
+
+  // Apply extended context suffix for 1M token context window
+  // Auto-enabled for Gemini, opt-in for Claude (--1m flag)
+  applyExtendedContextConfig(envVars, provider, extendedContextOverride);
 
   // Determine the final ANTHROPIC_BASE_URL based on active proxies
   // Chain order: Claude CLI → [CodexReasoningProxy] → [ToolSanitizationProxy] → CLIProxy
