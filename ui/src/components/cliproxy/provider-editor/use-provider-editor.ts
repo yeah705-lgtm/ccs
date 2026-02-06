@@ -68,6 +68,9 @@ export function useProviderEditor(provider: string): UseProviderEditorReturn {
   const sonnetModel = currentSettings?.env?.ANTHROPIC_DEFAULT_SONNET_MODEL;
   const haikuModel = currentSettings?.env?.ANTHROPIC_DEFAULT_HAIKU_MODEL;
 
+  // Extended context setting (stored as 'true'/'false' string)
+  const extendedContextEnabled = currentSettings?.env?.CCS_EXTENDED_CONTEXT === 'true';
+
   // Update a single setting value
   const updateEnvValue = useCallback(
     (key: string, value: string) => {
@@ -76,6 +79,14 @@ export function useProviderEditor(provider: string): UseProviderEditorReturn {
       setRawJsonEdits(JSON.stringify(newSettings, null, 2));
     },
     [currentSettings]
+  );
+
+  // Toggle extended context
+  const toggleExtendedContext = useCallback(
+    (enabled: boolean) => {
+      updateEnvValue('CCS_EXTENDED_CONTEXT', enabled ? 'true' : 'false');
+    },
+    [updateEnvValue]
   );
 
   // Batch update multiple env values at once
@@ -169,6 +180,8 @@ export function useProviderEditor(provider: string): UseProviderEditorReturn {
     opusModel,
     sonnetModel,
     haikuModel,
+    extendedContextEnabled,
+    toggleExtendedContext,
     handleRawJsonChange,
     updateEnvValue,
     updateEnvValues,

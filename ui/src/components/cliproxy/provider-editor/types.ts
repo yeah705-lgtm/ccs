@@ -139,6 +139,10 @@ export interface UseProviderEditorReturn {
   opusModel?: string;
   sonnetModel?: string;
   haikuModel?: string;
+  /** Whether extended context (1M tokens) is enabled */
+  extendedContextEnabled: boolean;
+  /** Toggle extended context on/off */
+  toggleExtendedContext: (enabled: boolean) => void;
   handleRawJsonChange: (value: string) => void;
   updateEnvValue: (key: string, value: string) => void;
   updateEnvValues: (updates: Record<string, string>) => void;

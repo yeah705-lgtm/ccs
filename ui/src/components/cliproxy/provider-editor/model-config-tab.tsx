@@ -28,6 +28,10 @@ interface ModelConfigTabProps {
   sonnetModel?: string;
   haikuModel?: string;
   providerModels: Array<{ id: string; owned_by: string }>;
+  /** Whether extended context (1M tokens) is enabled */
+  extendedContextEnabled?: boolean;
+  /** Callback when extended context toggle changes */
+  onExtendedContextToggle?: (enabled: boolean) => void;
   onApplyPreset: (updates: Record<string, string>) => void;
   onUpdateEnvValue: (key: string, value: string) => void;
   onOpenCustomPreset: () => void;
@@ -67,6 +71,8 @@ export function ModelConfigTab({
   sonnetModel,
   haikuModel,
   providerModels,
+  extendedContextEnabled,
+  onExtendedContextToggle,
   onApplyPreset,
   onUpdateEnvValue,
   onOpenCustomPreset,
@@ -147,6 +153,8 @@ export function ModelConfigTab({
           haikuModel={haikuModel}
           providerModels={providerModels}
           provider={provider}
+          extendedContextEnabled={extendedContextEnabled}
+          onExtendedContextToggle={onExtendedContextToggle}
           onApplyPreset={onApplyPreset}
           onUpdateEnvValue={onUpdateEnvValue}
           onOpenCustomPreset={onOpenCustomPreset}
