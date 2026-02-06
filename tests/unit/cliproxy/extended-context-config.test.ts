@@ -2,7 +2,7 @@
  * Unit tests for extended context configuration
  */
 
-import { describe, it, expect, beforeEach, afterEach, spyOn, mock } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, spyOn } from 'bun:test';
 import {
   applyExtendedContextSuffix,
   shouldApplyExtendedContext,

@@ -10,7 +10,8 @@ export const EXTENDED_CONTEXT_SUFFIX = '[1m]';
  * Check if model is a native Gemini model (auto-enabled behavior).
  * Native Gemini models: gemini-* but NOT gemini-claude-*
  *
- * This mirrors the backend function in src/cliproxy/model-catalog.ts
+ * NOTE: This function is intentionally duplicated from src/cliproxy/model-catalog.ts
+ * to avoid bundling backend code in the UI. Keep both in sync.
  */
 export function isNativeGeminiModel(modelId: string): boolean {
   const lower = modelId.toLowerCase();
