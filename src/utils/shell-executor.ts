@@ -13,7 +13,7 @@ import { getWebSearchHookEnv } from './websearch-manager';
  * Used for account/default profiles to prevent stale proxy config from
  * interfering with native Claude API routing.
  */
-function stripAnthropicEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+export function stripAnthropicEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const result: NodeJS.ProcessEnv = {};
   for (const key of Object.keys(env)) {
     if (!key.startsWith('ANTHROPIC_')) {
