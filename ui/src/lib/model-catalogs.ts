@@ -49,6 +49,7 @@ export const MODEL_CATALOGS: Record<string, ProviderCatalog> = {
         id: 'gemini-3-pro-preview',
         name: 'Gemini 3 Pro',
         description: 'Google latest model via Antigravity',
+        extendedContext: true,
         presetMapping: {
           default: 'gemini-3-pro-preview',
           opus: 'gemini-3-pro-preview',
@@ -60,6 +61,7 @@ export const MODEL_CATALOGS: Record<string, ProviderCatalog> = {
         id: 'gemini-3-flash-preview',
         name: 'Gemini 3 Flash',
         description: 'Fast Gemini model via Antigravity',
+        extendedContext: true,
         presetMapping: {
           default: 'gemini-3-flash-preview',
           opus: 'gemini-3-pro-preview',
@@ -79,6 +81,7 @@ export const MODEL_CATALOGS: Record<string, ProviderCatalog> = {
         name: 'Gemini 3 Pro',
         tier: 'paid',
         description: 'Latest model, requires paid Google account',
+        extendedContext: true,
         presetMapping: {
           default: 'gemini-3-pro-preview',
           opus: 'gemini-3-pro-preview',
@@ -91,6 +94,7 @@ export const MODEL_CATALOGS: Record<string, ProviderCatalog> = {
         name: 'Gemini 3 Flash',
         tier: 'paid',
         description: 'Fast Gemini 3 model, requires paid Google account',
+        extendedContext: true,
         presetMapping: {
           default: 'gemini-3-flash-preview',
           opus: 'gemini-3-pro-preview',
@@ -102,6 +106,7 @@ export const MODEL_CATALOGS: Record<string, ProviderCatalog> = {
         id: 'gemini-2.5-pro',
         name: 'Gemini 2.5 Pro',
         description: 'Stable, works with free Google account',
+        extendedContext: true,
         presetMapping: {
           default: 'gemini-2.5-pro',
           opus: 'gemini-2.5-pro',
@@ -317,9 +322,22 @@ export const MODEL_CATALOGS: Record<string, ProviderCatalog> = {
     defaultModel: 'claude-sonnet-4-5-20250929',
     models: [
       {
+        id: 'claude-opus-4-6-20260203',
+        name: 'Claude Opus 4.6',
+        description: 'Latest flagship model',
+        extendedContext: true,
+        presetMapping: {
+          default: 'claude-opus-4-6-20260203',
+          opus: 'claude-opus-4-6-20260203',
+          sonnet: 'claude-sonnet-4-5-20250929',
+          haiku: 'claude-haiku-4-5-20251001',
+        },
+      },
+      {
         id: 'claude-opus-4-5-20251101',
         name: 'Claude Opus 4.5',
         description: 'Most capable Claude model',
+        extendedContext: true,
         presetMapping: {
           default: 'claude-opus-4-5-20251101',
           opus: 'claude-opus-4-5-20251101',
@@ -331,6 +349,7 @@ export const MODEL_CATALOGS: Record<string, ProviderCatalog> = {
         id: 'claude-sonnet-4-5-20250929',
         name: 'Claude Sonnet 4.5',
         description: 'Balanced performance and speed',
+        extendedContext: true,
         presetMapping: {
           default: 'claude-sonnet-4-5-20250929',
           opus: 'claude-opus-4-5-20251101',
@@ -342,6 +361,7 @@ export const MODEL_CATALOGS: Record<string, ProviderCatalog> = {
         id: 'claude-sonnet-4-20250514',
         name: 'Claude Sonnet 4',
         description: 'Previous generation Sonnet',
+        extendedContext: true,
         presetMapping: {
           default: 'claude-sonnet-4-20250514',
           opus: 'claude-opus-4-5-20251101',

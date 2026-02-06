@@ -113,6 +113,12 @@ export interface ModelConfigSectionProps {
   sonnetModel?: string;
   haikuModel?: string;
   providerModels: Array<{ id: string; owned_by: string }>;
+  /** Provider name for display */
+  provider: string;
+  /** Whether extended context (1M tokens) is enabled */
+  extendedContextEnabled?: boolean;
+  /** Callback when extended context toggle changes */
+  onExtendedContextToggle?: (enabled: boolean) => void;
   onApplyPreset: (updates: Record<string, string>) => void;
   onUpdateEnvValue: (key: string, value: string) => void;
   onOpenCustomPreset: () => void;
