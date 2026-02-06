@@ -144,7 +144,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
   {
     id: 'qwen',
     name: 'Qwen',
-    description: 'Alibaba Cloud - qwen3-coder-plus (256K context)',
+    description: 'Alibaba Cloud - Qwen3 models (256K-1M context, thinking support)',
     baseUrl: 'https://dashscope-intl.aliyuncs.com/apps/anthropic',
     defaultProfileName: 'qwen',
     defaultModel: 'qwen3-coder-plus',
