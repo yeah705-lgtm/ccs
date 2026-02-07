@@ -443,6 +443,8 @@ export class ToolSanitizationProxy {
           let hasReceivedContent = false;
           let hasReceivedData = false;
           let hasReceivedMessageStart = false;
+          let hasReceivedMessageDelta = false;
+          let hasReceivedMessageStop = false;
           const isSuccessResponse =
             (upstreamRes.statusCode || 200) >= 200 && (upstreamRes.statusCode || 200) < 300;
 
@@ -461,6 +463,12 @@ export class ToolSanitizationProxy {
               if (chunkStr.includes('"message_start"')) {
                 hasReceivedMessageStart = true;
               }
+              if (chunkStr.includes('"message_delta"')) {
+                hasReceivedMessageDelta = true;
+              }
+              if (chunkStr.includes('"message_stop"')) {
+                hasReceivedMessageStop = true;
+              }
               clientRes.write(chunk);
             });
             upstreamRes.on('end', () => {
@@ -470,7 +478,13 @@ export class ToolSanitizationProxy {
                     'warn',
                     '[tool-sanitization-proxy] Empty response detected from upstream (no content blocks). Injecting synthetic response to prevent client crash.'
                   );
-                  clientRes.write(this.buildSyntheticErrorResponse(hasReceivedMessageStart));
+                  clientRes.write(
+                    this.buildSyntheticErrorResponse(
+                      hasReceivedMessageStart,
+                      hasReceivedMessageDelta,
+                      hasReceivedMessageStop
+                    )
+                  );
                 }
                 clientRes.end();
               } catch {
@@ -502,6 +516,12 @@ export class ToolSanitizationProxy {
               if (event.includes('"message_start"')) {
                 hasReceivedMessageStart = true;
               }
+              if (event.includes('"message_delta"')) {
+                hasReceivedMessageDelta = true;
+              }
+              if (event.includes('"message_stop"')) {
+                hasReceivedMessageStop = true;
+              }
 
               const processedEvent = this.processSSEEvent(event, mapper);
               clientRes.write(processedEvent + '\n\n');
@@ -525,7 +545,13 @@ export class ToolSanitizationProxy {
                   'warn',
                   '[tool-sanitization-proxy] Empty response detected from upstream (no content blocks). Injecting synthetic response to prevent client crash.'
                 );
-                clientRes.write(this.buildSyntheticErrorResponse(hasReceivedMessageStart));
+                clientRes.write(
+                  this.buildSyntheticErrorResponse(
+                    hasReceivedMessageStart,
+                    hasReceivedMessageDelta,
+                    hasReceivedMessageStop
+                  )
+                );
               }
 
               clientRes.end();
@@ -606,9 +632,13 @@ export class ToolSanitizationProxy {
   /**
    * Build a synthetic minimal SSE response when upstream returns empty content.
    * Prevents Claude Code from crashing with "No assistant message found".
-   * Omits message_start if upstream already sent one to avoid duplicate events.
+   * Omits lifecycle events that upstream already sent to avoid protocol violations.
    */
-  private buildSyntheticErrorResponse(upstreamSentMessageStart = false): string {
+  private buildSyntheticErrorResponse(
+    upstreamSentMessageStart = false,
+    upstreamSentMessageDelta = false,
+    upstreamSentMessageStop = false
+  ): string {
     const events: string[] = [];
 
     // Only include message_start if upstream didn't already send one
@@ -622,10 +652,18 @@ export class ToolSanitizationProxy {
     events.push(
       `event: content_block_start\ndata: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}`,
       `event: content_block_delta\ndata: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"[Proxy Error] The upstream API returned an empty response. This typically occurs when the proxy drops unsigned thinking blocks during sub-agent execution. Please retry the request."}}`,
-      `event: content_block_stop\ndata: {"type":"content_block_stop","index":0}`,
-      `event: message_delta\ndata: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"input_tokens":0,"output_tokens":0}}`,
-      `event: message_stop\ndata: {"type":"message_stop"}`
+      `event: content_block_stop\ndata: {"type":"content_block_stop","index":0}`
     );
+
+    if (!upstreamSentMessageDelta) {
+      events.push(
+        `event: message_delta\ndata: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"input_tokens":0,"output_tokens":0}}`
+      );
+    }
+
+    if (!upstreamSentMessageStop) {
+      events.push(`event: message_stop\ndata: {"type":"message_stop"}`);
+    }
 
     return events.join('\n\n') + '\n\n';
   }
