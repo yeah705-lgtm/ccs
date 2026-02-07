@@ -528,9 +528,13 @@ describe('ToolSanitizationProxy Integration', () => {
         expect(text).toContain('content_block_start');
         expect(text).toContain('content_block_delta');
         expect(text).toContain('content_block_stop');
-        // Should NOT have duplicate message_start (upstream already sent one)
+        // Should NOT have duplicate lifecycle events (upstream already sent them)
         const messageStartCount = (text.match(/"type":"message_start"/g) || []).length;
-        expect(messageStartCount).toBe(1); // Only the upstream one, not a synthetic duplicate
+        expect(messageStartCount).toBe(1);
+        const messageDeltaCount = (text.match(/"type":"message_delta"/g) || []).length;
+        expect(messageDeltaCount).toBe(1);
+        const messageStopCount = (text.match(/"type":"message_stop"/g) || []).length;
+        expect(messageStopCount).toBe(1);
       } finally {
         proxy.stop();
       }
@@ -648,8 +652,13 @@ describe('ToolSanitizationProxy Integration', () => {
         const text = await response.text();
         expect(text).toContain('[Proxy Error]');
         expect(text).toContain('content_block_start');
+        // No duplicate lifecycle events
         const messageStartCount = (text.match(/"type":"message_start"/g) || []).length;
         expect(messageStartCount).toBe(1);
+        const messageDeltaCount = (text.match(/"type":"message_delta"/g) || []).length;
+        expect(messageDeltaCount).toBe(1);
+        const messageStopCount = (text.match(/"type":"message_stop"/g) || []).length;
+        expect(messageStopCount).toBe(1);
       } finally {
         proxy.stop();
       }
@@ -686,9 +695,13 @@ describe('ToolSanitizationProxy Integration', () => {
         expect(text).toContain('content_block_start');
         expect(text).toContain('message_delta');
         expect(text).toContain('message_stop');
-        // Only 1 message_start — upstream's original
+        // Only 1 of each — upstream sent message_start, synthetic provides the rest
         const messageStartCount = (text.match(/"type":"message_start"/g) || []).length;
         expect(messageStartCount).toBe(1);
+        const messageDeltaCount = (text.match(/"type":"message_delta"/g) || []).length;
+        expect(messageDeltaCount).toBe(1);
+        const messageStopCount = (text.match(/"type":"message_stop"/g) || []).length;
+        expect(messageStopCount).toBe(1);
       } finally {
         proxy.stop();
       }
