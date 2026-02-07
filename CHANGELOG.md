@@ -1,3 +1,9 @@
+## [7.39.0](https://github.com/kaitranntt/ccs/compare/v7.38.0...v7.39.0) (2026-02-07)
+
+### Features
+
+* hybrid CLIProxy catalog sync + agent teams env fix ([#486](https://github.com/kaitranntt/ccs/issues/486)) ([0b39493](https://github.com/kaitranntt/ccs/commit/0b394933aec723f77a552b7d951afaf065399a92)), closes [#485](https://github.com/kaitranntt/ccs/issues/485) [#477](https://github.com/kaitranntt/ccs/issues/477)
+
 ## [7.38.0](https://github.com/kaitranntt/ccs/compare/v7.37.1...v7.38.0) (2026-02-07)
 
 ### Features
