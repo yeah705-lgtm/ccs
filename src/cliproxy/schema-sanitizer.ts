@@ -1,78 +1,60 @@
 /**
  * Schema Sanitizer
  *
- * Sanitizes MCP tool input_schema to remove non-standard JSON Schema properties
- * that Gemini/Vertex APIs reject.
+ * Sanitizes tool input_schema to only include fields supported by Google's
+ * Gemini/Vertex AI function_declarations Schema object.
  *
- * MCP servers (especially design tools) include UI-specific metadata in schemas:
- * - cornerRadius, fillColor, fontFamily, fontSize, fontWeight, gap, padding, etc.
+ * This sanitizer runs exclusively in the CLIProxy execution path (Gemini, Codex,
+ * Antigravity, etc.), never for direct Anthropic API requests.
  *
- * These are valid as MCP hints but invalid for strict JSON Schema validation.
+ * Gemini supports a subset of OpenAPI 3.0 schema — fields outside this subset
+ * (like "examples", "$ref", "oneOf", etc.) cause 400 errors.
+ *
+ * Reference: https://ai.google.dev/api/rest/v1beta/cachedContents#Schema
  */
 
-/** Valid JSON Schema Draft-07 keywords (used by Anthropic/Gemini APIs) */
-const VALID_JSON_SCHEMA_KEYWORDS = new Set([
+/**
+ * Fields supported by Gemini's function_declarations Schema object.
+ * Source: https://ai.google.dev/api/rest/v1beta/cachedContents#Schema
+ */
+const GEMINI_SUPPORTED_SCHEMA_FIELDS = new Set([
   // Core
   'type',
+  'format',
+  'title',
+  'description',
+  'nullable',
+  'example',
+  'default',
+
+  // Enum
+  'enum',
+
+  // Object
   'properties',
   'required',
+  'minProperties',
+  'maxProperties',
+
+  // Array
   'items',
-  'enum',
-  'const',
-  'default',
+  'minItems',
+  'maxItems',
 
   // String validation
   'minLength',
   'maxLength',
   'pattern',
-  'format',
 
   // Number validation
   'minimum',
   'maximum',
-  'exclusiveMinimum',
-  'exclusiveMaximum',
-  'multipleOf',
 
-  // Array validation
-  'minItems',
-  'maxItems',
-  'uniqueItems',
-  'contains',
-  'additionalItems',
-
-  // Object validation
-  'additionalProperties',
-  'patternProperties',
-  'minProperties',
-  'maxProperties',
-  'propertyNames',
-  'dependencies',
-
-  // Composition
-  'oneOf',
+  // Composition (only anyOf supported, NOT oneOf/allOf/not)
   'anyOf',
-  'allOf',
-  'not',
-  'if',
-  'then',
-  'else',
 
-  // Metadata (allowed by most APIs)
-  'title',
-  'description',
-  '$id',
-  '$schema',
-  '$ref',
-  '$defs',
-  'definitions',
-  '$comment',
-  'examples',
-  'readOnly',
-  'writeOnly',
-  'deprecated',
-  'contentMediaType',
-  'contentEncoding',
+  // Gemini-specific (non-standard OpenAPI)
+  'propertyOrdering',
 ]);
 
 /** Maximum recursion depth to prevent stack overflow */
@@ -88,15 +70,15 @@ export interface SchemaSanitizationResult {
 }
 
 /**
- * Check if a key is a valid JSON Schema keyword.
+ * Check if a key is supported by Gemini's Schema object.
  */
 function isValidSchemaKey(key: string): boolean {
-  return VALID_JSON_SCHEMA_KEYWORDS.has(key);
+  return GEMINI_SUPPORTED_SCHEMA_FIELDS.has(key);
 }
 
 /**
  * Recursively sanitize a JSON Schema object.
- * Removes non-standard properties while preserving valid schema structure.
+ * Removes fields unsupported by Gemini while preserving valid schema structure.
  *
  * @param schema The schema object to sanitize
  * @param path Current path for logging (e.g., "properties.foo.items")
@@ -167,115 +149,27 @@ function sanitizeSchemaRecursive(
       continue;
     }
 
-    if (key === 'additionalProperties' && typeof value === 'object') {
-      // Can be boolean or schema object
-      result[key] = sanitizeSchemaRecursive(value, keyPath, removedPaths, visited, depth + 1);
-      continue;
-    }
-
-    if (key === 'additionalItems' && typeof value === 'object' && value !== null) {
-      // Can be boolean or schema object (tuple validation)
-      result[key] = sanitizeSchemaRecursive(value, keyPath, removedPaths, visited, depth + 1);
-      continue;
-    }
-
-    // Composition keywords contain schema arrays
-    if (['oneOf', 'anyOf', 'allOf'].includes(key) && Array.isArray(value)) {
+    // anyOf is the only composition keyword Gemini supports
+    if (key === 'anyOf' && Array.isArray(value)) {
       result[key] = value.map((item, index) =>
         sanitizeSchemaRecursive(item, `${keyPath}[${index}]`, removedPaths, visited, depth + 1)
       );
       continue;
     }
 
-    if (key === 'not' && typeof value === 'object') {
-      result[key] = sanitizeSchemaRecursive(value, keyPath, removedPaths, visited, depth + 1);
-      continue;
-    }
-
-    if (key === 'propertyNames' && typeof value === 'object') {
-      result[key] = sanitizeSchemaRecursive(value, keyPath, removedPaths, visited, depth + 1);
-      continue;
-    }
-
-    // Conditional keywords
-    if (['if', 'then', 'else'].includes(key) && typeof value === 'object') {
-      result[key] = sanitizeSchemaRecursive(value, keyPath, removedPaths, visited, depth + 1);
-      continue;
-    }
-
-    if (key === 'contains' && typeof value === 'object') {
-      result[key] = sanitizeSchemaRecursive(value, keyPath, removedPaths, visited, depth + 1);
-      continue;
-    }
-
-    if (key === '$defs' || key === 'definitions') {
-      // Definition containers
-      if (typeof value === 'object' && value !== null) {
-        const sanitizedDefs: Record<string, unknown> = {};
-        for (const [defName, defSchema] of Object.entries(value as Record<string, unknown>)) {
-          sanitizedDefs[defName] = sanitizeSchemaRecursive(
-            defSchema,
-            `${keyPath}.${defName}`,
-            removedPaths,
-            visited,
-            depth + 1
-          );
-        }
-        result[key] = sanitizedDefs;
-        continue;
-      }
-    }
-
-    if (key === 'patternProperties') {
-      // Pattern property containers - preserve pattern keys and sanitize schema values
-      if (typeof value === 'object' && value !== null) {
-        const sanitizedPatterns: Record<string, unknown> = {};
-        for (const [pattern, patternSchema] of Object.entries(value as Record<string, unknown>)) {
-          sanitizedPatterns[pattern] = sanitizeSchemaRecursive(
-            patternSchema,
-            `${keyPath}.${pattern}`,
-            removedPaths,
-            visited,
-            depth + 1
-          );
-        }
-        result[key] = sanitizedPatterns;
-        continue;
-      }
-    }
-
-    if (key === 'dependencies') {
-      if (typeof value === 'object' && value !== null) {
-        const sanitizedDeps: Record<string, unknown> = {};
-        for (const [depName, depValue] of Object.entries(value as Record<string, unknown>)) {
-          // Schema dependencies need recursion, property dependencies (arrays) pass through
-          if (typeof depValue === 'object' && depValue !== null && !Array.isArray(depValue)) {
-            sanitizedDeps[depName] = sanitizeSchemaRecursive(
-              depValue,
-              `${keyPath}.${depName}`,
-              removedPaths,
-              visited,
-              depth + 1
-            );
-          } else {
-            sanitizedDeps[depName] = depValue;
-          }
-        }
-        result[key] = sanitizedDeps;
-        continue;
-      }
-    }
-
-    // Check if this is a valid JSON Schema keyword
+    // Check if this is a Gemini-supported field
     if (isValidSchemaKey(key)) {
-      // Recurse for nested objects that might contain schemas
-      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      // "example" and "default" hold arbitrary values, not nested schemas — pass through as-is
+      if (key === 'example' || key === 'default') {
+        result[key] = value;
+      } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        // Recurse for nested objects that might contain schemas
         result[key] = sanitizeSchemaRecursive(value, keyPath, removedPaths, visited, depth + 1);
       } else {
         result[key] = value;
       }
     } else {
-      // Non-standard property - remove it
+      // Unsupported field — remove it
       removedPaths.push(keyPath);
     }
   }
@@ -284,7 +178,7 @@ function sanitizeSchemaRecursive(
 }
 
 /**
- * Sanitize an input_schema object, removing non-standard JSON Schema properties.
+ * Sanitize an input_schema object, removing fields unsupported by Gemini.
  *
  * @param inputSchema The tool's input_schema object
  * @returns Sanitization result with cleaned schema and metadata

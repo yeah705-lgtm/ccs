@@ -1,14 +1,15 @@
 /**
  * Schema Sanitizer Unit Tests
  *
- * Tests for MCP tool input_schema sanitization.
+ * Tests for Gemini-compatible tool input_schema sanitization.
+ * Verifies that only Gemini-supported fields are preserved.
  */
 
 import { describe, expect, test } from 'bun:test';
 import { sanitizeInputSchema, sanitizeToolSchemas } from '../../../dist/cliproxy/schema-sanitizer.js';
 
 describe('sanitizeInputSchema', () => {
-  test('preserves valid JSON Schema properties', () => {
+  test('preserves Gemini-supported properties', () => {
     const schema = {
       type: 'object',
       properties: {
@@ -110,10 +111,10 @@ describe('sanitizeInputSchema', () => {
     });
   });
 
-  test('handles oneOf/anyOf/allOf with nested schemas', () => {
+  test('preserves anyOf and sanitizes nested schemas', () => {
     const schema = {
       type: 'object',
-      oneOf: [
+      anyOf: [
         { type: 'string', customProp: 'remove' },
         { type: 'number', anotherCustom: 123 },
       ],
@@ -124,8 +125,23 @@ describe('sanitizeInputSchema', () => {
     expect(result.removedCount).toBe(2);
     expect(result.schema).toEqual({
       type: 'object',
-      oneOf: [{ type: 'string' }, { type: 'number' }],
+      anyOf: [{ type: 'string' }, { type: 'number' }],
     });
+  });
+
+  test('removes oneOf and allOf (not supported by Gemini)', () => {
+    const schema = {
+      type: 'object',
+      oneOf: [{ type: 'string' }, { type: 'number' }],
+      allOf: [{ required: ['name'] }],
+    };
+
+    const result = sanitizeInputSchema(schema);
+
+    expect(result.removedCount).toBe(2);
+    expect(result.removedPaths).toContain('oneOf');
+    expect(result.removedPaths).toContain('allOf');
+    expect(result.schema).toEqual({ type: 'object' });
   });
 
   test('handles deeply nested structures', () => {
@@ -153,51 +169,52 @@ describe('sanitizeInputSchema', () => {
     expect(result.removedPaths).toContain('properties.level1.properties.level2.uiHint');
   });
 
-  test('preserves $defs and definitions', () => {
+  test('strips "examples" field (issue #155)', () => {
     const schema = {
       type: 'object',
-      $defs: {
-        address: {
-          type: 'object',
-          customUI: 'remove',
-          properties: {
-            street: { type: 'string' },
-          },
-        },
-      },
       properties: {
-        home: { $ref: '#/$defs/address' },
+        command: {
+          type: 'string',
+          description: 'The command to execute',
+          examples: ['ls -la', 'git status'],
+        },
+        timeout: {
+          type: 'number',
+          description: 'Timeout in ms',
+          examples: [5000, 10000],
+        },
       },
     };
 
     const result = sanitizeInputSchema(schema);
 
-    expect(result.removedCount).toBe(1);
-    expect(result.removedPaths).toContain('$defs.address.customUI');
+    expect(result.removedCount).toBe(2);
+    expect(result.removedPaths).toContain('properties.command.examples');
+    expect(result.removedPaths).toContain('properties.timeout.examples');
     expect(result.schema).toEqual({
       type: 'object',
-      $defs: {
-        address: {
-          type: 'object',
-          properties: {
-            street: { type: 'string' },
-          },
-        },
-      },
       properties: {
-        home: { $ref: '#/$defs/address' },
+        command: { type: 'string', description: 'The command to execute' },
+        timeout: { type: 'number', description: 'Timeout in ms' },
       },
     });
   });
 
-  test('handles empty schema', () => {
-    const result = sanitizeInputSchema({});
+  test('keeps "example" (singular) but strips "examples" (plural)', () => {
+    const schema = {
+      type: 'string',
+      example: 'hello',
+      examples: ['hello', 'world'],
+    };
 
-    expect(result.removedCount).toBe(0);
-    expect(result.schema).toEqual({});
+    const result = sanitizeInputSchema(schema);
+
+    expect(result.removedCount).toBe(1);
+    expect(result.removedPaths).toContain('examples');
+    expect(result.schema).toEqual({ type: 'string', example: 'hello' });
   });
 
-  test('preserves all standard metadata keywords', () => {
+  test('strips Gemini-unsupported JSON Schema metadata fields', () => {
     const schema = {
       $id: 'https://example.com/schema',
       $schema: 'https://json-schema.org/draft-07/schema#',
@@ -212,93 +229,119 @@ describe('sanitizeInputSchema', () => {
 
     const result = sanitizeInputSchema(schema);
 
-    expect(result.removedCount).toBe(0);
-    expect(result.schema).toEqual(schema);
+    // $id, $schema, examples, deprecated, readOnly, $comment = 6 removed
+    expect(result.removedCount).toBe(6);
+    expect(result.removedPaths).toContain('$id');
+    expect(result.removedPaths).toContain('$schema');
+    expect(result.removedPaths).toContain('examples');
+    expect(result.removedPaths).toContain('deprecated');
+    expect(result.removedPaths).toContain('readOnly');
+    expect(result.removedPaths).toContain('$comment');
+    expect(result.schema).toEqual({
+      title: 'Test Schema',
+      description: 'A test schema',
+      type: 'string',
+    });
   });
 
-  test('preserves additionalItems keyword', () => {
-    const schema = {
-      type: 'array',
-      items: [{ type: 'string' }],
-      additionalItems: { type: 'boolean' },
-    };
-    const result = sanitizeInputSchema(schema);
-    expect(result.removedCount).toBe(0);
-    expect(result.schema.additionalItems).toEqual({ type: 'boolean' });
-  });
-
-  test('sanitizes nested schemas in additionalItems', () => {
-    const schema = {
-      type: 'array',
-      items: [{ type: 'string' }],
-      additionalItems: { type: 'boolean', customProp: 'remove' },
-    };
-    const result = sanitizeInputSchema(schema);
-    expect(result.removedCount).toBe(1);
-    expect(result.removedPaths).toContain('additionalItems.customProp');
-    expect(result.schema.additionalItems).toEqual({ type: 'boolean' });
-  });
-
-  test('preserves if/then/else and sanitizes nested schemas', () => {
-    const schema = {
-      if: { properties: { type: { const: 'foo' } }, uiHint: 'remove' },
-      then: { required: ['foo'], badProp: 123 },
-      else: { required: ['bar'] },
-    };
-    const result = sanitizeInputSchema(schema);
-    expect(result.removedCount).toBe(2);
-    expect(result.schema.if).toEqual({ properties: { type: { const: 'foo' } } });
-    expect(result.schema.then).toEqual({ required: ['foo'] });
-  });
-
-  test('preserves patternProperties keyword and sanitizes nested schemas', () => {
+  test('strips $defs, $ref, definitions (not supported by Gemini)', () => {
     const schema = {
       type: 'object',
-      patternProperties: { '^S_': { type: 'string', customProp: 'remove' } },
-    };
-    const result = sanitizeInputSchema(schema);
-    expect(result.removedCount).toBe(1);
-    expect(result.removedPaths).toContain('patternProperties.^S_.customProp');
-    expect(result.schema.patternProperties).toEqual({ '^S_': { type: 'string' } });
-  });
-
-  test('preserves contains keyword and sanitizes nested schema', () => {
-    const schema = {
-      type: 'array',
-      contains: { type: 'number', minimum: 5, customProp: 'remove' },
-    };
-    const result = sanitizeInputSchema(schema);
-    expect(result.removedCount).toBe(1);
-    expect(result.removedPaths).toContain('contains.customProp');
-    expect(result.schema.contains).toEqual({ type: 'number', minimum: 5 });
-  });
-
-  test('preserves propertyNames keyword and sanitizes nested schema', () => {
-    const schema = {
-      type: 'object',
-      propertyNames: { type: 'string', pattern: '^[a-z]+$', customProp: 'remove' },
-    };
-    const result = sanitizeInputSchema(schema);
-    expect(result.removedCount).toBe(1);
-    expect(result.removedPaths).toContain('propertyNames.customProp');
-    expect(result.schema.propertyNames).toEqual({ type: 'string', pattern: '^[a-z]+$' });
-  });
-
-  test('handles dependencies with both property and schema dependencies', () => {
-    const schema = {
-      type: 'object',
-      dependencies: {
-        bar: ['foo'], // property dependency (array) - pass through
-        baz: { properties: { qux: { type: 'string' } }, customProp: 'remove' }, // schema dependency
+      $defs: {
+        address: {
+          type: 'object',
+          properties: { street: { type: 'string' } },
+        },
+      },
+      properties: {
+        home: { $ref: '#/$defs/address' },
       },
     };
+
     const result = sanitizeInputSchema(schema);
-    expect(result.removedCount).toBe(1);
-    expect(result.removedPaths).toContain('dependencies.baz.customProp');
-    expect(result.schema.dependencies).toEqual({
-      bar: ['foo'],
-      baz: { properties: { qux: { type: 'string' } } },
+
+    expect(result.removedCount).toBe(2);
+    expect(result.removedPaths).toContain('$defs');
+    expect(result.removedPaths).toContain('properties.home.$ref');
+    expect(result.schema).toEqual({
+      type: 'object',
+      properties: {
+        home: {},
+      },
     });
+  });
+
+  test('strips additionalProperties (not supported by Gemini)', () => {
+    const schema = {
+      type: 'object',
+      properties: { name: { type: 'string' } },
+      additionalProperties: false,
+    };
+
+    const result = sanitizeInputSchema(schema);
+
+    expect(result.removedCount).toBe(1);
+    expect(result.removedPaths).toContain('additionalProperties');
+  });
+
+  test('strips const, not, if/then/else (not supported by Gemini)', () => {
+    const schema = {
+      type: 'object',
+      const: 'fixed',
+      not: { type: 'number' },
+      if: { properties: { type: { const: 'foo' } } },
+      then: { required: ['foo'] },
+      else: { required: ['bar'] },
+    };
+
+    const result = sanitizeInputSchema(schema);
+
+    expect(result.removedCount).toBe(5);
+    expect(result.removedPaths).toContain('const');
+    expect(result.removedPaths).toContain('not');
+    expect(result.removedPaths).toContain('if');
+    expect(result.removedPaths).toContain('then');
+    expect(result.removedPaths).toContain('else');
+    expect(result.schema).toEqual({ type: 'object' });
+  });
+
+  test('preserves all Gemini-supported fields', () => {
+    const schema = {
+      type: 'object',
+      format: 'date',
+      title: 'Test',
+      description: 'A test',
+      nullable: true,
+      example: { name: 'test' },
+      default: {},
+      enum: ['a', 'b'],
+      properties: { name: { type: 'string' } },
+      required: ['name'],
+      minProperties: 1,
+      maxProperties: 10,
+      items: { type: 'string' },
+      minItems: 0,
+      maxItems: 100,
+      minLength: 1,
+      maxLength: 255,
+      pattern: '^[a-z]+$',
+      minimum: 0,
+      maximum: 100,
+      anyOf: [{ type: 'string' }],
+      propertyOrdering: ['name'],
+    };
+
+    const result = sanitizeInputSchema(schema);
+
+    expect(result.removedCount).toBe(0);
+    expect(result.removedPaths).toEqual([]);
+  });
+
+  test('handles empty schema', () => {
+    const result = sanitizeInputSchema({});
+
+    expect(result.removedCount).toBe(0);
+    expect(result.schema).toEqual({});
   });
 
   test('handles null input gracefully', () => {
@@ -358,6 +401,70 @@ describe('sanitizeToolSchemas', () => {
     expect(figmaTool?.input_schema).toEqual({
       type: 'object',
       properties: { id: { type: 'string' } },
+    });
+  });
+
+  test('strips examples from Claude Code tool schemas (issue #155)', () => {
+    const tools = [
+      {
+        name: 'Bash',
+        input_schema: {
+          type: 'object',
+          properties: {
+            command: {
+              type: 'string',
+              description: 'The command to execute',
+              examples: ['ls -la', 'git status', 'npm install'],
+            },
+            timeout: {
+              type: 'number',
+              description: 'Timeout in ms',
+              examples: [5000, 30000],
+            },
+          },
+          required: ['command'],
+        },
+      },
+      {
+        name: 'Read',
+        input_schema: {
+          type: 'object',
+          properties: {
+            file_path: {
+              type: 'string',
+              description: 'File path to read',
+              examples: ['/src/index.ts', '/package.json'],
+            },
+          },
+          required: ['file_path'],
+        },
+      },
+    ];
+
+    const result = sanitizeToolSchemas(tools);
+
+    expect(result.totalRemoved).toBe(3);
+    expect(result.removedByTool).toHaveLength(2);
+
+    // Verify examples stripped from Bash tool
+    const bashTool = result.tools.find((t) => t.name === 'Bash');
+    expect(bashTool?.input_schema).toEqual({
+      type: 'object',
+      properties: {
+        command: { type: 'string', description: 'The command to execute' },
+        timeout: { type: 'number', description: 'Timeout in ms' },
+      },
+      required: ['command'],
+    });
+
+    // Verify examples stripped from Read tool
+    const readTool = result.tools.find((t) => t.name === 'Read');
+    expect(readTool?.input_schema).toEqual({
+      type: 'object',
+      properties: {
+        file_path: { type: 'string', description: 'File path to read' },
+      },
+      required: ['file_path'],
     });
   });
 
