@@ -39,7 +39,7 @@ describe('Model Catalog', () => {
   describe('AGY models', () => {
     it('has correct default model', () => {
       const { MODEL_CATALOG } = modelCatalog;
-      assert.strictEqual(MODEL_CATALOG.agy.defaultModel, 'gemini-claude-opus-4-5-thinking');
+      assert.strictEqual(MODEL_CATALOG.agy.defaultModel, 'gemini-claude-opus-4-6-thinking');
     });
 
     it('includes Claude Opus 4.5 Thinking', () => {
@@ -76,9 +76,9 @@ describe('Model Catalog', () => {
       assert.strictEqual(gem3.tier, undefined, 'AGY models should not have paid tier');
     });
 
-    it('has 4 models total', () => {
+    it('has 5 models total', () => {
       const { MODEL_CATALOG } = modelCatalog;
-      assert.strictEqual(MODEL_CATALOG.agy.models.length, 4);
+      assert.strictEqual(MODEL_CATALOG.agy.models.length, 5);
     });
   });
 
