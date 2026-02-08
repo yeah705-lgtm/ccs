@@ -1,5 +1,11 @@
 # CCS Dashboard Docker Compose
 # See docker/README.md for documentation
+#
+# This configuration uses bind mounts to local directories instead of named volumes.
+# All container data is stored in ./inject_dir/ for easy backup and portability.
+#
+# Before first run:
+#   mkdir -p inject_dir/{ccs,claude,opencode,grok}
 services:
   ccs-dashboard:
     image: ccs-dashboard:latest
@@ -26,10 +32,10 @@ services:
       CCS_PROXY_FALLBACK_ENABLED: "${CCS_PROXY_FALLBACK_ENABLED:-}"
       CCS_ALLOW_SELF_SIGNED: "${CCS_ALLOW_SELF_SIGNED:-}"
     volumes:
-      - ccs_home:/home/node/.ccs
-      - claude_home:/home/node/.claude
-      - opencode_home:/home/node/.opencode
-      - grok_home:/home/node/.grok-cli
+      - ./inject_dir/ccs:/home/node/.ccs
+      - ./inject_dir/claude:/home/node/.claude
+      - ./inject_dir/opencode:/home/node/.opencode
+      - ./inject_dir/grok:/home/node/.grok-cli
     # Healthcheck uses internal ports (3000/8317) which are fixed
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS --max-time 2 http://localhost:3000/ >/dev/null && curl -sS --max-time 2 http://127.0.0.1:8317/ >/dev/null"]
@@ -46,9 +52,3 @@ services:
         reservations:
           memory: 256M
           cpus: '0.5'
-
-volumes:
-  ccs_home:
-  claude_home:
-  opencode_home:
-  grok_home:

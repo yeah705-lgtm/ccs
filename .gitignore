@@ -42,3 +42,5 @@ logs/
 
 # Test coverage
 ui/coverage/
+# Docker inject directory (local data)
+docker/inject_dir/

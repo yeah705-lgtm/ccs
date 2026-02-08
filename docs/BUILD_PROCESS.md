@@ -97,14 +97,32 @@ Key environment variables:
 - `CCS_WEBSEARCH_SKIP` - Skip WebSearch integration
 - `CCS_PROXY_*` - Proxy configuration (HOST, PORT, PROTOCOL, AUTH_TOKEN, etc.)
 
-### Volumes
+### Data Storage
 
-Persistent data stored in named volumes:
+Persistent data is stored using **bind mounts** to local directories (stateless container design):
 
-- `ccs_home` → `/home/node/.ccs` (CCS config/data)
-- `claude_home` → `/home/node/.claude` (Claude CLI credentials)
-- `opencode_home` → `/home/node/.opencode` (OpenCode data)
-- `grok_home` → `/home/node/.grok-cli` (Grok CLI data)
+**Host Directory Structure:**
+```
+docker/inject_dir/
+├── ccs/         → /home/node/.ccs (CCS config/data)
+├── claude/      → /home/node/.claude (Claude CLI credentials)
+├── opencode/    → /home/node/.opencode (OpenCode data)
+└── grok/        → /home/node/.grok-cli (Grok CLI data)
+```
+
+**Benefits:**
+- Easy backup/restore with standard file tools
+- Direct access to container data from host
+- Portable: copy `inject_dir` to move container state
+- Fully stateless container (all data external)
+
+**Setup:**
+```bash
+cd docker
+mkdir -p inject_dir/{ccs,claude,opencode,grok}
+```
+
+See `docker/inject_dir/README.md` for details.
 
 ## Health Check
 
@@ -137,7 +155,12 @@ After building a new image, verify it works:
    docker build -f docker/Dockerfile -t ccs-dashboard:test .
    ```
 
-2. **Run a test container**:
+2. **Create test data directory**:
+   ```bash
+   mkdir -p /tmp/ccs-test/{ccs,claude,opencode,grok}
+   ```
+
+3. **Run a test container**:
    ```bash
    docker run -d \
      --name ccs-dashboard-test \
@@ -145,27 +168,30 @@ After building a new image, verify it works:
      -p 9317:8317 \
      -p 2455:1455 \
      -e CCS_PORT=3000 \
-     -v ccs_home_test:/home/node/.ccs \
+     -v /tmp/ccs-test/ccs:/home/node/.ccs \
+     -v /tmp/ccs-test/claude:/home/node/.claude \
+     -v /tmp/ccs-test/opencode:/home/node/.opencode \
+     -v /tmp/ccs-test/grok:/home/node/.grok-cli \
      ccs-dashboard:test
    ```
 
-3. **Check health**:
+4. **Check health**:
    ```bash
    docker logs ccs-dashboard-test
    docker ps -a --filter "name=ccs-dashboard-test"
    ```
 
-4. **Test endpoints**:
+5. **Test endpoints**:
    ```bash
    curl -fsS http://localhost:4000/   # Dashboard UI
    curl -sS http://localhost:9317/    # CLIProxy
    ```
 
-5. **Cleanup**:
+6. **Cleanup**:
    ```bash
    docker stop ccs-dashboard-test
    docker rm ccs-dashboard-test
-   docker volume rm ccs_home_test
+   rm -rf /tmp/ccs-test
    docker rmi ccs-dashboard:test
    ```
 
@@ -174,19 +200,29 @@ After building a new image, verify it works:
 ### Using docker-compose (Recommended)
 
 ```bash
+# Change to docker directory
+cd docker
+
+# Create data directories (first run only)
+mkdir -p inject_dir/{ccs,claude,opencode,grok}
+
 # Start
-docker-compose -f docker/docker-compose.yml up -d
+docker-compose up -d
 
 # View logs
-docker-compose -f docker/docker-compose.yml logs -f
+docker-compose logs -f
 
 # Stop
-docker-compose -f docker/docker-compose.yml down
+docker-compose down
 ```
 
 ### Using docker run
 
 ```bash
+# Create data directory
+mkdir -p /path/to/inject_dir/{ccs,claude,opencode,grok}
+
+# Run container
 docker run -d \
   --name ccs-dashboard \
   --restart unless-stopped \
@@ -194,10 +230,10 @@ docker run -d \
   -p 8317:8317 \
   -p 1455:1455 \
   -e CCS_PORT=3000 \
-  -v ccs_home:/home/node/.ccs \
-  -v claude_home:/home/node/.claude \
-  -v opencode_home:/home/node/.opencode \
-  -v grok_home:/home/node/.grok-cli \
+  -v /path/to/inject_dir/ccs:/home/node/.ccs \
+  -v /path/to/inject_dir/claude:/home/node/.claude \
+  -v /path/to/inject_dir/opencode:/home/node/.opencode \
+  -v /path/to/inject_dir/grok:/home/node/.grok-cli \
   ccs-dashboard:latest
 ```
 
